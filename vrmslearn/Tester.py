@@ -10,8 +10,8 @@ import h5py as h5
 import tensorflow as tf
 
 from vrmslearn.RCNN import RCNN
-from vrmslearn.SeismicGenerator import SeismicGenerator
-
+from vrmslearn.Case import Case
+from vrmslearn.DatasetGenerator import aggregate
 
 class Tester(object):
     """
@@ -20,7 +20,7 @@ class Tester(object):
 
     def __init__(self,
                  NN: RCNN,
-                 data_generator: SeismicGenerator):
+                 case: Case):
         """
         Initialize the tester
 
@@ -31,16 +31,14 @@ class Tester(object):
         @returns:
         """
         self.NN = NN
-        self.data_generator = data_generator
+        self.case = case
 
     def test_dataset(self,
                      savepath: str,
                      toeval: list,
                      toeval_names: list,
-                     testpath: str = None,
                      filename: str = 'example_*',
-                     restore_from: str = None,
-                     tester_n: int = 0):
+                     restore_from: str = None):
         """
         This method evaluate predictions on all examples contained in savepath,
         and save the predictions in hdf5 files.
@@ -50,35 +48,30 @@ class Tester(object):
         filename (str): The structure of the examples' filenames
         toeval (list): List of tensors to predict
         restore_from (str): File containing the trained weights
-        tester_n (int): Label for the model to use for prediction
 
         @returns:
         """
-        
-        if testpath is None:
-            testpath = savepath
-        # Do the testing
-        examples = fnmatch.filter(os.listdir(testpath), filename)
+
         predictions = fnmatch.filter(os.listdir(savepath), filename)
+        predictions = [os.path.join(savepath, p) for p in predictions]
         with self.NN.graph.as_default():
             saver = tf.train.Saver()
             with tf.Session() as sess:
                 saver.restore(sess, restore_from)
                 batch = []
                 bexamples = []
-                for ii, example in enumerate(examples):
-                    predname = example + "_pred" + str(tester_n)
-                    if "pred" not in example and predname not in predictions:
+                for ii, example in enumerate(self.case.files["test"]):
+                    predname = os.path.basename(example)
+                    if predname not in predictions:
                         bexamples.append(example)
-                        batch.append(self.data_generator.read_example(savedir=testpath,
-                                                                      filename=example))
+                        batch.append(self.case.get_example(filename=example))
 
                     if len(batch) == self.NN.batch_size:
-                        batch = self.data_generator.aggregate_examples(batch)
+                        batch = aggregate(batch)
                         feed_dict = dict(zip(self.NN.feed_dict, batch))
                         evaluated = sess.run(toeval, feed_dict=feed_dict)
                         for jj, bexample in enumerate(bexamples):
-                            savefile = h5.File(savepath + "/" + bexample + "_pred" + str(tester_n), "w")
+                            savefile = h5.File(bexample, "w")
                             for kk, el in enumerate(toeval_names):
                                 savefile[el] = evaluated[kk][jj, :]
                             savefile.close()
@@ -89,10 +82,7 @@ class Tester(object):
                   labelname: str,
                   predname: str,
                   savepath: str,
-                  testpath: str = None,
-                  filename: str = 'example_*',
-                  maskname: str = None,
-                  tester_n: int = 0):
+                  filename: str = 'example_*'):
         """
         This method returns the labels and the predictions for an output.
 
@@ -109,29 +99,22 @@ class Tester(object):
         preds (list):  List containing all predictions
         """
         
-        if testpath is None:
-            testpath = savepath
-        examples = fnmatch.filter(os.listdir(testpath), filename)
         predictions = fnmatch.filter(os.listdir(savepath), filename)
+        predictions = [os.path.join(savepath, p) for p in predictions]
         labels = []
         preds = []
-        masks = []
         lfiles = []
         pfiles = []
-        for ii, example in enumerate(examples):
-            example_pred = example + "_pred" + str(tester_n)
-            if "pred" not in example and example_pred in predictions:
-                pfiles.append(savepath + "/" + example_pred)
+        for ii, example in enumerate(self.case.files["test"]):
+            example_pred = os.path.basename(example)
+            if example_pred in predictions:
+                pfiles.append(example_pred)
                 pfile = h5.File(pfiles[-1], "r")
                 preds.append(pfile[predname][:])
                 pfile.close()
-                lfiles.append(testpath + "/" + example)
+                lfiles.append(example)
                 lfile = h5.File(lfiles[-1], "r")
                 labels.append(lfile[labelname][:])
-                if maskname is not None:
-                    masks.append(lfile[maskname][:])
                 lfile.close()
 
-
-
-        return labels, preds, masks, lfiles, pfiles
+        return labels, preds, lfiles, pfiles

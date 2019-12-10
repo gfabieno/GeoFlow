@@ -10,7 +10,8 @@ import copy
 import numpy as np
 from ModelParameters import ModelParameters
 from scipy.signal import gaussian
-from velocity_transformations import *
+from vrmslearn.SeismicUtilities import smooth_velocity_wavelength
+from vrmslearn.SeismicUtilities import interval_velocity_time, calculate_vrms
 
 
 class ModelGenerator(object):
@@ -32,7 +33,7 @@ class ModelGenerator(object):
         self.pars = model_parameters
         self.vp =None
 
-    def generate_model(self):
+    def generate_model(self, seed=None):
         """
         Output the media parameters required for seismic modelling, in this case
         vp, vs and rho.
@@ -45,8 +46,9 @@ class ModelGenerator(object):
         rho (numpy.ndarray) : numpy array (self.pars.NZ, self.pars.NX) for rho
                               values.
         """
-        vp, vs, rho, _, _, _ = generate_random_2Dlayered(self.pars)
 
+        vp, vs, rho, _, _, _ = generate_random_2Dlayered(self.pars, seed=seed)
+        vp = smooth_velocity_wavelength(vp, self.pars.dh, 0, 0)
         self.vp = copy.copy(vp)
         return vp, vs, rho
 
@@ -65,13 +67,12 @@ class ModelGenerator(object):
         refs (numpy.ndarray) :   Two way travel-times of the reflections
         """
         vp = self.vp
-        vp = smooth_velocity_wavelength(vp, pars.dh, 0, 0)
 
         # Normalize so the labels are between 0 and 1
+        vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
         valid = 2 * np.cumsum(self.pars.dh / vp, axis=0)
         valid[valid >= self.pars.NT * self.pars.dt] = 0
         valid[valid != 0] = 1
-        vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
 
         return vp, valid
 

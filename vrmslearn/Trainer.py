@@ -10,8 +10,8 @@ import tensorflow as tf
 
 from vrmslearn.Inputqueue import BatchManager
 from vrmslearn.RCNN import RCNN
-from vrmslearn.SeismicGenerator import SeismicGenerator
-
+from vrmslearn.Case import Case
+from vrmslearn.DatasetGenerator import aggregate
 
 class Trainer(object):
     """
@@ -20,9 +20,8 @@ class Trainer(object):
 
     def __init__(self,
                  NN: RCNN,
-                 data_generator: SeismicGenerator,
+                 case: Case,
                  checkpoint_dir: str="./logs",
-                 replace_examples = False,
                  learning_rate: float = 0.001,
                  beta1: float = 0.9,
                  beta2: float = 0.999,
@@ -31,7 +30,7 @@ class Trainer(object):
                  totrain = True):
 
         self.NN = NN
-        self.data_generator = data_generator
+        self.case = case
         self.checkpoint_dir = checkpoint_dir
         with self.NN.graph.as_default():
             self.global_step = tf.train.get_or_create_global_step()
@@ -81,7 +80,6 @@ class Trainer(object):
 
     def train_model(self,
                     niter: int = 10,
-                    savepath: str = None,
                     restore_from: str = None,
                     thread_read: int = 1):
         """
@@ -90,7 +88,6 @@ class Trainer(object):
 
         @params:
         niter (int) : Number of total training iterations to run.
-        savepath (str): Directory of list of directories of examples
         restore_from (str): Checkpoint file from which to initialize parameters
 
         @returns:
@@ -100,9 +97,10 @@ class Trainer(object):
         print("number of iterations (niter) = " + str(niter))
 
         # Do the learning
-        generator_fun = [lambda: self.data_generator.read_example(savedir=savepath)] * thread_read
+        generator_fun = [self.case.get_example] * thread_read
         with BatchManager(batch_size=self.NN.batch_size,
-                          generator_fun=generator_fun) as batch_queue:
+                          generator_fun=generator_fun,
+                          postprocess_fun=aggregate) as batch_queue:
 
             with self.NN.graph.as_default():
                 summary_op = tf.summary.merge_all()
@@ -134,7 +132,6 @@ class Trainer(object):
 
                     if restore_from is not None:
                         batch = batch_queue.next_batch()
-                        batch = self.data_generator.aggregate_examples(batch)
                         feed_dict = dict(zip(self.NN.feed_dict, batch))
                         step = sess.run(self.global_step, feed_dict=feed_dict)
                         if step == 0:
@@ -143,7 +140,6 @@ class Trainer(object):
                     while not sess.should_stop():
                         t0 = time.time()
                         batch = batch_queue.next_batch()
-                        batch = self.data_generator.aggregate_examples(batch)
                         t1 = time.time()
                         feed_dict = dict(zip(self.NN.feed_dict, batch))
 

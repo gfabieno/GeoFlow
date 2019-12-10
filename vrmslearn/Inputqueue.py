@@ -71,7 +71,7 @@ class DataAggregator(Process):
                  stop_event: Event,
                  batch_size: int,
                  n_in_queue: Counter=None,
-                 postprocess_fun = None):
+                 postprocess_fun=None):
         """
         This is the constructor for the class.
 

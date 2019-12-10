@@ -42,6 +42,11 @@ class ModelParameters(object):
         self.mute_nearoffset_max = 10
         self.random_time_scaling = False
 
+        # Model gaussian smoothing
+        # see smooth_velocity_wavelength in velocity_transformations
+        self.model_smooth_x = 0    # Standard deviation in x
+        self.model_smooth_t = 0    # Standard deviation in t (z smoothing)
+
         self.vp_min = 1000.0                      # maximum value of vp (in m/s)
         self.vp_max = 5000.0                      # minimum value of vp (in m/s)
         self.vp_trend_min = 0    # Minimum trend for velocity variation in z
@@ -71,7 +76,7 @@ class ModelParameters(object):
         self.train_on_shots = False   # Train on True:  shot gathers, False: CMP
 
         self.angle_0 = True  # It true, first layer angle is 0
-        self.angle_max = 15                             # Maximum dip of a layer
+        self.angle_max = 0                             # Maximum dip of a layer
         self.dangle_max = 5 # Maximum dip difference between two adjacent layers
         self.max_deform_freq = 0    # Max frequency of the layer boundary function
         self.min_deform_freq = 0    # Min frequency of the layer boundary function
@@ -79,7 +84,7 @@ class ModelParameters(object):
         self.max_deform_nfreq = 20         # Maximum nb of frequencies of boundary
         self.prob_deform_change = 0.3     # Probability that a boundary shape will
                                                     # change between two lahyers
-        self.max_texture = 0.15   # Add random noise two a layer (% or velocity)
+        self.max_texture = 0   # Add random noise two a layer (% or velocity)
         self.texture_xrange = 0  # Range of the filter in x for texture creation
         self.texture_zrange = 0  # Range of the filter in z for texture creation
 
