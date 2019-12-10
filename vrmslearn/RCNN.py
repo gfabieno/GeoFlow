@@ -4,8 +4,8 @@
 Class to build the neural network for 1D prediction of RMS and interval velocity
 in time.
 """
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
 
 
 class RCNN(object):

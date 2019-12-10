@@ -3,16 +3,15 @@
 """
 This class tests a NN on a dataset.
 """
-from vrmslearn.RCNN import RCNN
-from vrmslearn.ModelParameters import ModelParameters
-from vrmslearn.Inputqueue import BatchManager
-from vrmslearn.SeismicGenerator import SeismicGenerator
-import tensorflow as tf
-import time
-import os
 import fnmatch
+import os
+
 import h5py as h5
-import copy
+import tensorflow as tf
+
+from vrmslearn.RCNN import RCNN
+from vrmslearn.SeismicGenerator import SeismicGenerator
+
 
 class Tester(object):
     """

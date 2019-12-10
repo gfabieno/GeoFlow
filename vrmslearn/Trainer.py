@@ -4,12 +4,13 @@
 This class trains the neural network
 """
 
-from vrmslearn.RCNN import RCNN
-from vrmslearn.Inputqueue import BatchManager
-from vrmslearn.SeismicGenerator import SeismicGenerator
-import tensorflow as tf
 import time
 
+import tensorflow as tf
+
+from vrmslearn.Inputqueue import BatchManager
+from vrmslearn.RCNN import RCNN
+from vrmslearn.SeismicGenerator import SeismicGenerator
 
 
 class Trainer(object):

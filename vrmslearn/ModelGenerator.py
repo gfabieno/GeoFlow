@@ -4,12 +4,13 @@
     Class to generate seismic models and labels for training.
 """
 
-import numpy as np
-import copy
-from scipy.signal import gaussian
-from scipy.interpolate import interp1d
 import argparse
-from vrmslearn.ModelParameters import ModelParameters
+import copy
+
+import numpy as np
+from ModelParameters import ModelParameters
+from scipy.signal import gaussian
+from velocity_transformations import *
 
 
 class ModelGenerator(object):
@@ -34,9 +35,8 @@ class ModelGenerator(object):
     def generate_model(self):
         """
         Output the media parameters required for seismic modelling, in this case
-        vp, vs and rho. To create 1D model, set pars.flat to True. For 2D dipping
-        layer models, set it to False.
-        
+        vp, vs and rho.
+
         @params:
         
         @returns:
@@ -45,10 +45,7 @@ class ModelGenerator(object):
         rho (numpy.ndarray) : numpy array (self.pars.NZ, self.pars.NX) for rho
                               values.
         """
-        if self.pars.flat:
-            vp, vs, rho = generate_random_1Dlayered(self.pars)
-        else:
-            vp, vs, rho, _, _, _ = generate_random_2Dlayered(self.pars)
+        vp, vs, rho, _, _, _ = generate_random_2Dlayered(self.pars)
 
         self.vp = copy.copy(vp)
         return vp, vs, rho
@@ -67,178 +64,19 @@ class ModelGenerator(object):
                                 before the last reflection, 0 afterwards
         refs (numpy.ndarray) :   Two way travel-times of the reflections
         """
-        vp = self.vp[:, 0]
-        vrms = calculate_vrms(vp,
-                              self.pars.dh,
-                              self.pars.Npad,
-                              self.pars.NT,
-                              self.pars.dt,
-                              self.pars.tdelay,
-                              self.pars.source_depth)
-        refs = generate_reflections_ttime(vp, self.pars)
+        vp = self.vp
+        vp = smooth_velocity_wavelength(vp, pars.dh, 0, 0)
 
         # Normalize so the labels are between 0 and 1
-        vrms = (vrms - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
-        indt = np.argwhere(refs > 0.1).flatten()[-1]
-        valid = np.ones(len(vrms))
-        valid[indt:] = 0
+        valid = 2 * np.cumsum(self.pars.dh / vp, axis=0)
+        valid[valid >= self.pars.NT * self.pars.dt] = 0
+        valid[valid != 0] = 1
+        vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
 
-        return vrms, valid, refs
-
-
-def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
-    """
-    This method inputs vp and outputs the vrms. The global parameters in
-    common.py are used for defining the depth spacing, source and receiver
-    depth etc. This method assumes that source and receiver depths are same.
-
-    The convention used is that the velocity denoted by the interval
-    (i, i+1) grid points is given by the constant vp[i+1].
-
-    @params:
-    vp (numpy.ndarray) :  1D vp values in meters/sec.
-    dh (float) : the spatial grid size
-    Npad (int) : Number of absorbing padding grid points over the source
-    NT (int)   : Number of time steps of output
-    dt (float) : Time step of the output
-    tdelay (float): Time before source peak
-    source_depth (float) The source depth in meters
+        return vp, valid
 
 
-    @returns:
-    vrms (numpy.ndarray) : numpy array of shape (NT, ) with vrms
-                           values in meters/sec.
-    """
-
-    NZ = vp.shape[0]
-
-    # Create a numpy array of depths corresponding to the vp grid locations
-    depth = np.zeros((NZ,))
-    for i in range(NZ):
-        depth[i] = i * dh
-
-    # Create a list of tuples of (relative depths, velocity) of the layers
-    # following the depth of the source / receiver depths, till the last layer
-    # before the padding zone at the bottom
-    last_depth = dh * (NZ - Npad - 1)
-    rdepth_vel_pairs = [(d - source_depth, vp[i]) for i, d in enumerate(depth)
-                        if d > source_depth and d <= last_depth]
-    first_layer_vel = rdepth_vel_pairs[0][1]
-    rdepth_vel_pairs.insert(0, (0.0, first_layer_vel))
-
-    # Calculate a list of two-way travel times
-    t = [2.0 * (rdepth_vel_pairs[index][0] - rdepth_vel_pairs[index - 1][
-        0]) / vel
-         for index, (_, vel) in enumerate(rdepth_vel_pairs) if index > 0]
-    t.insert(0, 0.0)
-    total_time = 0.0
-    for i, time in enumerate(t):
-        total_time += time
-        t[i] = total_time
-
-    # The last time must be 'dt' * 'NT', so adjust the lists 'rdepth_vel_pairs'
-    # and 't' by cropping and adjusting the last sample accordingly
-    rdepth_vel_pairs = [(rdepth_vel_pairs[i][0], rdepth_vel_pairs[i][1]) for
-                        i, time in enumerate(t)
-                        if time <= NT * dt]
-    t = [time for time in t if time <= NT * dt]
-    last_index = len(t) - 1
-    extra_distance = (NT * dt - t[last_index]) * rdepth_vel_pairs[last_index][
-        1] / 2.0
-    rdepth_vel_pairs[last_index] = (
-        extra_distance + rdepth_vel_pairs[last_index][0],
-        rdepth_vel_pairs[last_index][1])
-    t[last_index] = NT * dt
-
-    # Compute vrms at the times in t
-    vrms = [first_layer_vel]
-    sum_numerator = 0.0
-    for i in range(1, len(t)):
-        sum_numerator += (t[i] - t[i - 1]) * rdepth_vel_pairs[i][1] * \
-                         rdepth_vel_pairs[i][1]
-        vrms.append((sum_numerator / t[i]) ** 0.5)
-
-    # Interpolate vrms to uniform time grid
-    tgrid = np.asarray(range(0, NT)) * dt
-    vrms = np.interp(tgrid, t, vrms)
-    vrms = np.reshape(vrms, [-1])
-    # Adjust for time delay
-    t0 = int(tdelay / dt)
-    vrms[t0:] = vrms[:-t0]
-    vrms[:t0] = vrms[t0]
-
-    # Return vrms
-    return vrms
-
-
-def generate_random_1Dlayered(pars, seed=None):
-    if seed is not None:
-        np.random.seed(seed)
-
-    if pars.num_layers == 0:
-        nmin = pars.layer_dh_min
-        nmax = int(pars.NZ / pars.layer_num_min)
-        n_layers = np.random.choice(range(pars.layer_num_min, int(pars.NZ/nmin)))
-    else:
-        nmin = pars.layer_dh_min
-        nmax = int(pars.NZ / pars.layer_num_min)
-        n_layers = int(np.clip(pars.num_layers, nmin, nmax))
-
-    NZ = pars.NZ
-    NX = pars.NX
-    dh = pars.dh
-    top_min = int(pars.source_depth / dh + 2 * pars.layer_dh_min)
-    layers = (nmin + np.random.rand(n_layers) * (nmax - nmin)).astype(np.int)
-    tops = np.cumsum(layers)
-    ntos = np.sum(layers[tops <= top_min])
-    if ntos > 0:
-        layers = np.concatenate([[ntos], layers[tops > top_min]])
-    vels = (pars.vp_min
-            + np.random.rand() * (pars.vp_max - pars.vp_min - pars.dvmax)
-            + np.random.rand(len(layers)) * pars.dvmax)
-    ramp = np.abs(np.max(vels) - pars.vp_max) * np.random.rand() + 0.1
-    vels = vels + np.linspace(0, ramp, vels.shape[0])
-    vels[vels > pars.vp_max] = pars.vp_max
-    vels[vels < pars.vp_min] = pars.vp_min
-    if pars.marine:
-        vels[0] = pars.velwater + (np.random.rand() - 0.5) * 2 * pars.d_velwater
-        layers[0] = int(pars.water_depth / pars.dh + (
-                np.random.rand() - 0.5) * 2 * pars.dwater_depth / pars.dh)
-
-    vel1d = np.concatenate([np.ones(layers[n]) * vels[n]
-                            for n in range(len(layers))])
-    if len(vel1d) < NZ:
-        vel1d = np.concatenate([vel1d, np.ones(NZ - len(vel1d)) * vel1d[-1]])
-    elif len(vel1d) > NZ:
-        vel1d = vel1d[:NZ]
-
-    if pars.rho_var:
-        rhos = (pars.rho_min
-                + np.random.rand() * (
-                        pars.rho_max - pars.rho_min - pars.drhomax)
-                + np.random.rand(len(layers)) * pars.drhomax)
-        ramp = np.abs(np.max(rhos) - pars.rho_max) * np.random.rand() + 0.1
-        rhos = rhos + np.linspace(0, ramp, rhos.shape[0])
-        rhos[rhos > pars.rho_max] = pars.rho_max
-        rhos[rhos < pars.rho_min] = pars.rho_min
-        rho1d = np.concatenate([np.ones(layers[n]) * rhos[n]
-                                for n in range(len(layers))])
-        if len(rho1d) < NZ:
-            rho1d = np.concatenate(
-                [rho1d, np.ones(NZ - len(rho1d)) * rho1d[-1]])
-        elif len(rho1d) > NZ:
-            rho1d = rho1d[:NZ]
-    else:
-        rho1d = vel1d * 0 + pars.rho_default
-
-    vp = np.transpose(np.tile(vel1d, [NX, 1]))
-    vs = vp * 0
-    rho = np.transpose(np.tile(rho1d, [NX, 1]))
-
-    return vp, vs, rho
-
-
-def texture_1lay(NZ, NX, lz=2, lx=2):
+def random_fields(NZ, NX, lz=2, lx=2, corrs=None):
     """
     Created a random model with bandwidth limited noise.
 
@@ -250,125 +88,306 @@ def texture_1lay(NZ, NX, lz=2, lx=2):
     @returns:
 
     """
-
-    noise = np.fft.fft2(np.random.random([NZ, NX]))
-    noise[0, :] = 0
-    noise[:, 0] = 0
-    noise[-1, :] = 0
-    noise[:, -1] = 0
-
-    iz = lz
-    ix = lx
-    maskz = gaussian(NZ, iz)
-    maskz = np.roll(maskz, [int(NZ / 2), 0])
-    maskx = gaussian(NX, ix)
-    maskx = np.roll(maskx, [int(NX / 2), 0])
-    noise = noise * np.reshape(maskz, [-1, 1])
-    noise *= maskx
-    noise = np.real(np.fft.ifft2(noise))
-    noise = noise / np.max(noise)
-
-    return noise
-
-
-def generate_reflections_ttime(vp,
-                               pars,
-                               tol=0.015,
-                               window_width=0.45):
-    """
-    Output the reflection travel time at the minimum offset of a CMP gather
-
-    @params:
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
-    pars (ModelParameter): Parameters used to generate the model
-    tol (float): The minimum relative velocity change to consider a reflection
-    window_width (float): time window width in percentage of pars.peak_freq
-
-    @returns:
-
-    tabel (numpy.ndarray) : A 2D array with pars.NT elements with 1 at reflecion
-                            times +- window_width/pars.peak_freq, 0 elsewhere
-    """
-
-    vp = vp[int(pars.source_depth / pars.dh):]
-    vlast = vp[0]
-    ind = []
-    for ii, v in enumerate(vp):
-        if np.abs((v - vlast) / vlast) > tol:
-            ind.append(ii - 1)
-            vlast = v
-
-    if pars.minoffset != 0:
-        dt = 2.0 * pars.dh / vp
-        t0 = np.cumsum(dt)
-        vrms = np.sqrt(t0 * np.cumsum(vp ** 2 * dt))
-        tref = np.sqrt(
-            t0[ind] ** 2 + pars.minoffset ** 2 / vrms[ind] ** 2) + pars.tdelay
+    if corrs is None:
+        nf=1
+        corrs = [1.0]
     else:
-        ttime = 2 * np.cumsum(pars.dh / vp) + pars.tdelay
-        tref = ttime[ind]
+        nf = len(corrs)+1
+        corrs = [1.0] + corrs
 
-    if pars.identify_direct:
-        dt = 0
-        if pars.minoffset != 0:
-            dt = pars.minoffset / vp[0]
-        tref = np.insert(tref, 0, pars.tdelay + dt)
+    noise0 = np.random.random([NZ, NX])
+    noise0 = noise0 - np.mean(noise0)
+    noises = []
+    for ii in range(nf):
+        noisei = np.random.random([NZ, NX])
+        noisei = noisei- np.mean(noisei)
+        noise = corrs[ii] * noise0 + (1.0-corrs[ii]) * noisei
+        noise = np.fft.fft2(noise)
+        noise[0, :] = 0
+        noise[:, 0] = 0
+        #noise[-1, :] = 0
+        #noise[:, -1] = 0
 
-    tlabel = np.zeros(pars.NT)
-    for t in tref:
-        imin = int(t / pars.dt - window_width / pars.peak_freq / pars.dt)
-        imax = int(t / pars.dt + window_width / pars.peak_freq / pars.dt)
-        if imin <= pars.NT and imax <= pars.NT:
-            tlabel[imin:imax] = 1
+        iz = lz
+        ix = lx
+        maskz = gaussian(NZ, iz)**2
+        maskz = np.roll(maskz, [int(NZ / 2), 0])
+        if ix>0:
+            maskx = gaussian(NX, ix)**2
+            maskx = np.roll(maskx, [int(NX / 2), 0])
+            noise *= maskx
+        noise = noise * np.reshape(maskz, [-1, 1])
 
-    return tlabel
+        noise = np.real(np.fft.ifft2(noise))
+        noise = noise / np.max(noise)
+        if lx==0:
+            noise = np.stack([noise[:,0] for _ in range(NX)], 1)
 
+        noises.append(noise)
 
-def two_way_travel_time(vp, pars):
+    return noises
+
+def random_layers(pars, seed=None):
     """
-    Output the two-way travel-time for each cell in vp
+    Genereate a random sequence of layers with different thicknesses
 
-    @params:
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
-    pars (ModelParameter): Parameters used to generate the model
+    :param pars: A ModelParameter object
+    :param seed: If provided, fix the random seed
 
-    @returns:
-
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth, cut to
-                          have the same size of t
-    t (numpy.ndarray) :  The two-way travel time of each cell
-
-    """
-    vpt = vp[int(pars.source_depth / pars.dh):]
-    t = 2 * np.cumsum(pars.dh / vpt) + pars.tdelay
-    t = t[t < pars.NT * pars.dt]
-    vpt = vpt[:len(t)]
-
-    return vpt, t
-
-
-def interval_velocity_time(vp, pars):
-    """
-    Output the interval velocity in time
-
-    @params:
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
-    pars (ModelParameter): Parameters used to generate the model
-
-    @returns:
-
-    vint (numpy.ndarray) : The interval velocity in time
+    :return: A list containing the thicknesses of the layers
 
     """
-    vpt, t = two_way_travel_time(vp, pars)
-    interpolator = interp1d(t, vpt,
-                            bounds_error=False,
-                            fill_value="extrapolate",
-                            kind="nearest")
-    vint = interpolator(np.arange(0, pars.NT, 1) * pars.dt)
+    #TODO Check if number of layers is consistent
+    if seed is not None:
+        np.random.seed(seed)
 
-    return vint
+    # Determine the minimum and maximum number of layers
+    nmin = pars.layer_dh_min
+    nmax = int(pars.NZ / pars.layer_num_min)
+    nlmax = int(pars.NZ / nmin)
+    nlmin = int(pars.NZ / nmax)
+    if pars.num_layers == 0:
+        if nlmin < nlmax:
+            n_layers = np.random.choice(range(nlmin, nlmax))
+        else:
+            n_layers = nmin
+    else:
+        n_layers = int(np.clip(pars.num_layers, nlmin, nlmax))
 
+    # Generate a random number of layers with random thicknesses
+    dh = pars.dh
+    top_min = int(pars.source_depth / dh + 2 * pars.layer_dh_min)
+    layers = (nmin + np.random.rand(n_layers) * (nmax - nmin)).astype(np.int)
+    tops = np.cumsum(layers)
+    ntos = np.sum(layers[tops <= top_min])
+    if ntos > 0:
+        layers = np.concatenate([[ntos], layers[tops > top_min]])
+
+    if pars.marine:
+        layers[0] = int(pars.water_dmin / pars.dh +
+                        np.random.rand() * (pars.water_dmax - pars.water_dmin)
+                        / pars.dh)
+
+    return layers
+
+def random_angles(pars, layers, seed=None):
+    """
+    Generate a random sequence of mean angles of the layers
+
+    :param pars: A ModelParameter object
+    :param layers: A list of layer thicknesses
+    :param seed: If provided, fix the random seed
+    :return: A list containing the angles of the layers
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Generate random angles for each layer
+    n_angles = len(layers)
+    angles = np.zeros(layers.shape)
+    if not pars. angle_0:
+        angles[1] = -pars.angle_max + np.random.rand() * 2 * pars.angle_max
+    for ii in range(2, n_angles):
+        angles[ii] = angles[ii - 1] + (
+                2.0 * np.random.rand() - 1.0) * pars.dangle_max
+        if np.abs(angles[ii]) > pars.angle_max:
+            angles[ii] = np.sign(angles[ii]) * pars.angle_max
+
+    return angles
+
+def random_velocities(pars, layers, seed=None):
+    """
+    Generate random velocities for a list of layers
+
+    :param pars: A ModelParameter object
+    :param layers: A list of layer thicknesses
+    :param seed: If provided, fix the random seed
+
+    :return: A list containing the velocities of the layers
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Set random maximum and minimum velocities of the model, within range
+    vmax = pars.vp_max * 1.0
+    vmin = pars.vp_min * 1.0
+    vmax = vmax - pars.vp_trend_min * pars.NZ - pars.max_texture * vmax
+    vmin = vmin + pars.max_texture * vmin
+    vmax = vmin + np.random.rand() * (vmax - vmin)
+    vmin = vmin + np.random.rand() * (vmax - vmin)
+
+    # Generate a random velocity for each layer.
+    print(vmin, vmax)
+    vels = vmin + np.random.rand(len(layers)) * (vmax - vmin)
+    if pars.marine:
+        vels[0] = pars.water_vmin \
+                  + np.random.rand() * (pars.water_vmax-pars.water_vmin)
+
+    return vels
+
+
+def create_deformation(max_deform_freq, min_deform_freq,
+                       amp_max, max_deform_nfreq, Nmax):
+    """
+    Create random deformations of a boundary with random harmonic functions
+
+     :param max_deform_freq: Maximum frequency of the harmonic components
+    :param min_deform_freq: Minimum frequency of the harmonic components
+    :param amp_max: Maximum amplitude of the deformation
+    :param max_deform_nfreq: Number of frequencies
+    :param Nmax: Number of points of the boundary
+
+    :return:
+    An array containing the deformation function
+    """
+    x = np.arange(0, Nmax)
+    deform = np.zeros(Nmax)
+    if amp_max > 0 and max_deform_freq > 0:
+        nfreqs = np.random.randint(max_deform_nfreq)
+        freqs = np.random.rand(nfreqs) * (
+                max_deform_freq - min_deform_freq) + min_deform_freq
+        phases = np.random.rand(nfreqs) * np.pi * 2
+        amps = np.random.rand(nfreqs)
+        for ii in range(nfreqs):
+            deform += amps[ii] * np.sin(freqs[ii] * x + phases[ii])
+
+        ddeform = np.max(deform)
+        if ddeform > 0:
+            deform = deform / ddeform * amp_max * np.random.rand()
+
+    return deform
+
+def random_deformations(layers, max_deform_freq,
+                        min_deform_freq,
+                        amp_max,
+                        max_deform_nfreq,
+                        prob_deform_change,
+                        NX, seed=None):
+    """
+    Generate a list of deformations of the layer boundaries
+
+    :param layers:
+    :param max_deform_freq: Maximum frequency of the harmonic components
+    :param min_deform_freq: Minimum frequency of the harmonic components
+    :param amp_max: Maximum amplitude of the deformation
+    :param max_deform_nfreq: Number of frequencies
+    :param prob_deform_change: A probability that two consecutive layers will
+                               have different deformations
+    :param NX: Number of points of the boundary
+    :param seed: If provided, fix the random seed
+
+    :return: A list with deformations for each layer
+    """
+    if seed is not None:
+        np.random.seed(seed)
+
+    deforms = [[]] * len(layers)
+
+    deforms[0] = create_deformation(max_deform_freq,
+                                    min_deform_freq,
+                                    amp_max,
+                                    max_deform_nfreq, NX)
+    deform = deforms[0]
+    dmax = np.max(np.abs(deform))
+    for ii in range(1, len(layers)):
+        if np.random.rand() < prob_deform_change:
+            deform += create_deformation(max_deform_freq,
+                                         min_deform_freq,
+                                         amp_max,
+                                         max_deform_nfreq, NX)
+        deforms[ii] = deform
+        dmaxi = np.max(np.abs(deforms[ii]))
+        if dmaxi > dmax:
+            dmax = dmaxi
+    if dmax > amp_max:
+        dmaxnew = np.random.rand() * amp_max
+        for ii in range(0, len(layers)):
+            deforms[ii] = deforms[ii] / dmax * dmaxnew
+
+    return deforms
+
+def generate_2Dmodels(NX, NZ, dh, layers, angles, deforms, lz, lx, props,
+                      dprops=None, minmax=None, corrs=None, trends=None,
+                      marine=False):
+    """
+    Generate a 2D model of a correlated properties from the model elements
+    provided and  add random heterogeneities to each layers and properties
+
+    :param NX: Grid size in X
+    :param NZ: Grid size in Z
+    :param dh: Cell size
+    :param layers: A list of layer thicknesses
+    :param angles: A list of layer angles
+    :param deforms: A list of layer deformation
+    :param lz: The coherence length in z of the random heterogeneities
+    :param lx: The coherence length in x of the random heterogeneities
+    :param props: A list of the properties, containing the values for each layer
+    :param dprops: Maximum size of the heterogeneities for each property
+    :param minmax: Minimum and maximum for each property
+    :param corrs: A list with correlations between each property
+    :param trends: A list with min and max trend with depth
+    :param marine: If true, do not add texture in first layer
+    :return: A list of 2D grid of the properties
+    """
+
+    # Generate the 2D model, from top layers to bottom
+    npar = len(props)
+    props2D = [np.zeros([NZ, NX]) + p[0] for p in props]
+    layers2d = np.zeros([NZ, NX])
+    tops = np.cumsum(layers)
+    if dprops is not None:
+        textures = random_fields(2 * NZ, 2 * NX, lz=lz, lx=lx, corrs=corrs)
+        if not marine:
+            for n in range(npar):
+                textures[n] = textures[n] / np.max(textures[n]) * dprops[n][0]
+                props2D[n] += textures[n][:NZ, :NX]
+
+    for ii in range(0, len(layers) - 1):
+
+        if trends is not None:
+            for n in range(npar):
+                trend = trends[n][0] \
+                        + np.random.rand() * (trends[n][1] - trends[n][0])
+        if dprops is not None:
+            for n in range(npar):
+                textures[n] = textures[n] / np.max(textures[n]) * dprops[n][ii + 1]
+
+        for jj in range(0, NX):
+            # depth of the layer at location x
+            dz = int((np.tan(angles[ii + 1] / 360 * 2 * np.pi) * (
+                    jj - NX / 2) * dh) / dh)
+            # add deformation component
+            if deforms is not None:
+                dz = int(dz + deforms[ii][jj])
+            # Check if the interface is inside the model
+            if 0 < tops[ii] + dz < NZ:
+                for n in range(npar):
+                    props2D[n][tops[ii] + dz:, jj] = props[n][ii + 1]
+                layers2d[tops[ii] + dz:, jj] = ii
+                if dprops is not None:
+                    for n in range(npar):
+                        props2D[n][tops[ii] + dz:, jj] += textures[n][tops[ii]:NZ - dz, jj]
+                if trends is not None:
+                    for n in range(npar):
+                        props2D[n][tops[ii] + dz:, jj] += trend * np.arange(tops[ii] + dz, NZ)
+            elif tops[ii] + dz <= 0:
+                for n in range(npar):
+                    props2D[n][:, jj] = props[n][ii + 1]
+                layers2d[:, jj] = ii
+                if dprops is not None:
+                    for n in range(npar):
+                        props2D[n][:, jj] += textures[n][:NZ, jj]
+                if trends is not None:
+                    for n in range(npar):
+                        props2D[n][:, jj] += trend * np.arange(0, NZ)
+
+    # Output the 2D model
+    if minmax is not None:
+        for n in range(npar):
+            props2D[n][props2D[n] < minmax[n][0]] = minmax[n][0]
+            props2D[n][props2D[n] > minmax[n][1]] = minmax[n][1]
+
+    return props2D, layers2d
 
 def generate_random_2Dlayered(pars, seed=None):
     """
@@ -398,8 +417,8 @@ def generate_random_2Dlayered(pars, seed=None):
         -pars.marine: If True, first layer is water
         -pars.velwater: water velocity
         -pars.d_velwater: variance of water velocity
-        -pars.water_depth: Mean water depth
-        -pars.dwater_depth: variance of water depth
+        -pars.water_dmin: Minimum water depth
+        -pars.water_dmax: Maximum water depth
 
         Non planar layers
         pars.max_osci_freq: Maximum spatial frequency (1/m) of a layer interface
@@ -432,119 +451,43 @@ def generate_random_2Dlayered(pars, seed=None):
     if seed is not None:
         np.random.seed(seed)
 
-    # Determine the minimum and maximum number of layers
-    if pars.num_layers == 0:
-        nmin = pars.layer_dh_min
-        nmax = int(pars.NZ / pars.layer_num_min)
-        if nmin < nmax:
-            n_layers = np.random.choice(range(nmin, nmax))
-        else:
-            n_layers = nmin
+    layers = random_layers(pars)
+    angles = random_angles(pars, layers)
+    vels = random_velocities(pars, layers)
+    deforms = random_deformations(layers,
+                                  pars.max_deform_freq,
+                                  pars.min_deform_freq,
+                                  pars.amp_max,
+                                  pars.max_deform_nfreq,
+                                  pars.prob_deform_change,
+                                  pars.NX)
+    lx = 3
+    lz = 1.95 * pars.NZ / 2
+    #Create velocity variations
+    ##TODO create correlated densities and vs
+    if pars.max_texture > 0:
+        dprops = [[pars.max_texture * v for v in vels]]
     else:
-        nmin = pars.layer_dh_min
-        nmax = int(pars.NZ / pars.layer_num_min)
-        n_layers = int(np.clip(pars.num_layers, nmin, nmax))
-
-    # Generate a random number of layers with random thicknesses
-    NZ = pars.NZ
-    NX = pars.NX
-    dh = pars.dh
-    top_min = int(pars.source_depth / dh + 2 * pars.layer_dh_min)
-    layers = (nmin + np.random.rand(n_layers) * (nmax - nmin)).astype(np.int)
-    tops = np.cumsum(layers)
-    ntos = np.sum(layers[tops <= top_min])
-    if ntos > 0:
-        layers = np.concatenate([[ntos], layers[tops > top_min]])
-
-    # Generate random angles for each layer
-    n_angles = len(layers)
-    angles = np.zeros(layers.shape)
-    angles[1] = -pars.angle_max + np.random.rand() * 2 * pars.angle_max
-    for ii in range(2, n_angles):
-        angles[ii] = angles[ii - 1] + (
-                2.0 * np.random.rand() - 1.0) * pars.dangle_max
-        if np.abs(angles[ii]) > pars.angle_max:
-            angles[ii] = np.sign(angles[ii]) * pars.angle_max
-
-    # Generate a random velocity for each layer. Velocities are somewhat biased
-    # to increase in depth
-    vels = (pars.vp_min
-            + np.random.rand() * (pars.vp_max - pars.vp_min - pars.dvmax)
-            + np.random.rand(len(layers)) * pars.dvmax)
-    ramp = np.abs(np.max(vels) - pars.vp_max) * np.random.rand() + 0.1
-    vels = vels + np.linspace(0, ramp, vels.shape[0])
-    vels[vels > pars.vp_max] = pars.vp_max
-    vels[vels < pars.vp_min] = pars.vp_min
-    if pars.marine:
-        vels[0] = pars.velwater + (np.random.rand() - 0.5) * 2 * pars.d_velwater
-        layers[0] = int(pars.water_depth / pars.dh +
-                        (
-                                np.random.rand() - 0.5) * 2 * pars.dwater_depth / pars.dh)
-
-    # Generate the 2D model, from top layers to bottom
-    vel2d = np.zeros([NZ, NX]) + vels[0]
-    tops = np.cumsum(layers)
-    osci = create_oscillation(pars.max_osci_freq,
-                              pars.min_osci_freq,
-                              pars.amp_max,
-                              pars.max_osci_nfreq, NX)
-    texture = texture_1lay(2 * NZ,
-                           NX,
-                           lz=pars.texture_zrange,
-                           lx=pars.texture_xrange)
-    for ii in range(0, len(layers) - 1):
-        if np.random.rand() < pars.prob_osci_change:
-            osci += create_oscillation(pars.max_osci_freq,
-                                       pars.min_osci_freq,
-                                       pars.amp_max,
-                                       pars.max_osci_nfreq, NX)
-
-        texture = texture / np.max(texture) * (
-                np.random.rand() + 0.001) * pars.max_texture * vels[ii + 1]
-        for jj in range(0, NX):
-            # depth of the layer at location x
-            dz = int((np.tan(angles[ii + 1] / 360 * 2 * np.pi) * (
-                    jj - NX / 2) * dh) / dh)
-            # add oscillation component
-            if pars.amp_max > 0:
-                dz = int(dz + osci[jj])
-            # Check if the interface is inside the model
-            if 0 < tops[ii] + dz < NZ:
-                vel2d[tops[ii] + dz:, jj] = vels[ii + 1]
-                if not (pars.marine and ii == 0) and pars.max_texture > 0:
-                    vel2d[tops[ii] + dz:, jj] += texture[tops[ii]:NZ - dz, jj]
-            elif tops[ii] + dz <= 0:
-                vel2d[:, jj] = vels[ii + 1]
-                if not (pars.marine and ii == 0) and pars.max_texture > 0:
-                    vel2d[:, jj] += texture[:, jj]
+        dprops = None
+    if pars.vp_trend_max > 0:
+        trends = [[pars.vp_trend_min, pars.vp_trend_max]]
+    else:
+        trends = None
+    minmax = [[pars.vp_min, pars.vp_max]]
+    props2D, layers2d = generate_2Dmodels(pars.NX, pars.NZ, pars.dh, layers,
+                                          angles, deforms, lz, lx, [vels],
+                                          dprops=dprops, minmax=minmax,
+                                          trends=trends, corrs=None,
+                                          marine=pars.marine)
 
     # Output the 2D model
-    vel2d[vel2d > pars.vp_max] = pars.vp_max
-    vel2d[vel2d < pars.vp_min] = pars.vp_min
-    vp = vel2d
+    vp = props2D[0]
     vs = vp * 0
     rho = vp * 0 + 2000
 
     return vp, vs, rho, vels, layers, angles
 
 
-def create_oscillation(max_osci_freq, min_osci_freq,
-                       amp_max, max_osci_nfreq, Nmax):
-    nfreqs = np.random.randint(max_osci_nfreq)
-    freqs = np.random.rand(nfreqs) * (
-            max_osci_freq - min_osci_freq) + min_osci_freq
-    phases = np.random.rand(nfreqs) * np.pi * 2
-    amps = np.random.rand(nfreqs)
-    x = np.arange(0, Nmax)
-    osci = np.zeros(Nmax)
-    for ii in range(nfreqs):
-        osci += amps[ii] * np.sin(freqs[ii] * x + phases[ii])
-
-    dosci = np.max(osci)
-    if dosci > 0:
-        osci = osci / dosci * amp_max * np.random.rand()
-
-    return osci
 
 
 if __name__ == "__main__":
@@ -556,7 +499,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--ND",
         type=int,
-        default=1,
+        default=2,
         help="Dimension of the model to display"
     )
     # Parse the input for training parameters
@@ -565,8 +508,23 @@ if __name__ == "__main__":
     pars = ModelParameters()
     pars.layer_dh_min = 20
     pars.num_layers = 0
+    pars.marine = True
+    pars.water_dmin = 100
+    pars.water_dmax = 1000
+    pars.vp_trend_min = 0
+    pars.vp_trend_max = 2
     if args.ND == 1:
-        vp, vs, rho = generate_random_1Dlayered(pars)
+        pars.max_deform_nfreq = 0  # Maximum nb of frequencies of boundary
+        pars.prob_deform_change = 0.7  # Probability that a boundary shape will change
+        pars.angle_max = 0
+        pars.max_texture = 0
+
+        pars.num_layers = 0
+        pars.layer_num_min = 15
+        pars.layer_dh_min = 10
+        vp, vs, rho, vels, layers, angles = generate_random_2Dlayered(pars)
+        plt.imshow(vp)
+        plt.show()
         vp = vp[:, 0]
         vint = interval_velocity_time(vp, pars)
         vrms = calculate_vrms(vp,
@@ -581,6 +539,32 @@ if __name__ == "__main__":
         plt.plot(vrms)
         plt.show()
     else:
-        vp, vs, rho = generate_random_2Dlayered(pars)
+        pars.max_deform_freq = 0.1  # Max frequency of the layer boundary function
+        pars.min_deform_freq = 0.0001  # Min frequency of the layer boundary function
+        pars.amp_max = 26  # Maximum amplitude of boundary deformations
+        pars.max_deform_nfreq = 40  # Maximum nb of frequencies of boundary
+        pars.prob_deform_change = 0.7  # Probability that a boundary shape will change
+        pars.angle_max = 20
+
+        pars.num_layers = 0
+        pars.layer_num_min = 15
+        pars.layer_dh_min = 10
+        pars.NT = 2000
+        seed = np.random.randint(0, 10000)
+        print(seed)
+        #seed=9472
+        vp, vs, rho, vels, layers, angles = generate_random_2Dlayered(pars, seed=seed)
+        gen = ModelGenerator(pars)
+        vp, vs, rho = gen.generate_model()
+        vp, valid = gen.generate_labels()
         plt.imshow(vp)
         plt.show()
+        plt.imshow(valid)
+        plt.show()
+        print(np.max(vp))
+        for lt in [0]:#[0, 10, 50, 100, 150, 200]:
+            vdepth = smooth_velocity_wavelength(vp, pars.dh, lt*0.001, lt/25)
+            plt.imshow(vdepth)
+            plt.show()
+
+

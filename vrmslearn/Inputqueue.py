@@ -4,8 +4,9 @@
     Input queue to feed example when training with Tensorflow
 """
 
-from multiprocessing import Process, Queue, Event, Value
 import queue
+from multiprocessing import Process, Queue, Event, Value
+
 
 class Counter(object):
     def __init__(self):

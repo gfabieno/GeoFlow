@@ -6,7 +6,7 @@
 """
 
 from vrmslearn.ModelParameters import ModelParameters
-from Cases_define import Case_article
+from .Cases_define import Case_1Darticle
 from vrmslearn.SeismicGenerator import SeismicGenerator, generate_dataset
 from vrmslearn.Trainer import Trainer
 from vrmslearn.RCNN import RCNN
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     """
         _______________________Define the parameters ______________________
     """
-    pars = Case_article(noise=args.noise)
+    pars = Case_1Darticle(noise=args.noise)
 
     """
         _______________________Generate the dataset_____________________________
