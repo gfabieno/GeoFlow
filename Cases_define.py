@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    Defines parameters for different cases
+    Defines parameters for different cases here.
 """
 
 from vrmslearn.Case import Case, CaseCollection
@@ -65,36 +65,43 @@ class Case_2Dtest(Case):
     name = "2Dtest"
     pars = ModelParameters()
 
-    pars.layer_dh_min = 20
-    pars.num_layers = 0
+    pars.NX = 350
+    pars.NZ = 256
+
     pars.marine = True
-    pars.water_dmin = 100
-    pars.water_dmax = 1000
+
+    pars.water_dmin = 300
+    pars.water_dmax = 600
     pars.vp_trend_min = 0
     pars.vp_trend_max = 2
 
-    pars.max_deform_freq = 0.1
+    pars.max_deform_freq = 0.06
     pars.min_deform_freq = 0.0001
-    pars.amp_max = 26
+    pars.amp_max = 8
     pars.max_deform_nfreq = 40
     pars.prob_deform_change = 0.7
     pars.angle_max = 20
+    pars.dangle_max = 10  # Maximum dip difference between two adjacent layers
 
     pars.num_layers = 0
-    pars.layer_num_min = 15
+    pars.layer_num_min = 5
     pars.layer_dh_min = 10
-    pars.NT = 5000
+    pars.NT = 2560
+
+    pars.dg = 5
+    pars.ds = 5
+    pars.gmin = pars.dg
+    pars.gmax = 120
 
     pars.flat = False
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
+    def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
 
         if noise == 1:
             self.pars.random_static = True
             self.pars.random_static_max = 1
             self.pars.random_noise = True
             self.pars.random_noise_max = 0.02
-        self.name = self.name + "_noise"
         super().__init__(trainsize=trainsize,
                          validatesize=validatesize,
                          testsize=testsize)

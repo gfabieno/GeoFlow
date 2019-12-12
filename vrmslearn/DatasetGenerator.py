@@ -1,4 +1,7 @@
-
+"""
+Classes and functions that combines a SeismicGenerator and a ModelGenerator
+to produce a dataset on multiple GPUs. Used by the Case class (Case.py).
+"""
 import numpy as np
 import os
 import h5py as h5
@@ -9,8 +12,17 @@ from multiprocessing import Process, Queue, Event, Value
 
 
 class SampleGenerator:
-
+    """
+    Class to create one example: 1- generate models 2-simulate the data
+    """
     def __init__(self, pars: ModelParameters, gpu: int = 0):
+        """
+        Create the ModelGenerator and SeismicGenerator objects according to pars.
+        @params:
+        pars (ModelParameters): Parameters for data and model creation
+        gpu  (int): The GPU id to use for data computations
+
+        """
 
         self.model_gen = ModelGenerator(pars)
         self.data_gen = SeismicGenerator(pars, gpu=gpu,
@@ -18,11 +30,15 @@ class SampleGenerator:
         self.files_list = {}
 
     def generate(self, seed):
+        """
+        Generate one example
+        @params:
+        seed (int): Seed of the model to generate
 
+        """
         vp, vs, rho = self.model_gen.generate_model(seed=seed)
-        vp, valid = self.model_gen.generate_labels()
         data = self.data_gen.compute_data(vp, vs, rho)
-
+        vp, valid = self.model_gen.generate_labels(vp, vs, rho)
         return data, [vp, valid]
 
     def write(self, exampleid , savedir, data, labels, filename=None):
@@ -34,24 +50,16 @@ class SampleGenerator:
         savedir (str)   :       A string containing the directory in which to
                                 save the example
         data (numpy.ndarray)  : Contains the modelled seismic data
-        vrms (numpy.ndarray)  : numpy array of shape (self.pars.NT, ) with vrms
-                                values in meters/sec.
-        vp (numpy.ndarray)    : numpy array (self.pars.NZ, self.pars.NX) for vp.
-        valid (numpy.ndarray) : numpy array (self.pars.NT, )containing the time
-                                samples for which vrms is valid
-        tlabels (numpy.ndarray) : numpy array (self.pars.NT, ) containing the
-                                  if a sample is a primary reflection (1) or not
+        labels (list)  :       List of numpy array containing the labels
+        filename (str):      If provided, save the example in filename.
 
         @returns:
         """
 
         if filename is None:
-            if not os.path.isdir(savedir):
-                os.mkdir(savedir)
-            pid = os.getpid()
-            filename = savedir + "/example_%d_%d" % (exampleid , pid)
+            filename = os.path.join(savedir, "example_%d" % exampleid)
         else:
-            filename = savedir + "/" + filename
+            filename = os.path.join(savedir, filename)
 
         file = h5.File(filename, "w")
         file["data"] = data
@@ -68,24 +76,21 @@ class DatasetProcess(Process):
     def __init__(self,
                  savepath: str,
                  sample_generator: SampleGenerator,
-                 example_ids: Queue):
+                 seeds: Queue):
         """
         Initialize the DatasetGenerator
 
         @params:
         savepath (str)   :     Path in which to create the dataset
-        workdir (str):         Name of the directory for temporary files
-        nexamples (int):       Number of examples to generate
-        gpus (list):           List of gpus not to use.
-        seed (int):            Seed for random model generator
-
-        @returns:
+        sample_generator (SampleGenerator): A SampleGenerator object to create
+                                            examples
+        seeds (Queue):   A Queue containing the seeds of models to create
         """
         super().__init__()
 
         self.savepath = savepath
         self.sample_generator = sample_generator
-        self.examples_ids = example_ids
+        self.seeds = seeds
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
 
@@ -94,33 +99,33 @@ class DatasetProcess(Process):
         Start the process to generate data
         """
 
-        while not self.examples_ids.empty():
+        while not self.seeds.empty():
             try:
-                seed = self.examples_ids.get(timeout=1)
+                seed = self.seeds.get(timeout=1)
             except Queue.Full:
                 break
-            data, labels = self.sample_generator.generate(seed)
-            self.sample_generator.write(seed, self.savepath,
-                                                data, labels)
+            filename = "example_%d" % seed
+            if not os.path.isfile(os.path.join(self.savepath, filename)):
+                data, labels = self.sample_generator.generate(seed)
+                self.sample_generator.write(seed, self.savepath, data, labels,
+                                            filename=filename)
 
 def generate_dataset(pars: ModelParameters,
                      savepath: str,
                      nexamples: int,
-                     seed0: int=None,
-                     ngpu: int=3):
+                     seed0: int = None,
+                     ngpu: int = 3):
     """
-    This method creates a dataset. If multiple threads or processes generate
-    the dataset, it may not be totally reproducible due to a different
-    random seed attributed to each process or thread.
+    This function creates a dataset on multiple GPUs.
 
     @params:
-    pars (ModelParameter): A ModelParameter object
+    pars (ModelParameter): A ModelParameter object containg the parameters for
+                            creating examples.
     savepath (str)   :     Path in which to create the dataset
     nexamples (int):       Number of examples to generate
-    seed0 (int):           First seed of the first example in the dataset.
+    seed0 (int):           First seed of the first example in the dataset. Seeds
+                           are incremented by 1 for subsequents examples.
     ngpu (int):            Number of available gpus for data creation
-
-    @returns:
 
     """
 
@@ -143,15 +148,16 @@ def generate_dataset(pars: ModelParameters,
 
 def aggregate(examples):
     """
-    This method aggregates a batch of examples
+    This method aggregates a batch of examples created by a SampleGenerator
+    object. To be used with Inputqueue.
 
     @params:
-    batch (lsit):       A list of numpy arrays that contain a list with
+    examples (list):       A list of numpy arrays that contain a list with
                         all elements of example.
 
     @returns:
-    batch (numpy.ndarray): A list of numpy arrays that contains all examples
-                             for each element of a batch.
+    batch (list): A list of numpy arrays that contains all examples
+                           for each element of a batch.
 
     """
     nel = len(examples[0])

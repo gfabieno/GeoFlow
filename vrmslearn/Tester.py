@@ -9,7 +9,7 @@ import os
 import h5py as h5
 import tensorflow as tf
 
-from vrmslearn.RCNN import RCNN
+from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
 from vrmslearn.DatasetGenerator import aggregate
 
@@ -19,18 +19,18 @@ class Tester(object):
     """
 
     def __init__(self,
-                 NN: RCNN,
+                 nn: RCNN2D,
                  case: Case):
         """
         Initialize the tester
 
         @params:
-        NN (RCNN) : A tensforlow neural net
+        nn (RCNN) : A tensforlow neural net
         data_generator (SeismicGenerator): A data generator object
 
         @returns:
         """
-        self.NN = NN
+        self.nn = nn
         self.case = case
 
     def test_dataset(self,
@@ -45,8 +45,9 @@ class Tester(object):
 
         @params:
         savepath (str) : The path in which the test examples are found
-        filename (str): The structure of the examples' filenames
         toeval (list): List of tensors to predict
+        toeval_names (list): List of strings with the name of tensors to predict
+        filename (str): The structure of the examples' filenames
         restore_from (str): File containing the trained weights
 
         @returns:
@@ -54,7 +55,7 @@ class Tester(object):
 
         predictions = fnmatch.filter(os.listdir(savepath), filename)
         predictions = [os.path.join(savepath, p) for p in predictions]
-        with self.NN.graph.as_default():
+        with self.nn.graph.as_default():
             saver = tf.train.Saver()
             with tf.Session() as sess:
                 saver.restore(sess, restore_from)
@@ -66,9 +67,9 @@ class Tester(object):
                         bexamples.append(example)
                         batch.append(self.case.get_example(filename=example))
 
-                    if len(batch) == self.NN.batch_size:
+                    if len(batch) == self.nn.batch_size:
                         batch = aggregate(batch)
-                        feed_dict = dict(zip(self.NN.feed_dict, batch))
+                        feed_dict = dict(zip(self.nn.feed_dict, batch))
                         evaluated = sess.run(toeval, feed_dict=feed_dict)
                         for jj, bexample in enumerate(bexamples):
                             savefile = h5.File(bexample, "w")
@@ -89,10 +90,8 @@ class Tester(object):
         @params:
         labelname (str) : Name of the labels in the example file
         predname (str) : Name of the predictions in the example file
-        maskname(str) : name of the valid predictions mask
         savepath (str) : The path in which the test examples are found
         filename (str): The structure of the examples' filenames
-        tester_n (int): Label for the model to use for prediction
 
         @returns:
         labels (list): List containing all labels

@@ -1,8 +1,27 @@
-import numpy as np
+"""
+Functions to handle seismic data and velocity models.
+"""
+
 from scipy.signal import convolve2d
+import numpy as np
+from scipy.interpolate import interp1d
+from scipy.ndimage.filters import gaussian_filter
+from scipy.interpolate import CubicSpline
 
 def gaussian(f0, t, o, amp=1.0, order=2):
+    """
+    Generate a gaussian wavelet
 
+    @params:
+    f0 (float): Center frequency of the wavelet
+    t  (numpy.array): Time vector
+    o   (float): Zero time of the wavelet
+    amp (float): Maximum amplitude of the wavelet
+    order (int): Wavelet is given by the nth order derivative of a Gaussian
+
+    @returns:
+    (numpy.array): The wavelet signal
+    """
     x = np.pi * f0 * (t + o)
     e = amp * np.exp(-x ** 2)
     if order == 1:
@@ -19,11 +38,34 @@ def gaussian(f0, t, o, amp=1.0, order=2):
         return -4.0 * (8.0 * x ** 6 - 60.0 * x ** 4 + 90.0 * x ** 2 - 15.0) * e
 
 def morlet(f0, t, o , amp=1.0, order=5):
+    """
+    Generate a morlet wavelet
+
+    @params:
+    f0 (float): Center frequency of the wavelet
+    t  (numpy.array): Time vector
+    o   (float): Zero time of the wavelet
+    amp (float): Maximum amplitude of the wavelet
+    order (int): Order of the morlet wavelet
+
+    @returns:
+    (numpy.array): The wavelet signal
+    """
     x = f0 * (t + o)
     return amp * np.cos(x*order) * np.exp(- x ** 2)
 
 
 def shift_trace(signal, phase):
+    """
+    Apply a phase rotation to a wavelet
+
+    @params:
+    signal  (numpy.array): The wavelet to rotate
+    phase   (float): The phase of the rotation
+
+    @returns:
+    (numpy.array): The rotated wavelet signal
+    """
     S = np.fft.fft(signal)
     NT = len(signal)
     S[1:NT//2] *= 2.0
@@ -33,8 +75,23 @@ def shift_trace(signal, phase):
 
 
 
-def random_wavelet_generator(NT, dt, peak_freq, df, tdelay):
+def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes = [1]):
+    """
+    Generate function (callable) that output random wavelets.
 
+    @params:
+    NT  (float): Number of time steps
+    dt   (float): Time step
+    peak_freq (float): Mean peak frequency of the wavelets
+    df (float): Peak frequency will be peak_freq +- df
+    tdelay (float): Time zero of the wavelets
+    shapes (list): List containing which wavelet shapes that can be generated:
+                    0-2 1-3th order Gaussian wavelet
+                    3-5 2-4th order Morlet wavelet
+
+    @returns:
+    (callable): A random wavelet generator
+    """
     allwavefuns = [lambda f0, t, o: gaussian(f0, t, o, order=1),
                    lambda f0, t, o: gaussian(f0, t, o, order=2),
                    lambda f0, t, o: gaussian(f0, t, o, order=3),
@@ -42,6 +99,7 @@ def random_wavelet_generator(NT, dt, peak_freq, df, tdelay):
                    lambda f0, t, o: morlet(f0, t, o, order=3),
                    lambda f0, t, o: morlet(f0, t, o, order=4)]
 
+    allwavefuns = [allwavefuns[ii] for ii in shapes]
 
     def random_wavelet():
         t = np.arange(0, NT) * dt
@@ -111,6 +169,17 @@ def mute_direct(data, vp0, pars, offsets=None):
 
 
 def random_static(data, max_static):
+    """
+    Apply a random time shift (static) to each trace of data.
+    Shifts can only be an integer of sample interval (for efficiency reason).
+
+    @params:
+    data  (numpy.array): The data array
+    max_static   (float): Maximum number of samples that can be shifted
+
+    @returns:
+    (numpy.array): The data with random statics
+    """
     ng = data.shape[1]
     shifts = (np.random.rand(ng) - 0.5) * max_static * 2
     for ii in range(ng):
@@ -119,17 +188,48 @@ def random_static(data, max_static):
 
 
 def random_noise(data, max_amp):
+    """
+    Add gaussian random noise to the data
+
+    @params:
+    data  (numpy.array): The data array
+    max_amp   (float): Maximum amplitude of the noise relative to the data max
+
+    @returns:
+    (numpy.array): The data with noise
+    """
     max_amp = max_amp * np.max(data) * 2.0
     data = data + (np.random.rand(data.shape[0], data.shape[1]) - 0.5) * max_amp
     return data
 
 
 def mute_nearoffset(data, max_off):
+    """
+    Randomly mute the near offset traces
+
+    @params:
+    data  (numpy.array): The data array
+    max_amp   (float): Maximum offset that can be muted
+
+    @returns:
+    (numpy.array): The data with noise
+    """
+
     data[:, :np.random.randint(max_off)] *= 0
     return data
 
 
 def random_filt(data, filt_length):
+    """
+    Apply a random filter to the data
+
+    @params:
+    data  (numpy.array): The data array
+    filt_length   (float):The filter length
+
+    @returns:
+    (numpy.array): The filtered data
+    """
     filt_length = int((np.random.randint(filt_length) // 2) * 2 + 1)
     filt = np.random.rand(filt_length, 1)
     data = convolve2d(data, filt, 'same')
@@ -137,6 +237,19 @@ def random_filt(data, filt_length):
 
 
 def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
+    """
+    Apply a random t**e gain to the data (dataout = data * t**e)
+
+    @params:
+    data  (numpy.array): The data array
+    dt (float):          Time sample interval
+    emin (float):        Minimum exponent of the t gain t**emin
+    emax (float):        Maximum exponent of the t gain t**emax
+
+    @returns:
+    (numpy.array): The data with a random gain applied
+    """
+
     t = np.reshape(np.arange(0, data.shape[0]) * dt, [data.shape[0], 1])
     e = np.random.rand() * (emax - emin) + emin
     scal = (t + 1e-6) ** e
@@ -144,9 +257,6 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
         scal[scal > scalmax] = scalmax
     return data * scal
 
-import numpy as np
-from scipy.interpolate import interp1d
-from scipy.ndimage.filters import gaussian_filter
 
 def generate_reflections_ttime(vp,
                                pars,
@@ -354,11 +464,25 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     return vrms
 
 def smooth_velocity_wavelength(vp, dh, lt, lx):
+    """
+        Smooth a velocity model with a gaussian kernel proportional to the
+        wavelength. Model is first transormed to interval velocity in time,
+        then smoothed with a gaussian kernel with lt and lx standard deviation
+        and retransformed to depth.
 
+        @params:
+        vp (numpy.ndarray) :  Velocity model
+        dh (float) :  Grid spacing
+        lt (float): Standard deviation of Gaussian kernel in time
+        lx (float): Standard deviation of Gaussian kernel in x
+
+        @returns:
+        vp (numpy.ndarray):     Smoothed velocity model
+    """
     vdepth = vp * 0
     dt = dh / np.max(vp) / 10.0
     NT = int(np.max(2 * np.cumsum(dh / vp, axis=0)) / dt*1)
-    t = np.arange(0, NT, 1) * dt
+    t = np.arange(1, NT+1, 1) * dt
     vint = np.zeros([NT, vp.shape[1]])
     for ii in range(0, vp.shape[1]):
         ti = 2 * np.cumsum(dh / vp[:,ii])
@@ -383,3 +507,147 @@ def smooth_velocity_wavelength(vp, dh, lt, lx):
         vdepth[:, ii] = interpolator(np.arange(0, vp.shape[0], 1) * dh)
 
     return vdepth
+
+
+def sortcmp(data, src_pos, rec_pos, binsize=None):
+    """
+        Sort data according to CMP positions
+
+        @params:
+        data (numpy.ndarray) :  Data Array NT X Ntraces
+        src_pos (numpy.ndarray) : SeisCL array containing source position
+        rec_pos (numpy.ndarray): SeisCL array containing receiver position
+        binsize (float): Bin size for CMPs
+
+        @returns:
+        data_cmp (numpy.ndarray) : Sorted data according to CMPs
+        cmps (numpy.ndarray) :     X position of each cmp
+    """
+    if binsize is None:
+        binsize = src_pos[0, 1]-src_pos[0, 0]
+
+    sx = [src_pos[0, int(srcid)] for srcid in rec_pos[3,:]]
+    gx = rec_pos[0,:]
+    cmps = ((sx + gx)/2 / binsize).astype(int) * binsize
+    offsets = sx - gx
+
+    ind = np.lexsort((offsets, cmps))
+    cmps = cmps[ind]
+    data_cmp = data[:, ind]
+
+    unique_cmps, counts = np.unique(cmps, return_counts=True)
+    maxfold = np.max(counts)
+    firstcmp = unique_cmps[np.argmax(counts == maxfold)]
+    lastcmp = unique_cmps[-np.argmax(counts[::-1] == maxfold)-1]
+    unique_cmps = unique_cmps[counts == maxfold]
+    ind1 = np.argmax(cmps == firstcmp)
+    ind2 = np.argmax(cmps > lastcmp)
+    data_cmp = data_cmp[:, ind1:ind2]
+    ncmps = unique_cmps.shape[0]
+    data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
+
+    return data_cmp, unique_cmps
+
+
+def stack(cmp, times, offsets, velocities):
+    """
+        Compute the stacked trace of a list of CMP gathers
+
+        @params:
+        cmps (numpy.ndarray) :  CMP gathers NT X Noffset
+        times (numpy.ndarray) : 1D array containing the time
+        offsets (numpy.ndarray): 1D array containing the offset of each trace
+        velocities (numpy.ndarray): 1D array NT containing the velocities
+
+        @returns:
+        stacked (numpy.ndarray) : a numpy array NT long containing the stacked
+                                  traces of each CMP
+        """
+
+    return np.sum(nmo_correction(cmp, times, offsets, velocities), axis=1)
+
+
+def semblance_gather(cmp, times, offsets, velocities):
+    """
+    Compute the semblance panel of a CMP gather
+
+    @params:
+    cmp (numpy.ndarray) :  CMP gather NT X Noffset
+    times (numpy.ndarray) : 1D array containing the time
+    offsets (numpy.ndarray): 1D array containing the offset of each trace
+    velocities (numpy.ndarray): 1D array containing the test Nv velocities
+
+    @returns:
+    semb (numpy.ndarray) : numpy array NTxNv containing semblance
+    """
+    NT = cmp.shape[0]
+    semb = np.zeros([NT, len(velocities)])
+    for ii, vel in enumerate(velocities):
+        nmo = nmo_correction(cmp, times, offsets, np.ones(NT) * vel)
+        semb[:, ii] = semblance(nmo)
+
+    return semb
+
+
+def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
+    """
+    Compute the NMO corrected CMP gather
+
+    @params:
+    cmp (numpy.ndarray) :  CMP gather NT X Noffset
+    times (numpy.ndarray) : 1D array containing the time
+    offsets (numpy.ndarray): 1D array containing the offset of each trace
+    velocities (numpy.ndarray): 1D array containing the test NT velocities
+                                in time
+
+    @returns:
+    nmo (numpy.ndarray) : array NTxNoffset containing the NMO corrected CMP
+    """
+
+    nmo = np.zeros_like(cmp)
+    for j, x in enumerate(offsets):
+        t = [reflection_time(t0, x, velocities[i]) for i, t0 in
+             enumerate(times)]
+        interpolator = CubicSpline(times, cmp[:, j], extrapolate=False)
+        amps = np.nan_to_num(interpolator(t), copy=False)
+        nmo[:, j] = amps
+        if stretch_mute is not None:
+            nmo[np.abs((times - t) / (times + 1e-10)) > stretch_mute, j] = 0
+    return nmo
+
+
+def reflection_time(t0, x, vnmo):
+    """
+    Compute the arrival time of a reflecion
+
+    @params:
+    t0 (float) :  Two-way travel-time in seconds
+    x (float) :  Offset in meters
+    vnmo (float): NMO velocity
+
+    @returns:
+    t (float): Reflection travel time
+    """
+
+    t = np.sqrt(t0 ** 2 + x ** 2 / vnmo ** 2)
+    return t
+
+
+def semblance(nmo_corrected, window=10):
+    """
+    Compute the semblance of a nmo corrected gather
+
+    @params:
+    nmo_corrected (numpy.ndarray) :  NMO corrected CMP gather NT X Noffset
+    window (int): Number of time samples to average
+
+    @returns:
+    semblance (numpy.ndarray): Array NTx1 containing semblance
+    """
+
+    num = np.sum(nmo_corrected, axis=1) ** 2
+    den = np.sum(nmo_corrected ** 2, axis=1) + 1e-12
+    weights = np.ones(window) / window
+    num = np.convolve(num, weights, mode='same')
+    den = np.convolve(den, weights, mode='same')
+    return num / den

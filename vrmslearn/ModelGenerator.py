@@ -8,7 +8,7 @@ import argparse
 import copy
 
 import numpy as np
-from ModelParameters import ModelParameters
+from vrmslearn.ModelParameters import ModelParameters
 from scipy.signal import gaussian
 from vrmslearn.SeismicUtilities import smooth_velocity_wavelength
 from vrmslearn.SeismicUtilities import interval_velocity_time, calculate_vrms
@@ -17,8 +17,7 @@ from vrmslearn.SeismicUtilities import interval_velocity_time, calculate_vrms
 class ModelGenerator(object):
     """
     Generate a seismic model with the generate_model method and output the
-    labels, with generate_labels. As of now, this class generates a 1D layered
-    model, and the labels correspond to the rms velocity.
+    labels, with generate_labels.
     """
 
     def __init__(self, model_parameters=ModelParameters()):
@@ -52,27 +51,24 @@ class ModelGenerator(object):
         self.vp = copy.copy(vp)
         return vp, vs, rho
 
-    def generate_labels(self):
+    def generate_labels(self, vp, vs, rho):
         """
         Output the labels attached to modelling of a particular dataset. In this
-        case, we want to predict vrms from a cmp gather.
+        case, we want to predict vp in depth from cmp gathers.
         
         @params:
         
         @returns:
-        vrms (numpy.ndarray)  : numpy array of shape (self.pars.NT, ) with vrms
-                                values in meters/sec.
-        valid (numpy.ndarray) : numpy array of shape (self.pars.NT, ) with 1
-                                before the last reflection, 0 afterwards
-        refs (numpy.ndarray) :   Two way travel-times of the reflections
+        vp (numpy.ndarray)  : numpy containg the normalized vp model.
+        valid (numpy.ndarray) : numpy array with 1 before the last reflection,
+                                0 afterwards
         """
-        vp = self.vp
 
         # Normalize so the labels are between 0 and 1
-        vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
         valid = 2 * np.cumsum(self.pars.dh / vp, axis=0)
         valid[valid >= self.pars.NT * self.pars.dt] = 0
         valid[valid != 0] = 1
+        vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
 
         return vp, valid
 
@@ -138,13 +134,14 @@ def random_layers(pars, seed=None):
     :return: A list containing the thicknesses of the layers
 
     """
-    #TODO Check if number of layers is consistent
     if seed is not None:
         np.random.seed(seed)
 
     # Determine the minimum and maximum number of layers
     nmin = pars.layer_dh_min
     nmax = int(pars.NZ / pars.layer_num_min)
+    if nmax < nmin:
+        print("warning: maximum number of layers smaller than minimum")
     nlmax = int(pars.NZ / nmin)
     nlmin = int(pars.NZ / nmax)
     if pars.num_layers == 0:
@@ -214,11 +211,10 @@ def random_velocities(pars, layers, seed=None):
     vmin = pars.vp_min * 1.0
     vmax = vmax - pars.vp_trend_min * pars.NZ - pars.max_texture * vmax
     vmin = vmin + pars.max_texture * vmin
-    vmax = vmin + np.random.rand() * (vmax - vmin)
-    vmin = vmin + np.random.rand() * (vmax - vmin)
+    vmax = vmax - np.random.rand() * (vmax - vmin) / 2.0
+    vmin = vmin + np.random.rand() * (vmax - vmin) / 2.0
 
     # Generate a random velocity for each layer.
-    print(vmin, vmax)
     vels = vmin + np.random.rand(len(layers)) * (vmax - vmin)
     if pars.marine:
         vels[0] = pars.water_vmin \
@@ -557,7 +553,7 @@ if __name__ == "__main__":
         vp, vs, rho, vels, layers, angles = generate_random_2Dlayered(pars, seed=seed)
         gen = ModelGenerator(pars)
         vp, vs, rho = gen.generate_model()
-        vp, valid = gen.generate_labels()
+        vp, valid = gen.generate_labels(vp, vs, rho)
         plt.imshow(vp)
         plt.show()
         plt.imshow(valid)

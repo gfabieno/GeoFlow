@@ -5,57 +5,72 @@ This class trains the neural network
 """
 
 import time
-
 import tensorflow as tf
-
 from vrmslearn.Inputqueue import BatchManager
-from vrmslearn.RCNN import RCNN
+from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
 from vrmslearn.DatasetGenerator import aggregate
 
-class Trainer(object):
+
+class Trainer:
     """
     This class takes a NN model defined in tensorflow and performs the training
     """
 
     def __init__(self,
-                 NN: RCNN,
+                 nn: RCNN2D,
                  case: Case,
-                 checkpoint_dir: str="./logs",
+                 checkpoint_dir: str = "./logs",
                  learning_rate: float = 0.001,
                  beta1: float = 0.9,
                  beta2: float = 0.999,
                  epsilon: float = 1e-8,
-                 var_to_minimize: list = None,
-                 totrain = True):
+                 var_to_minimize: list = None):
+        """
+        Initialize the tester
 
-        self.NN = NN
+        @params:
+        nn (RCNN) : A tensforlow neural net
+        case (Case) : A Case object on which to apply the NN
+        checkpoint_dir (str): The path in which to save checkpoints
+        learning_rate (float): The learning rate.
+        beta1 (float): beta1 of the Adam optimizer
+        beta2 (float): beta2 of the Adam optimizer
+        epsilon (float): epsilon of the Adam optimizer
+        var_to_minimize (list): A list of tf.Variables to optimize when training
+
+        @returns:
+        """
+        self.nn = nn
         self.case = case
         self.checkpoint_dir = checkpoint_dir
-        with self.NN.graph.as_default():
+        with self.nn.graph.as_default():
             self.global_step = tf.train.get_or_create_global_step()
 
             # Output the graph for Tensorboard
             writer = tf.summary.FileWriter(self.checkpoint_dir,
                                            graph=tf.get_default_graph())
             writer.close()
-            if totrain:
-                self.tomin = self.define_optimizer(learning_rate,
-                                                   beta1,
-                                                   beta2,
-                                                   epsilon,
-                                                   var_to_minimize)
+            self.tomin = self.define_optimizer(learning_rate,
+                                               beta1,
+                                               beta2,
+                                               epsilon,
+                                               var_to_minimize)
 
     def define_optimizer(self,
-                        learning_rate: float=0.001,
-                        beta1: float=0.9,
-                        beta2: float=0.999,
-                        epsilon: float=1e-8,
-                        var_to_minimize: list=None):
+                         learning_rate: float = 0.001,
+                         beta1: float = 0.9,
+                         beta2: float = 0.999,
+                         epsilon: float = 1e-8,
+                         var_to_minimize: list = None):
         """
-        This method creates an optimization node
+        This method creates an optimization node using Adam optimizer.
 
         @params:
+        learning_rate (float): The learning rate.
+        beta1 (float): beta1 of the Adam optimizer
+        beta2 (float): beta2 of the Adam optimizer
+        epsilon (float): epsilon of the Adam optimizer
 
         @returns:
         tomin (tf.tensor) : Output of the optimizer node.
@@ -69,14 +84,13 @@ class Trainer(object):
 
             # Add node to minimize loss
             if var_to_minimize:
-                tomin = opt.minimize(self.NN.loss,
+                tomin = opt.minimize(self.nn.loss,
                                      global_step=self.global_step,
                                      var_list=var_to_minimize)
             else:
-                tomin = opt.minimize(self.NN.loss, global_step=self.global_step)
+                tomin = opt.minimize(self.nn.loss, global_step=self.global_step)
 
         return tomin
-
 
     def train_model(self,
                     niter: int = 10,
@@ -89,6 +103,7 @@ class Trainer(object):
         @params:
         niter (int) : Number of total training iterations to run.
         restore_from (str): Checkpoint file from which to initialize parameters
+        thread_read (int): Number of threads to create example by InputQueue
 
         @returns:
         """
@@ -98,11 +113,11 @@ class Trainer(object):
 
         # Do the learning
         generator_fun = [self.case.get_example] * thread_read
-        with BatchManager(batch_size=self.NN.batch_size,
+        with BatchManager(batch_size=self.nn.batch_size,
                           generator_fun=generator_fun,
                           postprocess_fun=aggregate) as batch_queue:
 
-            with self.NN.graph.as_default():
+            with self.nn.graph.as_default():
                 summary_op = tf.summary.merge_all()
 
                 # The StopAtStepHook handles stopping after running given steps.
@@ -132,7 +147,7 @@ class Trainer(object):
 
                     if restore_from is not None:
                         batch = batch_queue.next_batch()
-                        feed_dict = dict(zip(self.NN.feed_dict, batch))
+                        feed_dict = dict(zip(self.nn.feed_dict, batch))
                         step = sess.run(self.global_step, feed_dict=feed_dict)
                         if step == 0:
                             sess.run(assigns, feed_dict=feed_dict)
@@ -141,44 +156,40 @@ class Trainer(object):
                         t0 = time.time()
                         batch = batch_queue.next_batch()
                         t1 = time.time()
-                        feed_dict = dict(zip(self.NN.feed_dict, batch))
+                        feed_dict = dict(zip(self.nn.feed_dict, batch))
 
                         step, loss, _ = sess.run([self.global_step,
-                                                  self.NN.loss,
+                                                  self.nn.loss,
                                                   self.tomin],
                                                  feed_dict=feed_dict)
                         t2 = time.time()
-                        print(
-                            "Iteration %d, loss: %f, t_batch: %f, t_graph: %f, nqueue: %d"
-                            % (step, loss, t1 - t0, t2 - t1,
-                               batch_queue.n_in_queue.value))
+                        print("Iteration %d, loss: %f, t_batch: %f, t_graph: %f\
+                              , nqueue: %d" % (step, loss, t1 - t0, t2 - t1,
+                                               batch_queue.n_in_queue.value))
 
-
-    def evaluate(self, toeval, niter, dir=None, batch=None):
+    def evaluate(self, toeval, niter, checkpoint_dir=None, batch=None):
         """
         This method compute outputs contained in toeval of a NN.
 
         @params:
         niter (int) : Training iterations of the checkpoint
-        dir (str): Directory of the checkpoint
-        batch (tuple): A batch as created to batch_generator, to predict from
+        checkpoint_dir (str): Directory of the checkpoint
+        batch (tuple): A batch as created by batch_generator, to predict from
 
         @returns:
-        data (np.array): Modeled data
-        vrms (np.array): Rms velocity
-        vint (
+        evaluated (list): A list of np.array containing evalutead tensors
         """
 
-        if dir is None:
-            dir = self.checkpoint_dir
+        if checkpoint_dir is None:
+            checkpoint_dir = self.checkpoint_dir
 
-        feed_dict = dict(zip(self.NN.feed_dict, batch))
+        feed_dict = dict(zip(self.nn.feed_dict, batch))
 
-        with self.NN.graph.as_default():
+        with self.nn.graph.as_default():
             saver = tf.train.Saver()
             with tf.Session() as sess:
-                saver.restore(sess, dir + '/model.ckpt-' + str(niter))
-                evaluated = sess.run(toeval,
-                                     feed_dict=feed_dict)
+                saver.restore(sess,
+                              checkpoint_dir + '/model.ckpt-' + str(niter))
+                evaluated = sess.run(toeval, feed_dict=feed_dict)
 
         return evaluated

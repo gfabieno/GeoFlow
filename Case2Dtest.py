@@ -1,4 +1,6 @@
 from Cases_define import Case_2Dtest
+from vrmslearn.RCNN2D import RCNN2D
+from vrmslearn.Trainer import Trainer
 import argparse
 
 
@@ -35,7 +37,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batchsize",
         type=int,
-        default=40,
+        default=50,
         help="size of the batches"
     )
     parser.add_argument(
@@ -65,8 +67,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--noise",
         type=int,
-        default=1,
+        default=0,
         help="1: Add noise to the data"
+        )
+    parser.add_argument(
+        "--use_peepholes",
+        type=int,
+        default=0,
+        help="1: Use peep hole in LSTM"
         )
 
 
@@ -76,11 +84,12 @@ if __name__ == "__main__":
     savepath = "./Case2Dtest"
     logdir = args.logdir
     batch_size = args.batchsize
+    niter = 500
 
     """
         _______________________Define the parameters ______________________
     """
-    case = Case_2Dtest(noise=args.noise, trainsize=1)
+    case = Case_2Dtest(noise=args.noise)
 
     """
         _______________________Generate the dataset_____________________________
@@ -89,5 +98,26 @@ if __name__ == "__main__":
     if args.training != 1:
         case.generate_dataset(ngpu=args.ngpu)
 
+    case.plot_example()
+    case.plot_model()
+    """
+        _______________________Train the model_____________________________
+    """
+    input_size, label_size = case.get_dimensions()
+    nn = RCNN2D(input_size=input_size,
+                label_size=label_size,
+                batch_size=batch_size,
+                alpha=0.1,
+                beta=0.1,
+                use_peepholes=args.use_peepholes)
 
+    trainer = Trainer(nn=nn,
+                      case=case,
+                      checkpoint_dir=args.logdir,
+                      learning_rate=args.lr,
+                      beta1=args.beta1,
+                      beta2=args.beta2,
+                      epsilon=args.eps)
+
+    trainer.train_model(niter=niter)
 
