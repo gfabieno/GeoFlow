@@ -55,7 +55,6 @@ class SampleGenerator:
 
         @returns:
         """
-
         if filename is None:
             filename = os.path.join(savedir, "example_%d" % exampleid)
         else:

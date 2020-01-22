@@ -23,6 +23,12 @@ if __name__ == "__main__":
         help="1: training only, 0: create dataset only, 2: training+dataset"
     )
     parser.add_argument(
+        "--epochs",
+        type=int,
+        default=500,
+        help="number of training epochs"
+    )
+    parser.add_argument(
         "--lr",
         type=float,
         default=0.0008,
@@ -69,22 +75,19 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="1: Add noise to the data"
-        )
+    )
     parser.add_argument(
         "--use_peepholes",
         type=int,
         default=0,
         help="1: Use peep hole in LSTM"
-        )
-
+    )
 
     # Parse the input for training parameters
     args, unparsed = parser.parse_known_args()
 
-    savepath = "./Case2Dtest"
     logdir = args.logdir
     batch_size = args.batchsize
-    niter = 500
 
     """
         _______________________Define the parameters ______________________
@@ -92,7 +95,7 @@ if __name__ == "__main__":
     case = Case_2Dtest(noise=args.noise)
 
     """
-        _______________________Generate the dataset_____________________________
+        _______________________Generate the dataset________________________
     """
 
     if args.training != 1:
@@ -119,5 +122,4 @@ if __name__ == "__main__":
                       beta2=args.beta2,
                       epsilon=args.eps)
 
-    trainer.train_model(niter=niter)
-
+    trainer.train_model(niter=args.epochs)

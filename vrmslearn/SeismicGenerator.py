@@ -140,12 +140,3 @@ class SeismicGenerator(SeisCL):
         data = data[0][::self.resampling, :] # resample the data to reduce space
 
         return data
-
-
-
-
-
-
-
-
-
