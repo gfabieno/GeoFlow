@@ -1,7 +1,9 @@
 from Cases_define import Case_2Dtest
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Trainer import Trainer
+from vrmslearn.Tester import Tester
 import argparse
+import tensorflow as tf
 
 
 if __name__ == "__main__":
@@ -20,7 +22,8 @@ if __name__ == "__main__":
         "--training",
         type=int,
         default=0,
-        help="1: training only, 0: create dataset only, 2: training+dataset"
+        help="1: training only, 0: create dataset only, 2: training+dataset, "
+             "3: testing+dataset"
     )
     parser.add_argument(
         "--epochs",
@@ -113,13 +116,31 @@ if __name__ == "__main__":
                 alpha=0.1,
                 beta=0.1,
                 use_peepholes=args.use_peepholes)
+    """
+        _______________________Train the model_____________________________
+    """
+    if args.training in [1, 2]:
+        trainer = Trainer(nn=nn,
+                          case=case,
+                          checkpoint_dir=args.logdir,
+                          learning_rate=args.lr,
+                          beta1=args.beta1,
+                          beta2=args.beta2,
+                          epsilon=args.eps)
 
-    trainer = Trainer(nn=nn,
-                      case=case,
-                      checkpoint_dir=args.logdir,
-                      learning_rate=args.lr,
-                      beta1=args.beta1,
-                      beta2=args.beta2,
-                      epsilon=args.eps)
-
-    trainer.train_model(niter=args.epochs)
+        trainer.train_model(niter=args.epochs)
+    """
+        _______________________Validate results_____________________________
+    """
+    if args.training == 3:
+        tester = Tester(
+            nn=nn,
+            case=case,
+        )
+        tester.test_dataset(
+            savepath=case.datatest,
+            toeval=nn.output_vp,
+            toeval_names="data",
+            restore_from=tf.train.latest_checkpoint(args.logdir),
+        )
+        # tester.plot_results()
