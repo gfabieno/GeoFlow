@@ -101,7 +101,12 @@ if __name__ == "__main__":
     """
         _______________________Define the parameters ______________________
     """
-    case = Case_2Dtest(noise=args.noise)
+    case = Case_2Dtest(
+        noise=args.noise,
+        trainsize=10000,
+        validatesize=1000,
+        testsize=1000,
+    )
 
     """
         _______________________Generate the dataset________________________
