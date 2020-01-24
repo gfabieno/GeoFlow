@@ -85,6 +85,12 @@ if __name__ == "__main__":
         default=0,
         help="1: Use peep hole in LSTM"
     )
+    parser.add_argument(
+        "--plot",
+        type=int,
+        default=1,
+        help="1: Validate data by plotting."
+    )
 
     # Parse the input for training parameters
     args, unparsed = parser.parse_known_args()
@@ -104,11 +110,10 @@ if __name__ == "__main__":
     if args.training != 1:
         case.generate_dataset(ngpu=args.ngpu)
 
-    case.plot_example()
-    case.plot_model()
-    """
-        _______________________Train the model_____________________________
-    """
+    if args.plot:
+        case.plot_example()
+        case.plot_model()
+
     input_size, label_size = case.get_dimensions()
     nn = RCNN2D(input_size=input_size,
                 label_size=label_size,
