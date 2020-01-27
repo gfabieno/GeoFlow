@@ -138,7 +138,6 @@ class Case:
         examples = self.get_example()
         data = examples[0]
         labels = examples[1:]
-        print(data.shape)
         return data.shape, labels[0].shape
 
     def plot_example(self, filename=None):
