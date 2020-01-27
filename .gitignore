@@ -3,3 +3,6 @@ scratch*
 __pycache__
 logs*
 *.png
+Datasets
+workdir*
+out*
