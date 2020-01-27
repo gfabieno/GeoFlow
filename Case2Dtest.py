@@ -23,7 +23,7 @@ if __name__ == "__main__":
         type=int,
         default=0,
         help="1: training only, 0: create dataset only, 2: training+dataset, "
-             "3: testing+dataset"
+             "3: testing"
     )
     parser.add_argument(
         "--epochs",
@@ -112,7 +112,7 @@ if __name__ == "__main__":
         _______________________Generate the dataset________________________
     """
 
-    if args.training != 1:
+    if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
 
     if args.plot:
