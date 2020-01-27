@@ -99,23 +99,14 @@ class Tester(object):
         labels (list): List containing all labels
         preds (list):  List containing all predictions
         """
-        
-        predictions = fnmatch.filter(os.listdir(savepath), filename)
-        predictions = [os.path.join(savepath, p) for p in predictions]
         labels = []
         preds = []
-        lfiles = []
-        pfiles = []
         for ii, example in enumerate(self.case.files["test"]):
-            example_pred = os.path.basename(example)
-            if example_pred in predictions:
-                pfiles.append(example_pred)
-                pfile = h5.File(pfiles[-1], "r")
-                preds.append(pfile[predname][:])
-                pfile.close()
-                lfiles.append(example)
-                lfile = h5.File(lfiles[-1], "r")
-                labels.append(lfile[labelname][:])
-                lfile.close()
+            file = h5.File(example, "r")
+            if predname in file.keys():
+                preds.append(file[predname][:])
+                labels.append(file[labelname][:])
+            file.close()
 
-        return labels, preds, lfiles, pfiles
+        return labels, preds
+
