@@ -149,8 +149,8 @@ if __name__ == "__main__":
         )
         tester.test_dataset(
             savepath=case.datatest,
-            toeval=nn.output_vp,
-            toeval_names="data",
+            toeval=[nn.output_vp],
+            toeval_names=["output_vp"],
             restore_from=tf.train.latest_checkpoint(args.logdir),
         )
         # tester.plot_results()
