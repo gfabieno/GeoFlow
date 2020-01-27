@@ -72,8 +72,10 @@ class Tester(object):
                         feed_dict = dict(zip(self.nn.feed_dict, batch))
                         evaluated = sess.run(toeval, feed_dict=feed_dict)
                         for jj, bexample in enumerate(bexamples):
-                            savefile = h5.File(bexample, "w")
+                            savefile = h5.File(bexample, "r+")
                             for kk, el in enumerate(toeval_names):
+                                if el in savefile.keys():
+                                    del savefile[el]
                                 savefile[el] = evaluated[kk][jj, :]
                             savefile.close()
                         batch = []
