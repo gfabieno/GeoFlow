@@ -8,6 +8,7 @@ import os
 
 import h5py as h5
 import tensorflow as tf
+from matplotlib import pyplot as plt
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
@@ -110,3 +111,28 @@ class Tester(object):
 
         return labels, preds
 
+    def plot_predictions(self,
+                         labelname: str,
+                         predname: str,
+                         savepath: str,
+                         filename: str = 'example_*',
+                         quantity: int = 1):
+        """
+        This method plots the labels and the predictions for each test sample.
+
+        @params:
+        labelname (str) : Name of the labels in the example file
+        predname (str) : Name of the predictions in the example file
+        savepath (str) : The path in which the test examples are found
+        filename (str): The structure of the examples' filenames
+        """
+
+        labels, preds = self.get_preds(
+            labelname, predname, savepath, filename,
+        )
+        for _, label, pred in zip(range(quantity), labels, preds):
+            fig, axes = plt.subplots(1, 2)
+            axes[0].imshow(label, cmap='inferno', vmin=0, vmax=1)
+            im = axes[1].imshow(pred, cmap='inferno', vmin=0, vmax=1)
+            fig.colorbar(im, ax=axes.ravel().tolist())
+            plt.show()
