@@ -153,4 +153,10 @@ if __name__ == "__main__":
             toeval_names=["output_vp"],
             restore_from=tf.train.latest_checkpoint(args.logdir),
         )
-        # tester.plot_results()
+
+        if args.plot:
+            tester.plot_predictions(
+                labelname="label0",
+                predname="output_vp",
+                savepath=case.datatest,
+            )
