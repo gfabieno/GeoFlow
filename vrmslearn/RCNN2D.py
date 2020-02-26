@@ -147,7 +147,7 @@ class RCNN2D(object):
         data_stream = self.input_scaled
         allout = [self.input_scaled]
         with tf.name_scope('Encoder'):
-            for ii in range(len(weights) - 2):
+            for ii in range(len(weights) - 1):
                 with tf.name_scope('CNN_' + str(ii)):
                     data_stream = tf.nn.relu(
                         tf.nn.conv3d(data_stream,
@@ -161,7 +161,7 @@ class RCNN2D(object):
             for ii in range(7):
                 data_stream = tf.nn.relu(
                     tf.nn.conv3d(data_stream,
-                                 weights[-2],
+                                 weights[-1],
                                  strides=[1, 1, 1, 1, 1],
                                  padding='SAME') + biases[-2])
                 allout.append(data_stream)
