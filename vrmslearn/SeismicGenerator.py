@@ -74,14 +74,14 @@ class SeismicGenerator(SeisCL):
             if pars.gmax and pars.gmax > 0:
                 l2 += -pars.gmax
             sx = np.arange(l1, l2, pars.ds) * pars.dh
-        sz = sx * 0 + pars.source_depth
+        sz = np.full_like(sx, pars.source_depth)
         sid = np.arange(0, sx.shape[0])
 
         self.src_pos_all = np.stack([sx,
-                                     sx * 0,
+                                     np.zeros_like(sx),
                                      sz,
                                      sid,
-                                     sx * 0 + pars.sourcetype], axis=0)
+                                     np.full_like(sx, pars.sourcetype)], axis=0)
         self.resampling = pars.resampling
 
         # Add receivers
@@ -96,18 +96,18 @@ class SeismicGenerator(SeisCL):
 
         gx0 = np.arange(gmin, gmax, pars.dg) * pars.dh
         gx = np.concatenate([s + gx0 for s in sx], axis=0)
-        gsid = np.concatenate([s + gx0 * 0 for s in sid], axis=0)
-        gz = gx * 0 + pars.receiver_depth
+        gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+        gz = np.full_like(gx, pars.receiver_depth)
         gid = np.arange(0, len(gx))
 
         self.rec_pos_all = np.stack([gx,
-                                   gx * 0,
+                                   np.zeros_like(gx),
                                    gz,
                                    gsid,
                                    gid,
-                                   gx * 0 + 2,
-                                   gx * 0,
-                                   gx * 0], axis=0)
+                                   np.full_like(gx, 2),
+                                   np.zeros_like(gx),
+                                   np.zeros_like(gx)], axis=0)
 
         self.wavelet_generator = random_wavelet_generator(pars.NT,
                                                           pars.dt,
