@@ -83,6 +83,7 @@ class ModelParameters(object):
         self.texture_xrange = 0  # Range of the filter in x for texture creation
         self.texture_zrange = 0  # Range of the filter in z for texture creation
 
+
     def save_parameters_to_disk(self, filename):
         """
         Save all parameters to disk

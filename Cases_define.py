@@ -11,6 +11,7 @@ class Case_1Dsmall(Case):
 
     name = "1Dsmall"
     pars = ModelParameters()
+    pars.train_on_shots = True
 
 class Case_1Darticle(Case):
 
@@ -110,5 +111,5 @@ class Case_2Dtest(Case):
 
 if __name__ == "__main__":
 
-    case = Case_2Dtest()
+    case = Case_1Dsmall()
     case.plot_model()

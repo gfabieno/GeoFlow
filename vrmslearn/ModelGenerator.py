@@ -10,8 +10,8 @@ import copy
 import numpy as np
 from vrmslearn.ModelParameters import ModelParameters
 from scipy.signal import gaussian
-from vrmslearn.SeismicUtilities import smooth_velocity_wavelength
-from vrmslearn.SeismicUtilities import interval_velocity_time, calculate_vrms
+from vrmslearn.SeismicUtilities import smooth_velocity_wavelength, generate_reflections_ttime
+from vrmslearn.SeismicUtilities import vdepth2time, calculate_vrms
 
 
 class ModelGenerator(object):
@@ -31,6 +31,8 @@ class ModelGenerator(object):
         """
         self.pars = model_parameters
         self.vp =None
+        self.label_names = ('ref', 'vrms', 'vint', 'vdepth')
+        self.weight_names = ['tweight', 'dweight']
 
     def generate_model(self, seed=None):
         """
@@ -63,14 +65,49 @@ class ModelGenerator(object):
         valid (numpy.ndarray) : numpy array with 1 before the last reflection,
                                 0 afterwards
         """
+        vp = self.vp
+        vrms = np.zeros((self.pars.NT, vp.shape[1]))
+        for ii in range(vp.shape[1]):
+            vrms[:, ii] = calculate_vrms(vp[:, ii],
+                                         self.pars.dh,
+                                         self.pars.Npad,
+                                         self.pars.NT,
+                                         self.pars.dt,
+                                         self.pars.tdelay,
+                                         self.pars.source_depth)
+
+        vrms = vrms[::self.pars.resampling, :]
+        refs = np.zeros((self.pars.NT, vp.shape[1]))
+        for ii in range(vp.shape[1]):
+            refs[:, ii] = generate_reflections_ttime(vp[:, ii], self.pars)
+        refs = refs[::self.pars.resampling, :]
+
+        vint = np.zeros((self.pars.NT, vp.shape[1]))
+        z0 = int(self.pars.source_depth / self.pars.dh)
+        t = np.arange(0, self.pars.NT, 1) * self.pars.dt
+        for ii in range(vp.shape[1]):
+            vint[:, ii] = vdepth2time(vp[z0:, ii], self.pars.dh, t,
+                                      t0=self.pars.tdelay)
+        vint = vint[::self.pars.resampling, :]
+
+        tweights = vrms * 0 + 1
+        dweights = 2 * np.cumsum(self.pars.dh / vp, axis=0) + self.pars.tdelay
+        dweights = dweights - 2 * np.sum(self.pars.dh / vp[:z0,:], axis=0)
+        for ii in range(vp.shape[1]):
+            indt = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+            tweights[indt:, ii] = 0
+            dweights[dweights[:, ii] >= indt * self.pars.dt * self.pars.resampling, ii] = 0
+            dweights[dweights[:, ii] != 0, ii] = 1
 
         # Normalize so the labels are between 0 and 1
-        valid = 2 * np.cumsum(self.pars.dh / vp, axis=0)
-        valid[valid >= self.pars.NT * self.pars.dt] = 0
-        valid[valid != 0] = 1
+        vrms = (vrms - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
+        vint = (vint - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
         vp = (vp - self.pars.vp_min) / (self.pars.vp_max - self.pars.vp_min)
 
-        return vp, valid
+        labels = [refs, vrms, vint, vp]
+        weights = [tweights, dweights]
+
+        return labels, weights
 
 
 def random_fields(NZ, NX, lz=2, lx=2, corrs=None):
@@ -228,7 +265,7 @@ def create_deformation(max_deform_freq, min_deform_freq,
     """
     Create random deformations of a boundary with random harmonic functions
 
-     :param max_deform_freq: Maximum frequency of the harmonic components
+    :param max_deform_freq: Maximum frequency of the harmonic components
     :param min_deform_freq: Minimum frequency of the harmonic components
     :param amp_max: Maximum amplitude of the deformation
     :param max_deform_nfreq: Number of frequencies
@@ -523,7 +560,11 @@ if __name__ == "__main__":
         plt.imshow(vp)
         plt.show()
         vp = vp[:, 0]
-        vint = interval_velocity_time(vp, pars)
+        vp = vp[int(pars.source_depth / pars.dh):]
+        vint = vdepth2time(vp,
+                           pars.dh,
+                           np.arange(0, pars.NT, 1) * pars.dt,
+                           t0=pars.tdelay)
         vrms = calculate_vrms(vp,
                               pars.dh,
                               pars.Npad,
@@ -544,24 +585,25 @@ if __name__ == "__main__":
         pars.angle_max = 20
 
         pars.num_layers = 0
-        pars.layer_num_min = 15
+        pars.layer_num_min = 5
         pars.layer_dh_min = 10
         pars.NT = 2000
         seed = np.random.randint(0, 10000)
         print(seed)
-        #seed=9472
-        vp, vs, rho, vels, layers, angles = generate_random_2Dlayered(pars, seed=seed)
         gen = ModelGenerator(pars)
         vp, vs, rho = gen.generate_model()
-        vp, valid = gen.generate_labels(vp, vs, rho)
-        plt.imshow(vp)
-        plt.show()
-        plt.imshow(valid)
+        labels, weights = gen.generate_labels(vp, vs, rho)
+        fig, ax = plt.subplots(2, len(labels))
+        for ii, label in enumerate(labels):
+            print(np.max(label))
+            ax[0, ii].imshow(label, aspect='auto')
+        for ii, weight in enumerate(weights):
+            ax[1, ii].imshow(weight, aspect='auto')
         plt.show()
         print(np.max(vp))
-        for lt in [0]:#[0, 10, 50, 100, 150, 200]:
-            vdepth = smooth_velocity_wavelength(vp, pars.dh, lt*0.001, lt/25)
-            plt.imshow(vdepth)
-            plt.show()
+        # for lt in [0]:#[0, 10, 50, 100, 150, 200]:
+        #     vdepth = smooth_velocity_wavelength(vp, pars.dh, lt*0.001, lt/25)
+        #     plt.imshow(vdepth)
+        #     plt.show()
 
 

@@ -115,7 +115,7 @@ class Trainer:
         generator_fun = [self.case.get_example] * thread_read
         with BatchManager(batch_size=self.nn.batch_size,
                           generator_fun=generator_fun,
-                          postprocess_fun=aggregate) as batch_queue:
+                          postprocess_fun=self.case.ex2batch) as batch_queue:
 
             with self.nn.graph.as_default():
                 summary_op = tf.summary.merge_all()
@@ -147,7 +147,8 @@ class Trainer:
 
                     if restore_from is not None:
                         batch = batch_queue.next_batch()
-                        feed_dict = dict(zip(self.nn.feed_dict, batch))
+                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
+                                     for lbl in self.nn.feed_dict}
                         step = sess.run(self.global_step, feed_dict=feed_dict)
                         if step == 0:
                             sess.run(assigns, feed_dict=feed_dict)
@@ -156,16 +157,16 @@ class Trainer:
                         t0 = time.time()
                         batch = batch_queue.next_batch()
                         t1 = time.time()
-                        feed_dict = dict(zip(self.nn.feed_dict, batch))
 
+                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
+                                     for lbl in self.nn.feed_dict}
                         step, loss, _ = sess.run([self.global_step,
                                                   self.nn.loss,
                                                   self.tomin],
-                                                 feed_dict=feed_dict)
+                                                  feed_dict=feed_dict)
                         t2 = time.time()
-                        print("Iteration %d, loss: %f, t_batch: %f, t_graph: %f\
-                              , nqueue: %d" % (step, loss, t1 - t0, t2 - t1,
-                                               batch_queue.n_in_queue.value))
+                        print("Iteration %d, loss: %f, t_batch: %f, t_graph: %f , nqueue: %d" % (step, loss, t1 - t0, t2 - t1,
+                                                  batch_queue.n_in_queue.value))
 
     def evaluate(self, toeval, niter, checkpoint_dir=None, batch=None):
         """

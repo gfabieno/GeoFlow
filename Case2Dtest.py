@@ -1,9 +1,10 @@
-from Cases_define import Case_2Dtest
+from Cases_define import Case_2Dtest, Case_1Dsmall
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
 import argparse
 import tensorflow as tf
+import os
 
 
 if __name__ == "__main__":
@@ -101,12 +102,18 @@ if __name__ == "__main__":
     """
         _______________________Define the parameters ______________________
     """
-    case = Case_2Dtest(
-        noise=args.noise,
-        trainsize=10000,
-        validatesize=1000,
-        testsize=1000,
-    )
+    # case = Case_2Dtest(
+    #     noise=args.noise,
+    #     trainsize=10000,
+    #     validatesize=1000,
+    #     testsize=1000,
+    # )
+    case = Case_1Dsmall(
+        trainsize=100,
+        validatesize=10,
+        testsize=10)
+    if args.training == 3 and case.testsize < batch_size:
+        batch_size = case.testsize
 
     """
         _______________________Generate the dataset________________________
@@ -116,16 +123,16 @@ if __name__ == "__main__":
         case.generate_dataset(ngpu=args.ngpu)
 
     if args.plot:
-        case.plot_example()
-        case.plot_model()
+        case.animated_dataset()
 
-    input_size, label_size = case.get_dimensions()
-    nn = RCNN2D(input_size=input_size,
-                label_size=label_size,
+    sizes = case.get_dimensions()
+    nn = RCNN2D(input_size=sizes[0],
+                depth_size=sizes[-1][0],
                 batch_size=batch_size,
                 alpha=0.1,
                 beta=0.1,
-                use_peepholes=args.use_peepholes)
+                use_peepholes=args.use_peepholes,
+                loss_scales={'ref': 0.2, 'vrms': 0.4, 'vint': 0.4})
     """
         _______________________Train the model_____________________________
     """
@@ -143,20 +150,21 @@ if __name__ == "__main__":
         _______________________Validate results_____________________________
     """
     if args.training == 3:
-        tester = Tester(
-            nn=nn,
-            case=case,
-        )
-        tester.test_dataset(
-            savepath=case.datatest,
-            toeval=[nn.output_vp],
-            toeval_names=["output_vp"],
-            restore_from=tf.train.latest_checkpoint(args.logdir),
-        )
+        tester = Tester(nn=nn, case=case)
+        savepath = os.path.join(case.datatest, "pred")
+        if not os.path.isdir(savepath):
+            os.mkdir(savepath)
+        restore_from = tf.train.latest_checkpoint(args.logdir)
+        tester.test_dataset(savepath=savepath,
+                            toeval={'ref': nn.outputs['ref'],
+                                    'vrms': nn.outputs['vrms'],
+                                    'vint': nn.outputs['vint']},
+                            restore_from=restore_from)
 
         if args.plot:
-            tester.plot_predictions(
-                labelname="label0",
-                predname="output_vp",
-                savepath=case.datatest,
-            )
+            # tester.plot_predictions(labelnames=["ref", 'vrms', 'vint'],
+            #                         savepath=savepath,
+            #                         image=False)
+            tester.animated_predictions(labelnames=["ref", 'vrms', 'vint'],
+                                        savepath=savepath,
+                                        image=False)
