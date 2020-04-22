@@ -174,11 +174,16 @@ class Tester(object):
                              quantity: int = None,
                              image: bool = True):
         """
-        This method plots the labels and the predictions for each test sample.
+        Makes an animation that shows iteratively the data, labels and
+        predictions over the testing dataset.
 
         @params:
-        labelnames (list) : List of names of the labels in the example file
+        labelnames (list) : List of names of the labels to predict
         savepath (str) : The path in which the test examples are found
+        quantity (int): Number of examples to show. If None, show all examples
+                        in the test set
+        image (bool):   If True, labels and predictions are shown as images,
+                        else plot 1D profiles.
         """
         if quantity is None:
             examples = [os.path.basename(f) for f in self.case.files["test"]]

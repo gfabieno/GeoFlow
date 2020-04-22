@@ -357,6 +357,8 @@ def vdepth2time(vp, dh, t, t0=0):
 
     return vint
 
+#TODO code interval velocity in time to interval velocity in depth
+
 # def vtime2depth(vint, t):
 #     """
 #     Converts interval velocity in time to interval velocity in depth
@@ -379,6 +381,7 @@ def vdepth2time(vp, dh, t, t0=0):
 #
 #     return vdepth
 
+#TODO Recode calculate vrms into vint2vrms and simply it.
 def vint2vrms(vint, t):
 
     dt = t[1:]-t[:-1]

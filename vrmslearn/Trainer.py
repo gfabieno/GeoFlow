@@ -9,7 +9,6 @@ import tensorflow as tf
 from vrmslearn.Inputqueue import BatchManager
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
-from vrmslearn.DatasetGenerator import aggregate
 
 
 class Trainer:

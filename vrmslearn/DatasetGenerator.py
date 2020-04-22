@@ -161,32 +161,3 @@ def generate_dataset(pars: ModelParameters,
         generators.append(thisgen)
     for gen in generators:
         gen.join()
-
-def aggregate(names):
-    """
-    This function returns a callable that aggregates a list of examples created
-    by a SampleGenerator into a dictonary with keys given by names.
-    Transforms batch = [ex0, ex1, ex2, ...]
-            -> batch = {names[0]: [ex0[0], ex1[0], ex2[0]],
-                        names[1]: [ex0[1], ex1[1], ex2[1]], ...}
-    To be used with BatchManager.
-
-    @params:
-    examples (list):    A list of numpy arrays that contain a list with
-                        all elements of example.
-    names (list):       A list of strings providing the key of each entry in an
-                        example.
-
-
-    @returns:
-    batch (list): A list of numpy arrays that contains all examples
-                           for each element of a batch.
-
-    """
-    def aggregate_with_name(examples):
-        batch = {name: np.stack([el[ii] for el in examples])
-                 for ii, name in enumerate(names)}
-        return batch
-    #batch[0] = np.expand_dims(batch[0], axis=-1)
-
-    return aggregate_with_name

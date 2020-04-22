@@ -189,8 +189,8 @@ class RCNN2D(object):
 
         self.output_time_rcnn = data_stream
 
+        # TODO test mean global pooling, compared to RCNN used in the 1D article
         with tf.name_scope('Global_pooling'):
-            # TODO test mean global pooling
             data_stream = reduce_max(data_stream, axis=[2], keepdims=False)
         self.output_global_pooling = data_stream
 
@@ -209,6 +209,8 @@ class RCNN2D(object):
         shape_space = [int(el) for el in data_stream.get_shape()]
         data_stream = tf.reshape(data_stream,
                                  [-1, shape_space[1], shape_space[-1]])
+
+        #TODO Make sure rnn_hidden represents what, remove hard coding ?
         if 'vrms' in self.out_names:
             with tf.name_scope('RNN_vrms'):
                 rnn_hidden = 200
@@ -256,6 +258,9 @@ class RCNN2D(object):
                                           strides=[1, 1, 1, 1],
                                           padding='SAME')
                 outputs['vint'] = tf.squeeze(decode_vint, axis=-1)
+
+        #TODO test depth predicitons
+        #TODO assess if 1D predictions in depth should be performed before 2D
 
         if 'vdepth' in self.out_names:
             with tf.name_scope('RNN_vdepth'):

@@ -102,6 +102,8 @@ if __name__ == "__main__":
     """
         _______________________Define the parameters ______________________
     """
+    #TODO Input argument choosing which case to run
+
     # case = Case_2Dtest(
     #     noise=args.noise,
     #     trainsize=10000,
@@ -125,6 +127,7 @@ if __name__ == "__main__":
     if args.plot:
         case.animated_dataset()
 
+    # TODO Test different loss_scales
     sizes = case.get_dimensions()
     nn = RCNN2D(input_size=sizes[0],
                 depth_size=sizes[-1][0],
@@ -162,9 +165,6 @@ if __name__ == "__main__":
                             restore_from=restore_from)
 
         if args.plot:
-            # tester.plot_predictions(labelnames=["ref", 'vrms', 'vint'],
-            #                         savepath=savepath,
-            #                         image=False)
             tester.animated_predictions(labelnames=["ref", 'vrms', 'vint'],
                                         savepath=savepath,
                                         image=False)

@@ -138,7 +138,7 @@ class Case:
 
     def ex2batch(self, examples):
         """
-        Pack a list of examples into a dict.
+        Pack a list of examples into a dict with the entry name.
         Transforms examples = [ex0, ex1, ex2, ...]
                   -> batch = {names[0]: [ex0[0], ex1[0], ex2[0]],
                               names[1]: [ex0[1], ex1[1], ex2[1]], ...}
@@ -162,7 +162,13 @@ class Case:
         plot_one_example(data, labels, self.pars)
 
     def animated_dataset(self, phase='train'):
+        """
+        Produces an animation of a dataset, showing the input data, and the
+        different labels for each example.
 
+        @params:
+        phase (str): Which dataset: either train, test or validate
+        """
         toplots = self.get_example(phase=phase)
         toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
         clip = 0.01
