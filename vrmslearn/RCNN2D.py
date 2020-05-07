@@ -5,7 +5,12 @@ Class to build the neural network for 2D prediction vp in depth
 """
 import numpy as np
 import tensorflow as tf
-from .conv_lstm.cell import ConvLSTMCell
+from tensorflow.keras.layers import (
+    Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
+)
+from tensorflow.keras.backend import (
+    max as reduce_max, sum as reduce_sum, squeeze, reshape,
+)
 
 class RCNN2D(object):
     """
@@ -147,168 +152,110 @@ class RCNN2D(object):
         """
 
         outputs = {}
-
-        weights = [tf.Variable(tf.random.normal([15, 1, 1, 1, 16], stddev=1e-1),
-                               name='w1'),
-                   tf.Variable(tf.random.normal([1, 9, 1, 16, 16], stddev=1e-1),
-                               name='w2'),
-                   tf.Variable(tf.random.normal([15, 1, 1, 16, 32], stddev=1e-1),
-                               name='w3'),
-                   tf.Variable(tf.random.normal([1, 9, 1, 32, 32], stddev=1e-1),
-                               name='w4'),
-                   tf.Variable(tf.random.normal([15, 3, 1, 32, 32], stddev=1e-2),
-                               name='w5')]
-
-        biases = [tf.Variable(tf.zeros([16]), name='b1'),
-                  tf.Variable(tf.zeros([16]), name='b2'),
-                  tf.Variable(tf.zeros([32]), name='b3'),
-                  tf.Variable(tf.zeros([32]), name='b4'),
-                  tf.Variable(tf.zeros([32]), name='b5')]
-
         data_stream = self.input_scaled
-        allout = [self.input_scaled]
+
         with tf.name_scope('Encoder'):
-            for ii in range(len(weights) - 1):
-                with tf.name_scope('CNN_' + str(ii)):
-                    data_stream = tf.nn.relu(
-                        tf.nn.conv3d(data_stream,
-                                     weights[ii],
-                                     strides=[1, 1, 1, 1, 1],
-                                     padding='SAME') + biases[ii])
-                    allout.append(data_stream)
+            KERNELS = [
+                [15, 1, 1],
+                [1, 9, 1],
+                [15, 1, 1],
+                [1, 9, 1],
+            ]
+            QTIES_FILTERS = [16, 16, 32, 32]
+            for i, (kernel, qty_filters) in (
+                        enumerate(zip(KERNELS, QTIES_FILTERS))
+                    ):
+                with tf.name_scope('CNN_' + str(i)):
+                    data_stream = Conv3D(qty_filters, kernel)(data_stream)
+                    data_stream = LeakyReLU()(data_stream)
         self.output_encoder = data_stream
 
         with tf.name_scope('Time_RCNN'):
-            for ii in range(7):
-                data_stream = tf.nn.relu(
-                    tf.nn.conv3d(data_stream,
-                                 weights[-1],
-                                 strides=[1, 1, 1, 1, 1],
-                                 padding='SAME') + biases[-2])
-                allout.append(data_stream)
-
+            for _ in range(7):
+                data_stream = Conv3D(32, [15, 3, 1])(data_stream)
+                data_stream = LeakyReLU()(data_stream)
         self.output_time_rcnn = data_stream
 
         # TODO test mean global pooling, compared to RCNN used in the 1D article
         with tf.name_scope('Global_pooling'):
-            data_stream = reduce_max(data_stream, axis=[2], keepdims=False)
+            data_stream = reduce_max(data_stream, axis=2, keepdims=False)
         self.output_global_pooling = data_stream
 
         if 'ref' in self.out_names:
-            output_size = int(data_stream.get_shape()[-1])
             with tf.name_scope('Decode_refevent'):
-                decode_refw = tf.Variable(
-                    initial_value=tf.random.normal([1, 1, output_size, 2],
-                                                   stddev=1e-4),
-                    name='decode_ref')
-                decode_ref = tf.nn.conv2d(data_stream, decode_refw,
-                                          strides=[1, 1, 1, 1],
-                                          padding='SAME')
-                outputs['ref'] = decode_ref
+                outputs['ref'] = Conv2D(2, [1, 1])(data_stream)
 
-        shape_space = [int(el) for el in data_stream.get_shape()]
-        data_stream = tf.reshape(data_stream,
-                                 [-1, shape_space[1], shape_space[-1]])
+        data_stream = Permute((2, 1, 3))(data_stream)
+        batches, shots, timesteps, filter_dim = data_stream.get_shape()
+        data_stream = reshape(
+            data_stream,
+            [batches*shots, timesteps, filter_dim],
+        )
 
-        #TODO Make sure rnn_hidden represents what, remove hard coding ?
+        with tf.name_scope('RNN_vrms'):
+            UNITS = 200
+            lstm = LSTM(UNITS, return_sequences=True)
+            data_stream = lstm(data_stream)
+            self.rnn_vrms_out = data_stream
+
         if 'vrms' in self.out_names:
-            with tf.name_scope('RNN_vrms'):
-                rnn_hidden = 200
-                cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden,
-                                               state_is_tuple=True,
-                                               use_peepholes=self.use_peepholes)
-                state0 = cell.zero_state(data_stream.get_shape()[0], tf.float32)
-                data_stream, rnn_states = tf.nn.dynamic_rnn(cell, data_stream,
-                                                            initial_state=state0,
-                                                            time_major=False,
-                                                            scope="rnn_vrms")
-                self.rnn_vrms_out = data_stream
-
             with tf.name_scope('Decode_rms'):
-                output_size = int(data_stream.get_shape()[-1])
-                decode_rmsw = tf.Variable(
-                    initial_value=tf.random.normal([1, 1, output_size, 1], stddev=1e-4),
-                                                   name='decode_rms')
-                shape_space[-1] = output_size
-                decode_rms = tf.reshape(data_stream, shape_space)
-                decode_rms = tf.nn.conv2d(decode_rms, decode_rmsw,
-                                          strides=[1, 1, 1, 1],
-                                          padding='SAME')
-                outputs['vrms'] = tf.squeeze(decode_rms, axis=-1)
+                decode_rms = reshape(
+                    data_stream,
+                    [batches, shots, timesteps, UNITS],
+                )
+                decode_rms = Permute((2, 1, 3))(decode_rms)
+                decode_rms = Conv2D(1, [1, 1])(decode_rms)
+                outputs['vrms'] = squeeze(decode_rms, axis=-1)
+
+        with tf.name_scope('RNN_vint'):
+            lstm = LSTM(UNITS, return_sequences=True)
+            data_stream = lstm(data_stream)
+            self.rnn_vint_out = data_stream
 
         if 'vint' in self.out_names:
-            with tf.name_scope('RNN_vint'):
-                    cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden, state_is_tuple=True,
-                                                   use_peepholes=self.use_peepholes)
-                    state0 = cell.zero_state(data_stream.get_shape()[0], tf.float32)
-                    data_stream, rnn_states = tf.nn.dynamic_rnn(cell, data_stream,
-                                                                initial_state=state0,
-                                                                time_major=False,
-                                                                scope="rnn_vint")
-                    self.rnn_vint_out = data_stream
-
             with tf.name_scope('Decode_vint'):
-                output_size = int(data_stream.get_shape()[-1])
-                decode_vintw = tf.Variable(
-                    initial_value=tf.random.normal([1, 1, output_size, 1], stddev=1e-4),
-                                                   name='decode_vint')
-                shape_space[-1] = output_size
-                decode_vint = tf.reshape(data_stream, shape_space)
-                decode_vint = tf.nn.conv2d(decode_vint, decode_vintw,
-                                          strides=[1, 1, 1, 1],
-                                          padding='SAME')
-                outputs['vint'] = tf.squeeze(decode_vint, axis=-1)
+                decode_int = reshape(
+                    data_stream,
+                    [batches, shots, timesteps, UNITS],
+                )
+                decode_int = Permute((2, 1, 3))(decode_int)
+                decode_int = Conv2D(1, [1, 1, UNITS])(decode_int)
+                outputs['vint'] = squeeze(decode_int, axis=-1)
 
         #TODO test depth predicitons
         #TODO assess if 1D predictions in depth should be performed before 2D
 
         if 'vdepth' in self.out_names:
             with tf.name_scope('RNN_vdepth'):
-                    cell = tf.nn.rnn_cell.LSTMCell(rnn_hidden,
-                                                   state_is_tuple=True,
-                                                   use_peepholes=self.use_peepholes)
-                    state0 = cell.zero_state(data_stream.get_shape()[0],
-                                             tf.float32)
-                    data_stream, rnn_states = tf.nn.dynamic_rnn(cell, data_stream,
-                                                                initial_state=state0,
-                                                                time_major=False,
-                                                                scope="rnn_vdepth")
-                    self.rnn_vdepth_out = data_stream
+                lstm = LSTM(UNITS, return_sequences=True)
+                data_stream = lstm(data_stream)
+                self.rnn_vdepth_out = data_stream
 
-            c = int(data_stream.get_shape()[-1])
-            shape_space[-1] = c
-            data_stream = tf.reshape(data_stream, shape_space)
-            weights = [tf.Variable(tf.random.normal([1, 3, c, 2 * c],
-                                                    stddev=1e-1), name='wd1'),
-                       tf.Variable(tf.random.normal([1, 3, 2 * c, 2 * c],
-                                                    stddev=1e-1), name='wd2'),
-                       tf.Variable(tf.random.normal([1, 3, 2 * c, c],
-                                                    stddev=1e-1), name='wd3'),
-                       tf.Variable(tf.random.normal([1, 3, c, int(c/2)],
-                                                    stddev=1e-1), name='wd4'),
-                       tf.Variable(tf.random.normal([1, 3, int(c/2), 1],
-                                                    stddev=1e-1), name='wd5')]
+            data_stream = reshape(
+                data_stream,
+                [batches, shots, timesteps, UNITS],
+            )
+            data_stream = Permute((2, 1, 3))(data_stream)
 
-            biases = [tf.Variable(tf.zeros([2*c]), name='bd1'),
-                      tf.Variable(tf.zeros([2*c]), name='bd2'),
-                      tf.Variable(tf.zeros([c]), name='bd3'),
-                      tf.Variable(tf.zeros([int(c/2)]), name='bd4')]
-
+            KERNELS = [[1, 3], [1, 3], [1, 3], [1, 3]]
+            QTIES_FILTERS = [
+                2 * UNITS,
+                2 * UNITS,
+                UNITS,
+                UNITS//2,
+            ]
             with tf.name_scope('Decode_vp'):
-                for ii in range(len(weights) - 1):
-                    with tf.name_scope('CNN_' + str(ii)):
-                        data_stream = tf.nn.relu(
-                            tf.nn.conv2d(data_stream,
-                                         weights[ii],
-                                         strides=[1, 1, 1, 1],
-                                         padding='SAME') + biases[ii])
-                        allout.append(data_stream)
-                data_stream = tf.nn.conv2d(data_stream, weights[-1],
-                                           strides=[1, 1, 1, 1],
-                                           padding='SAME')
-                data_stream = tf.squeeze(data_stream, axis=3)
+                for i, (kernel, qty_filters) in (
+                            enumerate(zip(KERNELS, QTIES_FILTERS))
+                        ):
+                    with tf.name_scope('CNN_' + str(i)):
+                        data_stream = Conv2D(qty_filters, kernel)(data_stream)
+                        data_stream = LeakyReLU()(data_stream)
+                data_stream = Conv2D(1, [1, 3])(data_stream)
+                data_stream = squeeze(data_stream, axis=3)
                 data_stream = data_stream[:, :self.depth_size, :]
-            outputs['vdepth'] = tf.squeeze(data_stream, axis=-1)
+            outputs['vdepth'] = squeeze(data_stream, axis=-1)
 
         return outputs
 
@@ -376,16 +323,3 @@ class RCNN2D(object):
 
             tf.summary.scalar("loss", loss)
         return loss, losses
-
-# Tensorflow compatibility
-def reduce_sum(a, axis=None, keepdims=True):
-    if tf.__version__ == '1.2.0':
-        return tf.reduce_sum(a, axis=axis, keep_dims=keepdims)
-    else:
-        return tf.reduce_sum(a, axis=axis, keepdims=keepdims)
-
-def reduce_max(a, axis=None, keepdims=True):
-    if tf.__version__ == '1.2.0':
-        return tf.reduce_max(a, axis=axis, keep_dims=keepdims)
-    else:
-        return tf.reduce_max(a, axis=axis, keepdims=keepdims)
