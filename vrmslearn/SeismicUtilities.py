@@ -311,7 +311,7 @@ def generate_reflections_ttime(vp,
     return tlabel
 
 
-def two_way_travel_time(vp, pars):
+def two_way_travel_time(vp, dh, t0=0):
     """
     Output the two-way travel-time for each cell in vp
 
@@ -326,17 +326,17 @@ def two_way_travel_time(vp, pars):
     t (numpy.ndarray) :  The two-way travel time of each cell
 
     """
-    vpt = vp[int(pars.source_depth / pars.dh):]
-    t = 2 * np.cumsum(pars.dh / vpt) + pars.tdelay
-    t = t[t < pars.NT * pars.dt]
-    vpt = vpt[:len(t)]
 
-    return vpt, t
+    t = 2 * np.cumsum(dh / vp) + t0
+    # t = t[t < pars.NT * pars.dt]
+    # vpt = vpt[:len(t)]
+
+    return t
 
 
-def interval_velocity_time(vp, pars):
+def vdepth2time(vp, dh, t, t0=0):
     """
-    Output the interval velocity in time
+    Converts interval velocity in depth to inverval velocity in time
 
     @params:
     vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
@@ -347,37 +347,50 @@ def interval_velocity_time(vp, pars):
     vint (numpy.ndarray) : The interval velocity in time
 
     """
-    vpt, t = two_way_travel_time(vp, pars)
-    interpolator = interp1d(t, vpt,
+
+    tp = two_way_travel_time(vp, dh, t0)
+    interpolator = interp1d(tp, vp,
                             bounds_error=False,
                             fill_value="extrapolate",
                             kind="nearest")
-    vint = interpolator(np.arange(0, pars.NT, 1) * pars.dt)
+    vint = interpolator(t)
 
     return vint
 
-def interval_velocity_depth(vp, vint, pars):
-    """
-    Output the interval velocity in time
+#TODO code interval velocity in time to interval velocity in depth
 
-    @params:
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
-    pars (ModelParameter): Parameters used to generate the model
+# def vtime2depth(vint, t):
+#     """
+#     Converts interval velocity in time to interval velocity in depth
+#
+#     @params:
+#     vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
+#     pars (ModelParameter): Parameters used to generate the model
+#
+#     @returns:
+#
+#     vint (numpy.ndarray) : The interval velocity in time
+#
+#     """
+#     #vpt, t = two_way_travel_time(vp, pars)
+#     interpolator = interp1d(t*vint/2.0 + pars.source_depth, vint,
+#                             bounds_error=False,
+#                             fill_value="extrapolate",
+#                             kind="linear")
+#     vdepth = interpolator(np.arange(0, pars.NZ, 1) * pars.dh)
+#
+#     return vdepth
 
-    @returns:
+#TODO Recode calculate vrms into vint2vrms and simply it.
+def vint2vrms(vint, t):
 
-    vint (numpy.ndarray) : The interval velocity in time
+    dt = t[1:]-t[:-1]
+    vrms = np.zeros_like(vint)
+    vrms[:-1] = np.cumsum(dt * (vint[:-1]** 2))
+    vrms[:-1] = np.sqrt(vrms[:-1] / (t[1:] - t[0]))
+    vrms[-1] = vrms[-2]
 
-    """
-    #vpt, t = two_way_travel_time(vp, pars)
-    t = np.arange(0, pars.NT, 1) * pars.dt
-    interpolator = interp1d(t*vint/2.0 + pars.source_depth, vint,
-                            bounds_error=False,
-                            fill_value="extrapolate",
-                            kind="linear")
-    vdepth = interpolator(np.arange(0, pars.NZ, 1) * pars.dh)
-
-    return vdepth
+    return vrms
 
 def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     """
@@ -406,9 +419,7 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     NZ = vp.shape[0]
 
     # Create a numpy array of depths corresponding to the vp grid locations
-    depth = np.zeros((NZ,))
-    for i in range(NZ):
-        depth[i] = i * dh
+    depth = np.arange(0, NZ) * dh
 
     # Create a list of tuples of (relative depths, velocity) of the layers
     # following the depth of the source / receiver depths, till the last layer

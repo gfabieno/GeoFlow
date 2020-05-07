@@ -38,10 +38,25 @@ class SampleGenerator:
         """
         vp, vs, rho = self.model_gen.generate_model(seed=seed)
         data = self.data_gen.compute_data(vp, vs, rho)
-        vp, valid = self.model_gen.generate_labels(vp, vs, rho)
-        return data, [vp, valid]
+        labels, weights = self.model_gen.generate_labels(vp, vs, rho)
 
-    def write(self, exampleid , savedir, data, labels, filename=None):
+        return data, labels, weights
+
+    def read(self, filename):
+
+        file = h5.File(filename, "r")
+        data = file["data"][:]
+        labels = []
+        for labelname in self.model_gen.label_names:
+            labels.append(file[labelname][:])
+        weights = []
+        for wname in self.model_gen.weight_names:
+            weights.append(file[wname][:])
+        file.close()
+
+        return data, labels, weights
+
+    def write(self, exampleid , savedir, data, labels, weights, filename=None):
         """
         This method writes one example in the hdf5 format
 
@@ -63,9 +78,10 @@ class SampleGenerator:
         file = h5.File(filename, "w")
         file["data"] = data
         for ii, label in enumerate(labels):
-            file["label%d" % ii] = label
+            file[self.model_gen.label_names[ii]] = label
+        for ii, weight in enumerate(weights):
+            file[self.model_gen.weight_names[ii]] = weight
         file.close()
-
 
 class DatasetProcess(Process):
     """
@@ -105,9 +121,10 @@ class DatasetProcess(Process):
                 break
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
-                data, labels = self.sample_generator.generate(seed)
+                data, labels, weights = self.sample_generator.generate(seed)
+
                 self.sample_generator.write(seed, self.savepath, data, labels,
-                                            filename=filename)
+                                            weights, filename=filename)
 
 def generate_dataset(pars: ModelParameters,
                      savepath: str,
@@ -144,26 +161,3 @@ def generate_dataset(pars: ModelParameters,
         generators.append(thisgen)
     for gen in generators:
         gen.join()
-
-def aggregate(examples):
-    """
-    This method aggregates a batch of examples created by a SampleGenerator
-    object. To be used with Inputqueue.
-
-    @params:
-    examples (list):       A list of numpy arrays that contain a list with
-                        all elements of example.
-
-    @returns:
-    batch (list): A list of numpy arrays that contains all examples
-                           for each element of a batch.
-
-    """
-    nel = len(examples[0])
-    batch = [[] for _ in range(nel)]
-    for ii in range(nel):
-        batch[ii] = np.stack([el[ii] for el in examples])
-    #data = np.stack([el[0] for el in batch])
-    batch[0] = np.expand_dims(batch[0], axis=-1)
-
-    return batch

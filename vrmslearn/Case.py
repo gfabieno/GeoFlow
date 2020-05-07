@@ -9,12 +9,14 @@ import fnmatch
 import h5py as h5
 import random
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
-from vrmslearn.DatasetGenerator import generate_dataset
+from vrmslearn.DatasetGenerator import generate_dataset, SampleGenerator
 from vrmslearn.ModelGenerator import ModelGenerator
 from vrmslearn.ModelParameters import ModelParameters
 from vrmslearn.SeismicUtilities import random_noise, random_time_scaling, random_static, mute_direct, mute_nearoffset
-from vrmslearn.SeismicUtilities import smooth_velocity_wavelength, sortcmp
+from vrmslearn.SeismicUtilities import smooth_velocity_wavelength, sortcmp, vdepth2time
 from vrmslearn.SeismicGenerator import SeismicGenerator
 
 class Case:
@@ -25,6 +27,9 @@ class Case:
     name = "BaseCase"
     basepath = "Datasets"
     pars = ModelParameters()
+    sample_generator = SampleGenerator(pars)
+    example_order = ['input'] + list(sample_generator.model_gen.label_names) \
+                   + list(sample_generator.model_gen.weight_names)
     seed0 = 0 #Seed of the 1st model generated. Seeds fo subsequent models are
               #incremented by 1
 
@@ -118,27 +123,29 @@ class Case:
 
             filename = random.choice(files)
 
-        file = h5.File(filename, "r")
-        data = file['data'][:]
-        dnames = list(file.keys())
-        dnames = [name for name in dnames if "label" in name]
-        dnames.sort()
-        labels = [[] for _ in dnames]
-        for ii, name in enumerate(dnames):
-            labels[ii] = file[name][:]
+        data, labels, weights = self.sample_generator.read(filename)
 
-        data, labels = preprocess(data, labels, self.pars)
+        data, labels, weights = preprocess(data, labels, weights, self.pars)
 
-        return [data] + labels
+        return [data] + labels + weights
 
     def get_dimensions(self):
         """
         Output the dimension of the data and the labels (first label)
         """
-        examples = self.get_example()
-        data = examples[0]
-        labels = examples[1:]
-        return data.shape, labels[0].shape
+        example = self.get_example()
+        return [e.shape for e in example]
+
+    def ex2batch(self, examples):
+        """
+        Pack a list of examples into a dict with the entry name.
+        Transforms examples = [ex0, ex1, ex2, ...]
+                  -> batch = {names[0]: [ex0[0], ex1[0], ex2[0]],
+                              names[1]: [ex0[1], ex1[1], ex2[1]], ...}
+        """
+        batch = {name: np.stack([el[ii] for el in examples])
+                 for ii, name in enumerate(self.example_order)}
+        return batch
 
     def plot_example(self, filename=None):
         """
@@ -151,9 +158,55 @@ class Case:
         examples = self.get_example(filename=filename)
         data = examples[0]
         labels = examples[1:]
+
         plot_one_example(data, labels, self.pars)
 
-    def plot_model(self, seed=None):
+    def animated_dataset(self, phase='train'):
+        """
+        Produces an animation of a dataset, showing the input data, and the
+        different labels for each example.
+
+        @params:
+        phase (str): Which dataset: either train, test or validate
+        """
+        toplots = self.get_example(phase=phase)
+        toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+        clip = 0.01
+        vmax = np.max(toplots[0]) * clip
+        vmin = -vmax
+
+        fig, axs = plt.subplots(1, len(toplots), figsize=[16, 8])
+        im1 = axs[0].imshow(toplots[0], animated=True, vmin=vmin, vmax=vmax,
+                            aspect='auto', cmap=plt.get_cmap('Greys'))
+        ims = [im1] + [axs[ii].imshow(toplots[ii], animated=True, vmin=0,
+                                      vmax=1, aspect='auto', cmap='inferno')
+                       for ii in range(1, len(toplots))]
+        for ii, ax in enumerate(axs):
+            ax.set_title(self.example_order[ii])
+            plt.colorbar(ims[ii], ax=ax, orientation="horizontal",
+                         pad=0.05, fraction=0.2)
+
+        plt.tight_layout()
+
+        def init():
+            for im, toplot in zip(ims, toplots):
+                im.set_array(toplot)
+            return ims
+
+        def animate(t):
+            toplots = self.get_example(phase=phase)
+            toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+            for im, toplot in zip(ims, toplots):
+                im.set_array(toplot)
+            return ims
+
+        anim = animation.FuncAnimation(fig, animate, init_func=init,
+                                       frames=len(self.files[phase]),
+                                       interval=3000, blit=True, repeat=True)
+        plt.show()
+
+
+def plot_model(self, seed=None):
         """
         Plot a velocity model for this case.
 
@@ -191,7 +244,31 @@ class CaseCollection:
         case = random.choice(self.cases)
         return case.get_example(phase=phase)
 
-def preprocess(data, labels, pars):
+def postprocess(labels, preds, pars, vproc=False):
+    """
+    A function to postprocess the predictions.
+
+    @params:
+    labels  (dict): A dict containing {labelname: label}
+    pars   (ModelParameter): A parameters of this case
+
+    @returns:
+    labels (dict):      The preprocessed labels {labelname: processed_label}
+    """
+    if vproc:
+        for el in ['vrms', 'vint', 'vdepth']:
+            if el in labels:
+                labels[el] = labels[el] * (pars.vp_max - pars.vp_min) + pars.vp_min
+            if el in preds:
+                preds[el] = preds[el] * (pars.vp_max - pars.vp_min) + pars.vp_min
+    if 'ref' in preds:
+        preds['ref'] = np.argmax(preds['ref'], axis=2)
+
+    return labels, preds
+
+
+
+def preprocess(data, labels, weights, pars):
     """
     A function to preprocess the data when a Case object reads an example from
     file.
@@ -205,13 +282,11 @@ def preprocess(data, labels, pars):
     data (numpy.array): The preprocessed data
     labels (list):      The preprocessed label list
     """
-    vp = labels[0]
-    valid = labels[1]
+    vp = labels[-1]
 
     """______________Adding random noises to the data___________________"""
     if pars.random_time_scaling:
-        data = random_time_scaling(data,
-                                   pars.dt * pars.resampling)
+        data = random_time_scaling(data, pars.dt * pars.resampling)
     if pars.mute_dir:
         data = mute_direct(data, vp[0], pars)
     if pars.random_static:
@@ -221,35 +296,47 @@ def preprocess(data, labels, pars):
     if pars.mute_nearoffset:
         data = mute_nearoffset(data, pars.mute_nearoffset_max)
 
-    """____________________Smooth the velocity model_________________________"""
-    if pars.model_smooth_x != 0 or pars.model_smooth_t != 0:
-        vp = smooth_velocity_wavelength(vp, pars.dh,
-                                        pars.model_smooth_t,
-                                        pars.model_smooth_x)
-
     """___________________Resort the data according to CMP___________________"""
     gen = SeismicGenerator(pars)
     if not pars.train_on_shots:
         data, datapos = sortcmp(data, gen.src_pos_all, gen.rec_pos_all)
     else:
+        data = np.reshape(data, [data.shape[0],
+                                 data.shape[1],
+                                 gen.src_pos_all.shape[1]])
         datapos = gen.src_pos_all[0, :]
 
-    """________ Resample velocity to correspond to data position_________"""
+    """____________________Smooth the velocity model_________________________"""
+    if pars.model_smooth_x != 0 or pars.model_smooth_t != 0:
+        labels[-1] = smooth_velocity_wavelength(labels[-1], pars.dh,
+                                                pars.model_smooth_t,
+                                                pars.model_smooth_x)
+
+    """________ Resample labels in x to correspond to data position_________"""
     x = np.arange(0, pars.NX) * pars.dh
     ind1 = np.argmax(x >= datapos[0])
     ind2 = -np.argmax(x[::-1] <= datapos[-1])
-    # Sampling velocity at the data position
-    valid = valid[:, ind1:ind2:pars.ds]
-    vp = vp[:, ind1:ind2:pars.ds]
-    if vp.shape[-1] != data.shape[-1]:
-        raise ValueError("number of x positions in vp and number cmp mismatch")
+
+    labels = [l[:, ind1:ind2:pars.ds] for l in labels]
+    weights = [w[:, ind1:ind2:pars.ds] for w in weights]
+
+    for l in labels:
+        if l.shape[-1] != data.shape[-1]:
+            raise ValueError("number of x positions in label and "
+                             "number cmp mismatch")
 
     # We can predict velocities under the source and receiver arrays only
-    sz = int(gen.src_pos_all[2, 0] / pars.dh)
-    vp = vp[sz:, :]
-    valid = valid[sz:, :]
+    sz = int(pars.source_depth / pars.dh)
 
-    return data, [vp, valid]
+    labels[-1] = labels[-1][sz:, :]
+    weights[-1] = weights[-1][sz:, :]
+
+    data = np.expand_dims(data, axis=-1)
+    # labels = [np.expand_dims(label, axis=-1) for label in labels]
+    # weights = [np.expand_dims(weight, axis=-1) for weight in weights]
+
+    return data, labels, weights
+
 
 def plot_one_example(data, labels, pars):
     """
@@ -296,5 +383,5 @@ def plot_one_example(data, labels, pars):
         p = ax[ii].get_position().get_points().flatten()
         #axis_cbar = fig.add_axes([p[0], 0.03, p[2] - p[0], 0.02])
         plt.colorbar(ims[ii], ax=ax[ii])
-
+    plt.tight_layout()
     plt.show()
