@@ -126,7 +126,7 @@ class Tester(object):
         return labels, preds
 
     def plot_predictions(self,
-                         labelnames: str,
+                         labelnames: list,
                          savepath: str,
                          quantity: int = 1,
                          image=True):
@@ -169,7 +169,7 @@ class Tester(object):
             plt.show()
 
     def animated_predictions(self,
-                             labelnames: str,
+                             labelnames: list,
                              savepath: str,
                              quantity: int = None,
                              image: bool = True):
