@@ -66,8 +66,8 @@ class Case_2Dtest(Case):
     name = "2Dtest"
     pars = ModelParameters()
 
-    pars.NX = 350
-    pars.NZ = 256
+    pars.NX = 150
+    pars.NZ = 100
 
     pars.marine = True
 
@@ -92,7 +92,7 @@ class Case_2Dtest(Case):
     pars.dg = 5
     pars.ds = 5
     pars.gmin = pars.dg
-    pars.gmax = 120
+    pars.gmax = pars.NX - pars.gmin
 
     pars.flat = False
 
