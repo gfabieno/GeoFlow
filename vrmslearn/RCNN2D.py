@@ -166,13 +166,23 @@ class RCNN2D(object):
                         enumerate(zip(KERNELS, QTIES_FILTERS))
                     ):
                 with tf.name_scope('CNN_' + str(i)):
-                    data_stream = Conv3D(qty_filters, kernel)(data_stream)
+                    conv3d = Conv3D(
+                        qty_filters,
+                        kernel,
+                        padding='same',
+                    )
+                    data_stream = conv3d(data_stream)
                     data_stream = LeakyReLU()(data_stream)
         self.output_encoder = data_stream
 
         with tf.name_scope('Time_RCNN'):
             for _ in range(7):
-                data_stream = Conv3D(32, [15, 3, 1])(data_stream)
+                conv3d = Conv3D(
+                    32,
+                    [15, 3, 1],
+                    padding='same',
+                )
+                data_stream = conv3d(data_stream)
                 data_stream = LeakyReLU()(data_stream)
         self.output_time_rcnn = data_stream
 
@@ -183,7 +193,12 @@ class RCNN2D(object):
 
         if 'ref' in self.out_names:
             with tf.name_scope('Decode_refevent'):
-                outputs['ref'] = Conv2D(2, [1, 1])(data_stream)
+                conv2d = Conv2D(
+                    2,
+                    [1, 1],
+                    padding='same',
+                )
+                outputs['ref'] = conv2d(data_stream)
 
         data_stream = Permute((2, 1, 3))(data_stream)
         batches, shots, timesteps, filter_dim = data_stream.get_shape()
@@ -205,7 +220,12 @@ class RCNN2D(object):
                     [batches, shots, timesteps, UNITS],
                 )
                 decode_rms = Permute((2, 1, 3))(decode_rms)
-                decode_rms = Conv2D(1, [1, 1])(decode_rms)
+                conv2d = Conv2D(
+                    1,
+                    [1, 1],
+                    padding='same',
+                )
+                decode_rms = conv2d(decode_rms)
                 outputs['vrms'] = squeeze(decode_rms, axis=-1)
 
         with tf.name_scope('RNN_vint'):
@@ -220,7 +240,12 @@ class RCNN2D(object):
                     [batches, shots, timesteps, UNITS],
                 )
                 decode_int = Permute((2, 1, 3))(decode_int)
-                decode_int = Conv2D(1, [1, 1, UNITS])(decode_int)
+                conv2d = Conv2D(
+                    1,
+                    [1, 1],
+                    padding='same',
+                )
+                decode_int = conv2d(decode_int)
                 outputs['vint'] = squeeze(decode_int, axis=-1)
 
         #TODO test depth predicitons
