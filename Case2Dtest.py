@@ -63,6 +63,24 @@ if __name__ == "__main__":
         help="beta2 for adadelta"
     )
     parser.add_argument(
+        "--loss_ref",
+        type=float,
+        default=0.8,
+        help="weight of event referencing in loss"
+    )
+    parser.add_argument(
+        "--loss_vrms",
+        type=float,
+        default=0.1,
+        help="weight of vrms in loss"
+    )
+    parser.add_argument(
+        "--loss_vint",
+        type=float,
+        default=0.1,
+        help="weight of vint in loss"
+    )
+    parser.add_argument(
         "--nmodel",
         type=int,
         default=1,
@@ -135,7 +153,12 @@ if __name__ == "__main__":
                 alpha=0.1,
                 beta=0.1,
                 use_peepholes=args.use_peepholes,
-                loss_scales={'ref': 0.2, 'vrms': 0.4, 'vint': 0.4})
+                loss_scales={
+                    'ref': args.loss_ref,
+                    'vrms': args.loss_vrms,
+                    'vint': args.loss_vint,
+                },
+                out_names={'ref', 'vrms', 'vint'})
     """
         _______________________Train the model_____________________________
     """
