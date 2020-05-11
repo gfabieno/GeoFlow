@@ -95,6 +95,7 @@ class Case_2Dtest(Case):
     pars.gmax = pars.NX - pars.gmin
 
     pars.flat = False
+    pars.train_on_shots = True
 
     def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
 

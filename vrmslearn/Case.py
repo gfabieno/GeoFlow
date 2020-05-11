@@ -302,8 +302,9 @@ def preprocess(data, labels, weights, pars):
         data, datapos = sortcmp(data, gen.src_pos_all, gen.rec_pos_all)
     else:
         data = np.reshape(data, [data.shape[0],
-                                 data.shape[1],
-                                 gen.src_pos_all.shape[1]])
+                                 gen.src_pos_all.shape[1],
+                                 -1])
+        data = data.swapaxes(1, 2)
         datapos = gen.src_pos_all[0, :]
 
     """____________________Smooth the velocity model_________________________"""
@@ -383,5 +384,5 @@ def plot_one_example(data, labels, pars):
         p = ax[ii].get_position().get_points().flatten()
         #axis_cbar = fig.add_axes([p[0], 0.03, p[2] - p[0], 0.02])
         plt.colorbar(ims[ii], ax=ax[ii])
-    plt.tight_layout()
+
     plt.show()
