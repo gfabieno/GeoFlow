@@ -140,29 +140,32 @@ if __name__ == "__main__":
 
     # TODO Test different loss_scales
     sizes = case.get_dimensions()
-    nn = RCNN2D(input_size=sizes[0],
-                depth_size=sizes[-1][0],
-                batch_size=batch_size,
-                alpha=0.1,
-                beta=0.1,
-                use_peepholes=args.use_peepholes,
-                loss_scales={
-                    'ref': args.loss_ref,
-                    'vrms': args.loss_vrms,
-                    'vint': args.loss_vint,
-                },
-                out_names={'ref', 'vrms', 'vint'})
+    nn = RCNN2D(
+        input_size=sizes[0],
+        depth_size=sizes[-1][0],
+        batch_size=batch_size,
+        alpha=0.1,
+        beta=0.1,
+        use_peepholes=args.use_peepholes,
+        loss_scales={
+            'ref': args.loss_ref,
+            'vrms': args.loss_vrms,
+            'vint': args.loss_vint,
+        },
+        out_names={'ref', 'vrms', 'vint'},
+    )
 
     # Train the model.
     if args.training in [1, 2]:
-        trainer = Trainer(nn=nn,
-                          case=case,
-                          checkpoint_dir=args.logdir,
-                          learning_rate=args.lr,
-                          beta1=args.beta1,
-                          beta2=args.beta2,
-                          epsilon=args.eps)
-
+        trainer = Trainer(
+            nn=nn,
+            case=case,
+            checkpoint_dir=args.logdir,
+            learning_rate=args.lr,
+            beta1=args.beta1,
+            beta2=args.beta2,
+            epsilon=args.eps,
+        )
         trainer.train_model(niter=args.epochs)
 
     # Test model.
@@ -172,13 +175,19 @@ if __name__ == "__main__":
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
         restore_from = tf.train.latest_checkpoint(args.logdir)
-        tester.test_dataset(savepath=savepath,
-                            toeval={'ref': nn.outputs['ref'],
-                                    'vrms': nn.outputs['vrms'],
-                                    'vint': nn.outputs['vint']},
-                            restore_from=restore_from)
+        tester.test_dataset(
+            savepath=savepath,
+            toeval={
+                'ref': nn.outputs['ref'],
+                'vrms': nn.outputs['vrms'],
+                'vint': nn.outputs['vint'],
+            },
+            restore_from=restore_from,
+        )
 
         if args.plot:
-            tester.animated_predictions(labelnames=["ref", 'vrms', 'vint'],
-                                        savepath=savepath,
-                                        image=False)
+            tester.animated_predictions(
+                labelnames=["ref", 'vrms', 'vint'],
+                savepath=savepath,
+                image=False,
+            )
