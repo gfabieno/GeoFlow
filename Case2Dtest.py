@@ -1,4 +1,4 @@
-from Cases_define import Case_2Dtest, Case_1Dsmall
+from Cases_define import *
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
@@ -13,6 +13,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Add arguments to parse for training
+    parser.add_argument(
+        "--case",
+        type=str,
+        help="Name of the case class from `Cases_define` to use"
+    )
     parser.add_argument(
         "--logdir",
         type=str,
@@ -120,18 +125,12 @@ if __name__ == "__main__":
     """
         _______________________Define the parameters ______________________
     """
-    #TODO Input argument choosing which case to run
-
-    # case = Case_2Dtest(
-    #     noise=args.noise,
-    #     trainsize=10000,
-    #     validatesize=1000,
-    #     testsize=1000,
-    # )
-    case = Case_1Dsmall(
-        trainsize=100,
-        validatesize=10,
-        testsize=10)
+    # Define the parameters.
+    case = eval(args.case)(
+        trainsize=10000,
+        validatesize=0,
+        testsize=100,
+    )
     if args.training == 3 and case.testsize < batch_size:
         batch_size = case.testsize
 
