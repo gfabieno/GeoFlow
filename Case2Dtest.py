@@ -116,15 +116,12 @@ if __name__ == "__main__":
         help="1: Validate data by plotting."
     )
 
-    # Parse the input for training parameters
+    # Parse the input for training parameters.
     args, unparsed = parser.parse_known_args()
 
     logdir = args.logdir
     batch_size = args.batchsize
 
-    """
-        _______________________Define the parameters ______________________
-    """
     # Define the parameters.
     case = eval(args.case)(
         trainsize=10000,
@@ -134,10 +131,7 @@ if __name__ == "__main__":
     if args.training == 3 and case.testsize < batch_size:
         batch_size = case.testsize
 
-    """
-        _______________________Generate the dataset________________________
-    """
-
+    # Generate the dataset.
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
 
@@ -158,9 +152,8 @@ if __name__ == "__main__":
                     'vint': args.loss_vint,
                 },
                 out_names={'ref', 'vrms', 'vint'})
-    """
-        _______________________Train the model_____________________________
-    """
+
+    # Train the model.
     if args.training in [1, 2]:
         trainer = Trainer(nn=nn,
                           case=case,
@@ -171,9 +164,8 @@ if __name__ == "__main__":
                           epsilon=args.eps)
 
         trainer.train_model(niter=args.epochs)
-    """
-        _______________________Validate results_____________________________
-    """
+
+    # Test model.
     if args.training == 3:
         tester = Tester(nn=nn, case=case)
         savepath = os.path.join(case.datatest, "pred")
