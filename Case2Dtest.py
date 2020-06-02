@@ -32,10 +32,10 @@ if __name__ == "__main__":
              "3: testing"
     )
     parser.add_argument(
-        "--epochs",
+        "--niter",
         type=int,
         default=500,
-        help="number of training epochs"
+        help="number of training iterations"
     )
     parser.add_argument(
         "--lr",
@@ -172,7 +172,7 @@ if __name__ == "__main__":
             beta2=args.beta2,
             epsilon=args.eps,
         )
-        trainer.train_model(niter=args.epochs)
+        trainer.train_model(niter=args.niter)
 
     # Test model.
     if args.training == 3:
