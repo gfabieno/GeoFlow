@@ -66,10 +66,9 @@ class SeismicGenerator(SeisCL):
             # Add just one source in the middle
             sx = np.arange(pars.NX / 2, 1 + pars.NX / 2) * pars.dh
         else:
-            pad_sources = 150
             # Compute several sources
-            l1 = pars.Npad + 1 + pad_sources
-            l2 = pars.NX - pars.Npad - pad_sources
+            l1 = pars.Npad + 1
+            l2 = pars.NX - pars.Npad
             sx = np.arange(l1, l2, pars.ds) * pars.dh
         sz = np.full_like(sx, pars.source_depth)
         sid = np.arange(0, sx.shape[0])
