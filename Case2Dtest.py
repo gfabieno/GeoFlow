@@ -86,6 +86,12 @@ if __name__ == "__main__":
         help="weight of vint in loss"
     )
     parser.add_argument(
+        "--loss_vdepth",
+        type=float,
+        default=0.0,
+        help="weight of vdepth in loss"
+    )
+    parser.add_argument(
         "--nmodel",
         type=int,
         default=1,
@@ -138,7 +144,6 @@ if __name__ == "__main__":
     if args.plot:
         case.animated_dataset()
 
-    # TODO Test different loss_scales
     sizes = case.get_dimensions()
     nn = RCNN2D(
         input_size=sizes[0],
@@ -151,8 +156,9 @@ if __name__ == "__main__":
             'ref': args.loss_ref,
             'vrms': args.loss_vrms,
             'vint': args.loss_vint,
+            'vdepth': args.loss_vdepth,
         },
-        out_names={'ref', 'vrms', 'vint'},
+        out_names={'ref', 'vrms', 'vint', 'vdepth'},
     )
 
     # Train the model.
