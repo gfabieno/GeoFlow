@@ -275,9 +275,19 @@ class RCNN2D(object):
                             enumerate(zip(KERNELS, QTIES_FILTERS))
                         ):
                     with tf.name_scope('CNN_' + str(i)):
-                        data_stream = Conv2D(qty_filters, kernel)(data_stream)
+                        conv_2d = Conv2D(
+                            qty_filters,
+                            kernel,
+                            padding='same',
+                        )
+                        data_stream = conv_2d(data_stream)
                         data_stream = LeakyReLU()(data_stream)
-                data_stream = Conv2D(1, [1, 3])(data_stream)
+                conv_2d = Conv2D(
+                    1,
+                    [1, 3],
+                    padding='same',
+                )
+                data_stream = conv_2d(data_stream)
                 data_stream = squeeze(data_stream, axis=3)
                 data_stream = data_stream[:, :self.depth_size, :]
             outputs['vdepth'] = squeeze(data_stream, axis=-1)
