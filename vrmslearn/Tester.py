@@ -231,10 +231,10 @@ class Tester(object):
                 ims.append(im1)
                 ims.append(im2)
             else:
-                y = np.arange(label[labelname].shape[0])
+                y = np.arange(pred[labelname].shape[0])
 
-                im1, = axs[0, 1 + ii].plot(label[labelname][:, 0], y)
-                im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0], y)
+                im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
+                im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
                 axs[0, 1 + ii].set_xlim(-0.1, 1.1)
                 axs[0, 1 + ii].invert_yaxis()

@@ -187,13 +187,14 @@ if __name__ == "__main__":
                 'ref': nn.outputs['ref'],
                 'vrms': nn.outputs['vrms'],
                 'vint': nn.outputs['vint'],
+                'vdepth': nn.outputs['vdepth'],
             },
             restore_from=restore_from,
         )
 
         if args.plot:
             tester.animated_predictions(
-                labelnames=["ref", 'vrms', 'vint'],
+                labelnames=["ref", 'vrms', 'vint', 'vdepth'],
                 savepath=savepath,
                 image=False,
             )
