@@ -328,11 +328,14 @@ class RCNN2D(object):
                     losses[lbl] = []
                     if lbl is 'vdepth':
                         weight = self.weights['dweight']
+                        weight = weight[:, :self.input_size[0], :]
                     else:
                         weight = self.weights['tweight']
                     # Calculate mean squared error of vp velocity
                     output = self.outputs[lbl]
                     label = self.labels[lbl]
+                    if lbl is 'vdepth':
+                        label = label[:, :self.input_size[0], :]
                     if fact1 > 0:
                         num = tf.reduce_sum(weight * (label - output) ** 2)
                         den = tf.reduce_sum(weight * label ** 2)
