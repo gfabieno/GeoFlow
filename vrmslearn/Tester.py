@@ -186,7 +186,10 @@ class Tester(object):
                         else plot 1D profiles.
         """
         if quantity is None:
-            examples = [os.path.basename(f) for f in self.case.files["test"]]
+            examples = [
+                os.path.basename(f) for f in self.case.files["test"]
+                if os.path.basename(f) in os.listdir(savepath)
+            ]
         else:
             examples = [os.path.basename(self.case.files["test"][ii])
                         for ii in range(quantity)]
