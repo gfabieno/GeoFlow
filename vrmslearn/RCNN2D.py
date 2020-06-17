@@ -289,7 +289,7 @@ class RCNN2D(object):
                 )
                 data_stream = conv_2d(data_stream)
                 data_stream = squeeze(data_stream, axis=3)
-                # data_stream = data_stream[:, :self.depth_size, :]
+                data_stream = data_stream[:, :self.depth_size, :]
                 outputs['vdepth'] = data_stream
 
         return outputs
