@@ -196,5 +196,5 @@ if __name__ == "__main__":
             tester.animated_predictions(
                 labelnames=["ref", 'vrms', 'vint', 'vdepth'],
                 savepath=savepath,
-                image=False,
+                image="2D" in args.case,
             )
