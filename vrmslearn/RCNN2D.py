@@ -176,12 +176,12 @@ class RCNN2D(object):
         self.output_encoder = data_stream
 
         with tf.name_scope('Time_RCNN'):
+            conv3d = Conv3D(
+                32,
+                [15, 3, 1],
+                padding='same',
+            )
             for _ in range(7):
-                conv3d = Conv3D(
-                    32,
-                    [15, 3, 1],
-                    padding='same',
-                )
                 data_stream = conv3d(data_stream)
                 data_stream = LeakyReLU()(data_stream)
         self.output_time_rcnn = data_stream
