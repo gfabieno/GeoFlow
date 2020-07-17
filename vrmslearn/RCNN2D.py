@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import (
-    Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
+    Conv3D, Conv2D, LeakyReLU, LSTM, Permute, Input,
 )
 from tensorflow.keras.backend import (
     max as reduce_max, sum as reduce_sum, squeeze, reshape,
@@ -16,7 +16,7 @@ from tensorflow.keras.backend import (
 from vrmslearn.Sequence import OUTS
 
 
-class RCNN2D(Model):
+class RCNN2D:
     """
     This class build a NN based on recursive CNN and LSTM that can predict
     2D vp velocity
@@ -45,21 +45,44 @@ class RCNN2D(Model):
 
         @returns:
         """
-        super().__init__()
-
         for l in out_names:
             if l not in OUTS:
                 raise ValueError(f"`out_names` should be from {OUTS}")
-        self.out_names = out_names
+        self.out_names = [out for out in OUTS if out in out_names]
 
         self.input_size = input_size
         self.depth_size = depth_size
         self.batch_size = batch_size
         self.use_peepholes = use_peepholes
 
-    def call(self, inputs):
+        self.inputs = self.build_inputs()
+        self.outputs = self.build_network()
+        self.model = Model(
+            inputs=self.inputs,
+            outputs=self.outputs,
+            name="RCNN2D",
+        )
+
+        # `RCNN2D` has the same interface as a keras `Model`, but subclassing
+        # is avoided by using the functional API. This is necessary for model
+        # intelligibility.
+        self.compile = self.model.compile
+        self.fit = self.model.fit
+        self.predict = self.model.predict
+
+    def build_inputs(self):
+        with tf.name_scope('Inputs'):
+            inputs = Input(
+                shape=self.input_size,
+                batch_size=self.batch_size,
+                dtype=tf.float32,
+            )
+
+        return inputs
+
+    def build_network(self):
         outputs = {}
-        data_stream = self.scale_inputs(inputs)
+        data_stream = self.scale_inputs(self.inputs)
 
         with tf.name_scope('Encoder'):
             KERNELS = [
@@ -199,7 +222,7 @@ class RCNN2D(Model):
                 data_stream = data_stream[:, :self.depth_size, :]
                 outputs['vdepth'] = data_stream
 
-        return [outputs[out] for out in OUTS if out in outputs.keys()]
+        return [outputs[out] for out in self.out_names]
 
     def scale_inputs(self, inputs):
         """
