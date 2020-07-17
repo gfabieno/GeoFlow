@@ -3,17 +3,19 @@
 """
 This class tests a NN on a dataset.
 """
+
 import fnmatch
 import os
+from os.path import join
 
 import h5py as h5
-import tensorflow as tf
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case, postprocess
+from vrmslearn.Sequence import Sequence
 
 
 class Tester(object):
@@ -23,23 +25,24 @@ class Tester(object):
 
     def __init__(self,
                  nn: RCNN2D,
+                 sequence: Sequence,
                  case: Case):
         """
         Initialize the tester
 
         @params:
         nn (RCNN) : A tensforlow neural net
-        data_generator (SeismicGenerator): A data generator object
-
-        @returns:
+        sequence (Sequence) : A Sequence object providing data
         """
         self.nn = nn
+        self.sequence = sequence
         self.case = case
 
     def test_dataset(self,
                      savepath: str,
                      toeval: dict,
                      filename: str = 'example_*',
+                     batch_size: int = 1,
                      restore_from: str = None):
         """
         This method evaluate predictions on all examples contained in savepath,
@@ -49,49 +52,36 @@ class Tester(object):
         savepath (str) : The path in which the test examples are found
         toeval (dict): Dict of name: tensors to predict
         filename (str): The structure of the examples' filenames
+        batch_size (int): quantity of examples per batch
         restore_from (str): File containing the trained weights
 
         @returns:
         """
         eval_names = toeval.keys()
-        eval_tensors = [toeval[key] for key in eval_names]
+        if restore_from is not None:
+            self.nn.load_weights(
+                join(self.checkpoint_dir, restore_from)
+            )
 
-        predictions = fnmatch.filter(os.listdir(savepath), filename)
-        with self.nn.graph.as_default():
-            saver = tf.train.Saver()
-            with tf.Session() as sess:
-                saver.restore(sess, restore_from)
-                batch = []
-                bexamples = []
-                for ii, example in enumerate(self.case.files["test"]):
-                    predname = os.path.basename(example)
-                    if predname not in predictions:
-                        bexamples.append(os.path.join(savepath, predname))
-                        batch.append(self.case.get_example(filename=example))
+        evaluated = self.nn.predict(
+            self.sequence,
+            max_queue_size=10,
+            workers=10,
+            use_multiprocessing=True
+        )
 
-                    cond1 = len(batch) == self.nn.batch_size
-                    cond2 = len(batch) % self.nn.batch_size == self.case.testsize
-                    if cond1 or cond2:
-                        batch = self.case.ex2batch(batch)
-                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
-                                     for lbl in self.nn.feed_dict}
-                        evaluated = sess.run(eval_tensors, feed_dict=feed_dict)
-
-                        for jj, bexample in enumerate(bexamples):
-                            savefile = h5.File(bexample, "w")
-                            for kk, el in enumerate(eval_names):
-                                if el in savefile.keys():
-                                    del savefile[el]
-                                savefile[el] = evaluated[kk][jj, :]
-                            savefile.close()
-                        batch = []
-                        bexamples = []
+        for i, bexample in enumerate(evaluated):
+            with h5.File(bexample, "w") as savefile:
+                for j, el in enumerate(eval_names):
+                    if el in savefile.keys():
+                        del savefile[el]
+                    savefile[el] = evaluated[j][i, :]
 
     def get_preds(self,
                   prednames: list,
                   savepath: str,
                   examples: list = None,
-                  filename: str ='example_*'):
+                  filename: str = 'example_*'):
         """
         This method returns the labels and predictions for labels in prednames.
 

@@ -5,6 +5,7 @@ Class to build the neural network for 2D prediction vp in depth
 """
 import numpy as np
 import tensorflow as tf
+from tensorflow.keras import Model
 from tensorflow.keras.layers import (
     Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
 )
@@ -12,7 +13,10 @@ from tensorflow.keras.backend import (
     max as reduce_max, sum as reduce_sum, squeeze, reshape,
 )
 
-class RCNN2D(object):
+from vrmslearn.Sequence import OUTS
+
+
+class RCNN2D(Model):
     """
     This class build a NN based on recursive CNN and LSTM that can predict
     2D vp velocity
@@ -22,7 +26,6 @@ class RCNN2D(object):
                  input_size: list = (0, 0, 0),
                  depth_size: int = 0,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
-                 loss_scales: dict = None,
                  batch_size: int = 1,
                  alpha: float = 0,
                  beta: float = 0,
@@ -42,117 +45,21 @@ class RCNN2D(object):
 
         @returns:
         """
+        super().__init__()
 
-        if loss_scales is None:
-            loss_scales = {'ref': 1.0}
-
-        outs = ('ref', 'vrms', 'vint', 'vdepth')
         for l in out_names:
-            if l not in outs:
-                raise ValueError("out_names should be from " + str(outs))
+            if l not in OUTS:
+                raise ValueError(f"`out_names` should be from {OUTS}")
+        self.out_names = out_names
+
         self.input_size = input_size
         self.depth_size = depth_size
-        self.out_names = out_names
-        self.graph = tf.Graph()
         self.batch_size = batch_size
         self.use_peepholes = use_peepholes
-        with self.graph.as_default():
-            self.global_step = tf.train.get_or_create_global_step()
-            self.input, self.labels, self.weights = self.generate_io()
-            self.feed_dict = {'input': self.input,
-                              **self.labels,
-                              **self.weights}
-            self.input_scaled = self.scale_input()
-            self.outputs = self.build_neural_net()
-            self.loss, self.losses = self.define_loss(alpha=alpha, beta=beta,
-                                                      scales=loss_scales)
 
-
-    def generate_io(self):
-        """
-        This method creates the input nodes.
-
-        @params:
-
-        @returns:
-        input_data (tf.tensor)  : Placeholder of CMP gather.
-        label_vp (tf.placeholder) : Placeholder of RMS velocity labels.
-        weights (tf.placeholder) : Placeholder of time weights
-        label_ref (tf.placeholder) : Placeholder of primary reflection labels.
-        label_vint (tf.placeholder) : Placeholder of interval velocity labels.
-        """
-
-        with tf.name_scope('Inputs'):
-            # Create placeholder for input
-            input_data = tf.placeholder(dtype=tf.float32,
-                                        shape=[self.batch_size,
-                                               self.input_size[0],
-                                               self.input_size[1],
-                                               self.input_size[2],
-                                               1],
-                                        name='data')
-            labels = {}
-            weights = {}
-            timeout = False
-            for label in ['ref', 'vrms', 'vint']:
-                if label in self.out_names:
-                    labels[label] = tf.placeholder(dtype=tf.float32,
-                                                   shape=[self.batch_size,
-                                                          self.input_size[0],
-                                                          self.input_size[2]],
-                                                   name=label)
-                    timeout=True
-            if timeout:
-                weights['tweight'] = tf.placeholder(dtype=tf.float32,
-                                                  shape=[self.batch_size,
-                                                         self.input_size[0],
-                                                         self.input_size[2]],
-                                                  name='tweight')
-
-            if 'vdepth' in self.out_names:
-                labels['vdepth'] = tf.placeholder(dtype=tf.float32,
-                                                  shape=[self.batch_size,
-                                                         self.depth_size,
-                                                         self.input_size[2]],
-                                                  name='vdepth')
-                weights['dweight'] = tf.placeholder(dtype=tf.float32,
-                                                   shape=[self.batch_size,
-                                                          self.depth_size,
-                                                          self.input_size[2]],
-                                                   name='dweight')
-
-        return input_data, labels, weights
-
-    def scale_input(self):
-        """
-        Scale each trace to its RMS value, and each CMP to its RMS.
-
-        @params:
-
-        @returns:
-        scaled (tf.tensor)  : The scaled input data
-        """
-        scaled = self.input / (tf.sqrt(reduce_sum(self.input ** 2, axis=[1],
-                                       keepdims=True))
-                               + np.finfo(np.float32).eps)
-
-        scaled = 1000*scaled / tf.reduce_max(scaled, axis=[1, 2, 3],
-                                             keepdims=True)
-
-        return scaled
-
-    def build_neural_net(self):
-        """
-        This method build the neural net in Tensorflow
-
-        @params:
-
-        @returns:
-        output_vp (tf.tensor) : The vp velocity predictions
-        """
-
+    def call(self, inputs):
         outputs = {}
-        data_stream = self.input_scaled
+        data_stream = self.scale_inputs(inputs)
 
         with tf.name_scope('Encoder'):
             KERNELS = [
@@ -292,72 +199,22 @@ class RCNN2D(object):
                 data_stream = data_stream[:, :self.depth_size, :]
                 outputs['vdepth'] = data_stream
 
-        return outputs
+        return [outputs[out] for out in OUTS if out in outputs.keys()]
 
-    def define_loss(self, alpha=0.2, beta=0.1, scales={'ref': 1.0}):
+    def scale_inputs(self, inputs):
         """
-        This method creates a node to compute the loss function.
-        The loss is normalized.
+        Scale each trace to its RMS value, and each CMP to its RMS.
 
         @params:
 
         @returns:
-        loss (tf.tensor) : Output of node calculating loss.
+        scaled (tf.tensor)  : The scaled input data
         """
-        with tf.name_scope("Loss_Function"):
-
-            losses = {}
-            loss = 0
-            fact1 = (1 - alpha - beta)
-            for lbl in scales:
-                if lbl == 'ref':
-                    #  Logistic regression of zero offset time of reflections
-                    weightsr = tf.expand_dims(self.weights['tweight'], -1)
-                    # if self.with_masking:
-                    #     weightsr = tf.expand_dims(self.weights['wtime'], -1)
-                    # else:
-                    #     weightsr = 1.0
-                    preds = self.outputs[lbl] * weightsr
-                    labels = tf.one_hot(tf.cast(self.labels[lbl], tf.int32), 2) * weightsr
-
-                    losses[lbl] = [scales[lbl] * tf.reduce_mean(
-                            tf.nn.softmax_cross_entropy_with_logits_v2(logits=preds,
-                                                                    labels=labels))]
-                    loss += losses[lbl][-1]
-                elif lbl in self.outputs:
-                    losses[lbl] = []
-                    if lbl == 'vdepth':
-                        weight = self.weights['dweight']
-                        weight = weight[:, :self.input_size[0], :]
-                    else:
-                        weight = self.weights['tweight']
-                    # Calculate mean squared error of vp velocity
-                    output = self.outputs[lbl]
-                    label = self.labels[lbl]
-                    if lbl == 'vdepth':
-                        label = label[:, :self.input_size[0], :]
-                    if fact1 > 0:
-                        num = tf.reduce_sum(weight * (label - output) ** 2)
-                        den = tf.reduce_sum(weight * label ** 2)
-                        losses[lbl].append(scales[lbl] * fact1 * num / den)
-                        loss += losses[lbl][-1]
-                    #  Calculate mean squared error of the z derivative
-                    if alpha > 0:
-                        dlabel = label[:, 1:, :] - label[:, :-1, :]
-                        dout = output[:, 1:, :] - output[:, :-1, :]
-                        num = tf.reduce_sum(weight[:, :-1, :]*(dlabel - dout) ** 2)
-                        den = tf.reduce_sum(weight[:, :-1, :]*dlabel ** 2 + 0.000001)
-                        losses[lbl].append(scales[lbl] * alpha * num / den)
-                        loss += losses[lbl][-1]
-                    # Minimize interval velocity gradient (blocky inversion)
-                    if beta > 0:
-                        num = tf.norm((output[:, 1:, :]
-                                       - output[:, :-1, :]), ord=1)
-                        num += tf.norm((output[:, :, 1:]
-                                       - output[:, :, :-1]), ord=1)
-                        den = tf.norm(output, ord=1) / 0.02
-                        losses[lbl].append(scales[lbl] * beta * num / den)
-                        loss += losses[lbl][-1]
-
-            tf.summary.scalar("loss", loss)
-        return loss, losses
+        scaled = inputs / (
+            tf.sqrt(reduce_sum(inputs ** 2, axis=[1],  keepdims=True))
+            + np.finfo(np.float32).eps
+        )
+        scaled = 1000 * scaled / tf.reduce_max(
+            scaled, axis=[1, 2, 3], keepdims=True,
+        )
+        return scaled

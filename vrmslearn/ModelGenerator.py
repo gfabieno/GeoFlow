@@ -30,7 +30,7 @@ class ModelGenerator(object):
         @returns:
         """
         self.pars = model_parameters
-        self.vp =None
+        self.vp = None
         self.label_names = ('ref', 'vrms', 'vint', 'vdepth')
         self.weight_names = ['tweight', 'dweight']
 
@@ -40,7 +40,7 @@ class ModelGenerator(object):
         vp, vs and rho.
 
         @params:
-        
+
         @returns:
         vp (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vp.
         vs (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vs.
@@ -57,9 +57,9 @@ class ModelGenerator(object):
         """
         Output the labels attached to modelling of a particular dataset. In this
         case, we want to predict vp in depth from cmp gathers.
-        
+
         @params:
-        
+
         @returns:
         vp (numpy.ndarray)  : numpy containg the normalized vp model.
         valid (numpy.ndarray) : numpy array with 1 before the last reflection,
@@ -605,5 +605,3 @@ if __name__ == "__main__":
         #     vdepth = smooth_velocity_wavelength(vp, pars.dh, lt*0.001, lt/25)
         #     plt.imshow(vdepth)
         #     plt.show()
-
-
