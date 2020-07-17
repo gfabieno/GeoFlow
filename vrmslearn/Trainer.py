@@ -106,8 +106,7 @@ class Trainer:
             # initial_epoch=0,
             steps_per_epoch=steps_per_epoch,
             max_queue_size=10,
-            workers=10,
-            use_multiprocessing=True,
+            use_multiprocessing=False,
         )
 
 

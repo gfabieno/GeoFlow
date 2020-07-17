@@ -66,8 +66,7 @@ class Tester(object):
         evaluated = self.nn.predict(
             self.sequence,
             max_queue_size=10,
-            workers=10,
-            use_multiprocessing=True
+            use_multiprocessing=False
         )
 
         for i, bexample in enumerate(evaluated):
