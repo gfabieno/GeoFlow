@@ -46,18 +46,19 @@ class Trainer:
         self.sequence = sequence
         self.checkpoint_dir = checkpoint_dir
 
-        self.loss_scales = loss_scales
         for lbl in loss_scales.keys():
             if lbl not in OUTS:
                 raise ValueError(f"`loss_scales` keys should be from {OUTS}")
+        self.loss_scales = loss_scales
+        self.out_names = [out for out in OUTS if out in loss_scales.keys()]
+
         losses, losses_weights = [], []
-        for lbl in OUTS:
-            if lbl in self.loss_scales.keys():
-                if lbl == 'ref':
-                    losses.append(ref_loss())
-                else:
-                    losses.append(v_compound_loss())
-                losses_weights.append(self.loss_scales[lbl])
+        for lbl in self.out_names:
+            if lbl == 'ref':
+                losses.append(ref_loss())
+            else:
+                losses.append(v_compound_loss())
+            losses_weights.append(self.loss_scales[lbl])
 
         self.nn.compile(
             optimizer=optimizers.Adam(
@@ -113,7 +114,7 @@ class Trainer:
 def ref_loss():
     """Get the loss function for the reflection prediction."""
     def loss(label, output):
-        label, weights = label[0], label[1]
+        label, weights = label[:, 0], label[:, 1]
         #  Logistic regression of zero offset time of reflections
         weights = tf.expand_dims(weights, -1)
         # if self.with_masking:
@@ -147,11 +148,11 @@ def v_compound_loss(alpha=0.2, beta=0.1):
     @returns:
         loss (tf.tensor) : Output of node calculating loss.
     """
-
     fact1 = 1 - alpha - beta
 
     def loss(label, output):
-        label, weight = label[0], label[1]
+        label, weight = label[:, 0], label[:, 1]
+        output = output[..., 0]
         losses = []
 
         # Calculate mean squared error
@@ -162,17 +163,17 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
         #  Calculate mean squared error of the z derivative
         if alpha > 0:
-            dlabel = label[1:, :] - label[:-1, :]
-            dout = output[1:, :] - output[:-1, :]
-            num = tf.reduce_sum(weight[:-1, :] * (dlabel-dout)**2)
-            den = tf.reduce_sum(weight[:-1, :] * dlabel**2 + 1E-6)
+            dlabel = label[:, 1:, :] - label[:, :-1, :]
+            dout = output[:, 1:, :] - output[:, :-1, :]
+            num = tf.reduce_sum(weight[:, :-1, :] * (dlabel-dout)**2)
+            den = tf.reduce_sum(weight[:, :-1, :] * dlabel**2) + 1E-6
             losses.append(alpha * num / den)
 
         # Minimize gradient (blocky inversion)
         if beta > 0:
             num = (
-                tf.norm(output[1:, :] - output[:-1, :], ord=1)
-                + tf.norm(output[:, 1:] - output[:, :-1], ord=1)
+                tf.norm(output[:, 1:, :] - output[:, :-1, :], ord=1)
+                + tf.norm(output[:, :, 1:] - output[:, :, :-1], ord=1)
             )
             den = tf.norm(output, ord=1) / 0.02
             losses.append(beta * num / den)
