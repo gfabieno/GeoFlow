@@ -152,7 +152,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
     def loss(label, output):
         label, weight = label[:, 0], label[:, 1]
-        output = output[..., 0]
+        output = output[:, :, :, 0]
         losses = []
 
         # Calculate mean squared error
