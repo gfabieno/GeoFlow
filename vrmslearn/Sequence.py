@@ -47,12 +47,13 @@ class Sequence(Sequence):
         inputs = np.empty([self.batch_size, *self.input_size])
         labels = []
 
+        n_t = self.input_size[0]
         n_cmp = self.input_size[2]
         LABEL_SHAPE = {
-            'ref': [self.batch_size, 2, self.input_size[0], n_cmp],
-            'vrms': [self.batch_size, 2, self.input_size[0], n_cmp],
-            'vint': [self.batch_size, 2, self.input_size[0], n_cmp],
-            'vdepth': [self.batch_size, 2, self.depth_size, n_cmp],
+            'ref': [self.batch_size, 2, n_t, n_cmp],
+            'vrms': [self.batch_size, 2, n_t, n_cmp],
+            'vint': [self.batch_size, 2, n_t, n_cmp],
+            'vdepth': [self.batch_size, 2, n_t, n_cmp],
         }
         for lbl in self.out_names:
             labels.append(np.empty(LABEL_SHAPE[lbl]))
@@ -70,7 +71,7 @@ class Sequence(Sequence):
             for j, lbl in enumerate(self.out_names):
                 label_idx = self.data_names.index(lbl)
                 weight_idx = self.data_names.index(WEIGHT_MAPPING[lbl])
-                labels[j][i] = [data[label_idx], data[weight_idx]]
+                labels[j][i] = [data[label_idx][:n_t], data[weight_idx][:n_t]]
 
         if self.is_training:
             return inputs, labels
