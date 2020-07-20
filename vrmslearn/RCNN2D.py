@@ -127,6 +127,7 @@ class RCNN2D:
                     2,
                     [1, 1],
                     padding='same',
+                    name="ref",
                 )
                 outputs['ref'] = conv2d(data_stream)
 
@@ -154,9 +155,9 @@ class RCNN2D:
                     1,
                     [1, 1],
                     padding='same',
+                    name="vrms",
                 )
-                decode_rms = conv2d(decode_rms)
-                outputs['vrms'] = decode_rms
+                outputs['vrms'] = conv2d(decode_rms)
 
         with tf.name_scope('RNN_vint'):
             lstm = LSTM(UNITS, return_sequences=True)
@@ -174,9 +175,9 @@ class RCNN2D:
                     1,
                     [1, 1],
                     padding='same',
+                    name="vint",
                 )
-                decode_int = conv2d(decode_int)
-                outputs['vint'] = decode_int
+                outputs['vint'] = conv2d(decode_int)
 
         #TODO test depth predicitons
         #TODO assess if 1D predictions in depth should be performed before 2D
@@ -216,10 +217,9 @@ class RCNN2D:
                     1,
                     [1, 3],
                     padding='same',
+                    name="vdepth",
                 )
-                data_stream = conv_2d(data_stream)
-                data_stream = data_stream[:, :self.depth_size]
-                outputs['vdepth'] = data_stream
+                outputs['vdepth'] = conv_2d(data_stream)
 
         return [outputs[out] for out in self.out_names]
 
