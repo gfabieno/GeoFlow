@@ -10,7 +10,7 @@ from tensorflow.keras.layers import (
     Conv3D, Conv2D, LeakyReLU, LSTM, Permute, Input,
 )
 from tensorflow.keras.backend import (
-    max as reduce_max, sum as reduce_sum, squeeze, reshape,
+    max as reduce_max, sum as reduce_sum, reshape,
 )
 
 from vrmslearn.Sequence import OUTS
@@ -68,6 +68,7 @@ class RCNN2D:
         # intelligibility.
         self.compile = self.model.compile
         self.fit = self.model.fit
+        self.load_weights = self.model.load_weights
         self.predict = self.model.predict
 
     def build_inputs(self):

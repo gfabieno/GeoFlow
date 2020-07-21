@@ -4,13 +4,15 @@
 This class trains the neural network
 """
 
-from os.path import join
+from os.path import join, split
 
 import tensorflow as tf
 from tensorflow.keras import callbacks, optimizers
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Sequence import Sequence, OUTS
+
+WEIGHTS_NAME = "{epoch:04d}.ckpt"
 
 
 class Trainer:
@@ -90,13 +92,16 @@ class Trainer:
         thread_read (int): Number of threads to create example by InputQueue
         """
         if restore_from is not None:
-            self.nn.load_weights(
-                join(self.checkpoint_dir, restore_from)
-            )
+            self.nn.load_weights(restore_from)
+            filename = split(restore_from)[-1]
+            initial_epoch = int(filename[:4])
+            epochs += initial_epoch
+        else:
+            initial_epoch = 0
 
         tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir)
         checkpoints = callbacks.ModelCheckpoint(
-            self.checkpoint_dir,
+            join(self.checkpoint_dir, WEIGHTS_NAME),
             save_weights_only=True,
             save_freq='epoch',
         )
@@ -104,7 +109,7 @@ class Trainer:
             self.sequence,
             epochs=epochs,
             callbacks=[tensorboard, checkpoints],
-            # initial_epoch=0,
+            initial_epoch=initial_epoch,
             steps_per_epoch=steps_per_epoch,
             max_queue_size=10,
             use_multiprocessing=False,
