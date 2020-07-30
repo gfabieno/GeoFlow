@@ -246,9 +246,11 @@ class Tester(object):
 
         def init():
             for ii, im in enumerate(ims):
-                label, pred = postprocess({l: labels[l][0] for l in labelnames},
-                                          {l: preds[l][0] for l in labelnames},
-                                          self.case.pars)
+                label, pred = postprocess(
+                    {l: labels[l][0] for l in labelnames},
+                    {l: preds[l][0] for l in labelnames},
+                    self.case.pars,
+                )
                 if ii == 0:
                     toplot = datas[0]
                     im.set_array(toplot)
