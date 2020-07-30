@@ -8,6 +8,7 @@ from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
 from scipy.interpolate import CubicSpline
 
+
 def gaussian(f0, t, o, amp=1.0, order=2):
     """
     Generate a gaussian wavelet
@@ -37,7 +38,8 @@ def gaussian(f0, t, o, amp=1.0, order=2):
     elif order == 6:
         return -4.0 * (8.0 * x ** 6 - 60.0 * x ** 4 + 90.0 * x ** 2 - 15.0) * e
 
-def morlet(f0, t, o , amp=1.0, order=5):
+
+def morlet(f0, t, o, amp=1.0, order=5):
     """
     Generate a morlet wavelet
 
@@ -69,13 +71,12 @@ def shift_trace(signal, phase):
     S = np.fft.fft(signal)
     NT = len(signal)
     S[1:NT//2] *= 2.0
-    S[NT // 2+1:] *=0
+    S[NT//2+1:] *= 0
     s = np.fft.ifft(S)
     return np.real(s) * np.cos(phase) + np.imag(s) * np.sin(phase)
 
 
-
-def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes = [1]):
+def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes=[1]):
     """
     Generate function (callable) that output random wavelets.
 
@@ -92,12 +93,14 @@ def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes = [1]):
     @returns:
     (callable): A random wavelet generator
     """
-    allwavefuns = [lambda f0, t, o: gaussian(f0, t, o, order=1),
-                   lambda f0, t, o: gaussian(f0, t, o, order=2),
-                   lambda f0, t, o: gaussian(f0, t, o, order=3),
-                   lambda f0, t, o: morlet(f0, t, o, order=2),
-                   lambda f0, t, o: morlet(f0, t, o, order=3),
-                   lambda f0, t, o: morlet(f0, t, o, order=4)]
+    allwavefuns = [
+        lambda f0, t, o: gaussian(f0, t, o, order=1),
+        lambda f0, t, o: gaussian(f0, t, o, order=2),
+        lambda f0, t, o: gaussian(f0, t, o, order=3),
+        lambda f0, t, o: morlet(f0, t, o, order=2),
+        lambda f0, t, o: morlet(f0, t, o, order=3),
+        lambda f0, t, o: morlet(f0, t, o, order=4),
+    ]
 
     allwavefuns = [allwavefuns[ii] for ii in shapes]
 
@@ -114,6 +117,7 @@ def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes = [1]):
         return src
 
     return random_wavelet
+
 
 def mask_batch(batch,
                mask_fraction,
@@ -133,8 +137,11 @@ def mask_batch(batch,
 
         # take random subset of traces
         ntokill = int(np.random.rand() * mask_fraction * ng * frac)
-        tokill = np.random.choice(np.arange(owindow, ng - owindow), ntokill,
-                                  replace=False)
+        tokill = np.random.choice(
+            np.arange(owindow, ng - owindow),
+            ntokill,
+            replace=False,
+        )
         batch[ii][0][:, tokill] = 0
 
         batch[ii][3][-twindow:] = 0
@@ -156,7 +163,8 @@ def mute_direct(data, vp0, pars, offsets=None):
 
     for ii, off in enumerate(offsets):
         tmute = int(
-            (np.abs(off) / vp0 + 1.5 * pars.tdelay) / pars.dt / pars.resampling)
+            (np.abs(off)/vp0+1.5*pars.tdelay) / pars.dt / pars.resampling
+        )
         if tmute <= NT:
             data[0:tmute, ii] = 0
             mute_max = np.min([tmute + wind_length, NT])
@@ -199,7 +207,7 @@ def random_noise(data, max_amp):
     (numpy.array): The data with noise
     """
     max_amp = max_amp * np.max(data) * 2.0
-    data = data + (np.random.rand(data.shape[0], data.shape[1]) - 0.5) * max_amp
+    data = data + (np.random.rand(data.shape[0], data.shape[1])-.5) * max_amp
     return data
 
 
@@ -214,7 +222,6 @@ def mute_nearoffset(data, max_off):
     @returns:
     (numpy.array): The data with noise
     """
-
     data[:, :np.random.randint(max_off)] *= 0
     return data
 
@@ -249,7 +256,6 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
     @returns:
     (numpy.array): The data with a random gain applied
     """
-
     t = np.reshape(np.arange(0, data.shape[0]) * dt, [data.shape[0], 1])
     e = np.random.rand() * (emax - emin) + emin
     scal = (t + 1e-6) ** e
@@ -276,7 +282,6 @@ def generate_reflections_ttime(vp,
     tabel (numpy.ndarray) : A 2D array with pars.NT elements with 1 at reflecion
                             times +- window_width/pars.peak_freq, 0 elsewhere
     """
-
     vp = vp[int(pars.source_depth / pars.dh):]
     vlast = vp[0]
     ind = []
@@ -288,9 +293,8 @@ def generate_reflections_ttime(vp,
     if pars.minoffset != 0:
         dt = 2.0 * pars.dh / vp
         t0 = np.cumsum(dt)
-        vrms = np.sqrt(t0 * np.cumsum(vp ** 2 * dt))
-        tref = np.sqrt(
-            t0[ind] ** 2 + pars.minoffset ** 2 / vrms[ind] ** 2) + pars.tdelay
+        vrms = np.sqrt(t0 * np.cumsum(vp**2 * dt))
+        tref = np.sqrt(t0[ind]**2+pars.minoffset**2/vrms[ind]**2) + pars.tdelay
     else:
         ttime = 2 * np.cumsum(pars.dh / vp) + pars.tdelay
         tref = ttime[ind]
@@ -320,13 +324,10 @@ def two_way_travel_time(vp, dh, t0=0):
     pars (ModelParameter): Parameters used to generate the model
 
     @returns:
-
     vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth, cut to
-                          have the same size of t
+        have the same size of t
     t (numpy.ndarray) :  The two-way travel time of each cell
-
     """
-
     t = 2 * np.cumsum(dh / vp) + t0
     # t = t[t < pars.NT * pars.dt]
     # vpt = vpt[:len(t)]
@@ -343,21 +344,18 @@ def vdepth2time(vp, dh, t, t0=0):
     pars (ModelParameter): Parameters used to generate the model
 
     @returns:
-
     vint (numpy.ndarray) : The interval velocity in time
-
     """
-
     tp = two_way_travel_time(vp, dh, t0)
-    interpolator = interp1d(tp, vp,
-                            bounds_error=False,
-                            fill_value="extrapolate",
-                            kind="nearest")
+    interpolator = interp1d(
+        tp, vp, bounds_error=False, fill_value="extrapolate", kind="nearest",
+    )
     vint = interpolator(t)
 
     return vint
 
-#TODO code interval velocity in time to interval velocity in depth
+
+# TODO Code interval velocity in time to interval velocity in depth.
 
 # def vtime2depth(vint, t):
 #     """
@@ -381,16 +379,17 @@ def vdepth2time(vp, dh, t, t0=0):
 #
 #     return vdepth
 
-#TODO Recode calculate vrms into vint2vrms and simply it.
-def vint2vrms(vint, t):
 
+# TODO Recode calculate vrms into vint2vrms and simply it.
+def vint2vrms(vint, t):
     dt = t[1:]-t[:-1]
     vrms = np.zeros_like(vint)
-    vrms[:-1] = np.cumsum(dt * (vint[:-1]** 2))
+    vrms[:-1] = np.cumsum(dt * vint[:-1]**2)
     vrms[:-1] = np.sqrt(vrms[:-1] / (t[1:] - t[0]))
     vrms[-1] = vrms[-2]
 
     return vrms
+
 
 def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     """
@@ -410,30 +409,32 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     tdelay (float): Time before source peak
     source_depth (float) The source depth in meters
 
-
     @returns:
     vrms (numpy.ndarray) : numpy array of shape (NT, ) with vrms
                            values in meters/sec.
     """
-
     NZ = vp.shape[0]
 
-    # Create a numpy array of depths corresponding to the vp grid locations
+    # Create a numpy array of depths corresponding to the vp grid locations.
     depth = np.arange(0, NZ) * dh
 
     # Create a list of tuples of (relative depths, velocity) of the layers
     # following the depth of the source / receiver depths, till the last layer
-    # before the padding zone at the bottom
+    # before the padding zone at the bottom.
     last_depth = dh * (NZ - Npad - 1)
-    rdepth_vel_pairs = [(d - source_depth, vp[i]) for i, d in enumerate(depth)
-                        if d > source_depth and d <= last_depth]
+    rdepth_vel_pairs = [
+        (d - source_depth, vp[i])
+        for i, d in enumerate(depth)
+        if d > source_depth and d <= last_depth
+    ]
     first_layer_vel = rdepth_vel_pairs[0][1]
     rdepth_vel_pairs.insert(0, (0.0, first_layer_vel))
 
     # Calculate a list of two-way travel times
-    t = [2.0 * (rdepth_vel_pairs[index][0] - rdepth_vel_pairs[index - 1][
-        0]) / vel
-         for index, (_, vel) in enumerate(rdepth_vel_pairs) if index > 0]
+    t = [
+        2. * (rdepth_vel_pairs[index][0]-rdepth_vel_pairs[index - 1][0]) / vel
+        for index, (_, vel) in enumerate(rdepth_vel_pairs) if index > 0
+    ]
     t.insert(0, 0.0)
     total_time = 0.0
     for i, time in enumerate(t):
@@ -441,38 +442,43 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
         t[i] = total_time
 
     # The last time must be 'dt' * 'NT', so adjust the lists 'rdepth_vel_pairs'
-    # and 't' by cropping and adjusting the last sample accordingly
-    rdepth_vel_pairs = [(rdepth_vel_pairs[i][0], rdepth_vel_pairs[i][1]) for
-                        i, time in enumerate(t)
-                        if time <= NT * dt]
+    # and 't' by cropping and adjusting the last sample accordingly.
+    rdepth_vel_pairs = [
+        (rdepth_vel_pairs[i][0], rdepth_vel_pairs[i][1])
+        for i, time in enumerate(t)
+        if time <= NT * dt
+    ]
     t = [time for time in t if time <= NT * dt]
     last_index = len(t) - 1
-    extra_distance = (NT * dt - t[last_index]) * rdepth_vel_pairs[last_index][
-        1] / 2.0
+    extra_distance = (
+        (NT*dt-t[last_index]) * rdepth_vel_pairs[last_index][1] / 2.
+    )
     rdepth_vel_pairs[last_index] = (
         extra_distance + rdepth_vel_pairs[last_index][0],
-        rdepth_vel_pairs[last_index][1])
+        rdepth_vel_pairs[last_index][1]
+    )
     t[last_index] = NT * dt
 
-    # Compute vrms at the times in t
+    # Compute vrms at the times in t.
     vrms = [first_layer_vel]
     sum_numerator = 0.0
     for i in range(1, len(t)):
-        sum_numerator += (t[i] - t[i - 1]) * rdepth_vel_pairs[i][1] * \
-                         rdepth_vel_pairs[i][1]
-        vrms.append((sum_numerator / t[i]) ** 0.5)
+        sum_numerator += (
+            (t[i]-t[i - 1]) * rdepth_vel_pairs[i][1] * rdepth_vel_pairs[i][1]
+        )
+        vrms.append((sum_numerator / t[i])**.5)
 
-    # Interpolate vrms to uniform time grid
+    # Interpolate vrms to uniform time grid.
     tgrid = np.asarray(range(0, NT)) * dt
     vrms = np.interp(tgrid, t, vrms)
     vrms = np.reshape(vrms, [-1])
-    # Adjust for time delay
+    # Adjust for time delay.
     t0 = int(tdelay / dt)
     vrms[t0:] = vrms[:-t0]
     vrms[:t0] = vrms[t0]
 
-    # Return vrms
     return vrms
+
 
 def smooth_velocity_wavelength(vp, dh, lt, lx):
     """
@@ -492,29 +498,34 @@ def smooth_velocity_wavelength(vp, dh, lt, lx):
     """
     vdepth = vp * 0
     dt = dh / np.max(vp) / 10.0
-    NT = int(np.max(2 * np.cumsum(dh / vp, axis=0)) / dt*1)
+    NT = int(np.max(2 * np.cumsum(dh / vp, axis=0)) / dt)
     t = np.arange(1, NT+1, 1) * dt
     vint = np.zeros([NT, vp.shape[1]])
     for ii in range(0, vp.shape[1]):
-        ti = 2 * np.cumsum(dh / vp[:,ii])
+        ti = 2 * np.cumsum(dh / vp[:, ii])
         ti = ti - ti[0]
-        interpolator = interp1d(ti, vp[:, ii],
-                                bounds_error=False,
-                                fill_value="extrapolate",
-                                kind="nearest")
+        interpolator = interp1d(
+            ti,
+            vp[:, ii],
+            bounds_error=False,
+            fill_value="extrapolate",
+            kind="nearest",
+        )
         vint[:, ii] = interpolator(t)
 
     if lt > 0:
         vint = gaussian_filter(vint, [lt//dt, lx])
 
     for ii in range(0, vp.shape[1]):
-
-        vavg = np.cumsum(dt*vint[:, ii])/2/t
+        vavg = np.cumsum(dt*vint[:, ii]) / 2 / t
         vavg[0] = vint[0, ii]
-        interpolator = interp1d(t * vavg, vint[:, ii],
-                                bounds_error=False,
-                                fill_value="extrapolate",
-                                kind="nearest")
+        interpolator = interp1d(
+            t * vavg,
+            vint[:, ii],
+            bounds_error=False,
+            fill_value="extrapolate",
+            kind="nearest",
+        )
         vdepth[:, ii] = interpolator(np.arange(0, vp.shape[0], 1) * dh)
 
     return vdepth
@@ -535,11 +546,11 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         cmps (numpy.ndarray) :     X position of each cmp
     """
     if binsize is None:
-        binsize = src_pos[0, 1]-src_pos[0, 0]
+        binsize = src_pos[0, 1] - src_pos[0, 0]
 
-    sx = [src_pos[0, int(srcid)] for srcid in rec_pos[3,:]]
-    gx = rec_pos[0,:]
-    cmps = ((sx + gx)/2 / binsize).astype(int) * binsize
+    sx = [src_pos[0, int(srcid)] for srcid in rec_pos[3, :]]
+    gx = rec_pos[0, :]
+    cmps = ((sx + gx) / 2 / binsize).astype(int) * binsize
     offsets = sx - gx
 
     ind = np.lexsort((offsets, cmps))
@@ -614,11 +625,12 @@ def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
     @returns:
     nmo (numpy.ndarray) : array NTxNoffset containing the NMO corrected CMP
     """
-
     nmo = np.zeros_like(cmp)
     for j, x in enumerate(offsets):
-        t = [reflection_time(t0, x, velocities[i]) for i, t0 in
-             enumerate(times)]
+        t = [
+            reflection_time(t0, x, velocities[i])
+            for i, t0 in enumerate(times)
+        ]
         interpolator = CubicSpline(times, cmp[:, j], extrapolate=False)
         amps = np.nan_to_num(interpolator(t), copy=False)
         nmo[:, j] = amps
@@ -639,7 +651,6 @@ def reflection_time(t0, x, vnmo):
     @returns:
     t (float): Reflection travel time
     """
-
     t = np.sqrt(t0 ** 2 + x ** 2 / vnmo ** 2)
     return t
 
@@ -655,7 +666,6 @@ def semblance(nmo_corrected, window=10):
     @returns:
     semblance (numpy.ndarray): Array NTx1 containing semblance
     """
-
     num = np.sum(nmo_corrected, axis=1) ** 2
     den = np.sum(nmo_corrected ** 2, axis=1) + 1e-12
     weights = np.ones(window) / window

@@ -180,8 +180,8 @@ class RCNN2D:
                 )
                 outputs['vint'] = conv2d(decode_int)
 
-        #TODO test depth predicitons
-        #TODO assess if 1D predictions in depth should be performed before 2D
+        # TODO Test depth predicitons.
+        # TODO Assess if 1D predictions in depth should be performed before 2D.
 
         if 'vdepth' in self.out_names:
             with tf.name_scope('RNN_vdepth'):

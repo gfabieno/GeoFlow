@@ -146,23 +146,35 @@ class Tester(object):
             else:
                 fig, axes = plt.subplots(1, len(labelnames), squeeze=False)
 
-            label, pred = postprocess({l: labels[l][ii] for l in labelnames},
-                                      {l: preds[l][ii] for l in labelnames},
-                                      self.case.pars)
+            label, pred = postprocess(
+                {l: labels[l][ii] for l in labelnames},
+                {l: preds[l][ii] for l in labelnames},
+                self.case.pars,
+            )
             for jj, labelname in enumerate(labelnames):
                 if image:
                     vmin = np.min(label[labelname])
                     vmax = np.max(label[labelname])
-                    axes[jj, 0].imshow(label[labelname], vmin=vmin, vmax=vmax,
-                                       cmap='inferno', aspect='auto')
-                    axes[jj, 1].imshow(pred[labelname], vmin=vmin, vmax=vmax,
-                                            cmap='inferno', aspect='auto')
+                    axes[jj, 0].imshow(
+                        label[labelname],
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap='inferno',
+                        aspect='auto',
+                    )
+                    axes[jj, 1].imshow(
+                        pred[labelname],
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap='inferno',
+                        aspect='auto',
+                    )
 
                 else:
                     y = np.arange(label[labelname].shape[0])
-                    axes[0,jj].plot(label[labelname][:,0], y)
-                    axes[0,jj].plot(pred[labelname][:,0], y)
-                    axes[0,jj].invert_yaxis()
+                    axes[0, jj].plot(label[labelname][:, 0], y)
+                    axes[0, jj].plot(pred[labelname][:, 0], y)
+                    axes[0, jj].invert_yaxis()
 
             plt.show()
 
@@ -189,11 +201,14 @@ class Tester(object):
                 if os.path.basename(f) in os.listdir(savepath)
             ]
         else:
-            examples = [os.path.basename(self.case.files["test"][ii])
-                        for ii in range(quantity)]
+            examples = [
+                os.path.basename(self.case.files["test"][ii])
+                for ii in range(quantity)
+            ]
 
-        labels, preds = self.get_preds(labelnames, savepath,
-                                       examples=examples)
+        labels, preds = self.get_preds(
+            labelnames, savepath, examples=examples,
+        )
         datas = labels['input']
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
@@ -205,30 +220,51 @@ class Tester(object):
         clip = 0.01
         vmax = np.max(datas) * clip
         vmin = -vmax
-        im1 = axs[0, 0].imshow(datas[0], animated=True, vmin=vmin, vmax=vmax,
-                               aspect='auto', cmap=plt.get_cmap('Greys'))
+        im1 = axs[0, 0].imshow(
+            datas[0],
+            animated=True,
+            vmin=vmin,
+            vmax=vmax,
+            aspect='auto',
+            cmap=plt.get_cmap('Greys'),
+        )
         axs[0, 0].set_title('data')
         ims = [im1]
 
-        label, pred = postprocess({l: labels[l][0] for l in labelnames},
-                                  {l: preds[l][0] for l in labelnames},
-                                  self.case.pars)
+        label, pred = postprocess(
+            {l: labels[l][0] for l in labelnames},
+            {l: preds[l][0] for l in labelnames},
+            self.case.pars,
+        )
 
         for ii, labelname in enumerate(labelnames):
             if image:
-                im1 = axs[0, 1 + ii].imshow(pred[labelname], vmin=0, vmax=1,
-                                            animated=True,
-                                            cmap='inferno', aspect='auto')
+                im1 = axs[0, 1 + ii].imshow(
+                    pred[labelname],
+                    vmin=0,
+                    vmax=1,
+                    animated=True,
+                    cmap='inferno',
+                    aspect='auto',
+                )
                 im2 = axs[1, 1 + ii].imshow(label[labelname], vmin=0, vmax=1,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
-                plt.colorbar(im1, ax=axs[0, 1 + ii],
-                             orientation="horizontal",
-                             pad=0.15, fraction=0.1)
-                plt.colorbar(im2, ax=axs[1, 1 + ii],
-                             orientation="horizontal",
-                             pad=0.15, fraction=0.1)
+                plt.colorbar(
+                    im1,
+                    ax=axs[0, 1 + ii],
+                    orientation="horizontal",
+                    pad=0.15,
+                    fraction=0.1,
+                )
+                plt.colorbar(
+                    im2,
+                    ax=axs[1, 1 + ii],
+                    orientation="horizontal",
+                    pad=0.15,
+                    fraction=0.1,
+                )
                 ims.append(im1)
                 ims.append(im2)
             else:
@@ -256,9 +292,9 @@ class Tester(object):
                     im.set_array(toplot)
                 else:
                     if ii % 2 == 0:
-                        toplot = pred[labelnames[int((ii - 1) / 2)]]
+                        toplot = pred[labelnames[(ii - 1) // 2]]
                     else:
-                        toplot = label[labelnames[int((ii - 1) / 2)]]
+                        toplot = label[labelnames[(ii - 1) // 2]]
                     if image:
                         im.set_array(toplot)
                     else:
@@ -267,18 +303,20 @@ class Tester(object):
             return ims
 
         def animate(t):
-            label, pred = postprocess({l: labels[l][t] for l in labelnames},
-                                      {l: preds[l][t] for l in labelnames},
-                                      self.case.pars)
+            label, pred = postprocess(
+                {l: labels[l][t] for l in labelnames},
+                {l: preds[l][t] for l in labelnames},
+                self.case.pars,
+            )
             for ii, im in enumerate(ims):
                 if ii == 0:
                     toplot = datas[t]
                     im.set_array(toplot)
                 else:
                     if ii % 2 == 0:
-                        toplot = pred[labelnames[int((ii - 1) / 2)]]
+                        toplot = pred[labelnames[(ii - 1) // 2]]
                     else:
-                        toplot = label[labelnames[int((ii - 1) / 2)]]
+                        toplot = label[labelnames[(ii - 1) // 2]]
                     if image:
                         im.set_array(toplot)
                     else:
@@ -286,7 +324,13 @@ class Tester(object):
                         im.set_data(toplot, y)
             return ims
 
-        anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                       frames=len(datas),
-                                       interval=3000, blit=True, repeat=True)
+        _ = animation.FuncAnimation(
+            fig,
+            animate,
+            init_func=init,
+            frames=len(datas),
+            interval=3000,
+            blit=True,
+            repeat=True,
+        )
         plt.show()

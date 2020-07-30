@@ -1,5 +1,4 @@
 import os
-from os.path import join
 import argparse
 
 import tensorflow as tf
