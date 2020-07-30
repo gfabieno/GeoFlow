@@ -44,7 +44,7 @@ You should clone this repository
 
     git clone https://github.com/gfabieno/SeisCL.git
 
-#### a) Use Docker (easiest) (Jerome, install SeisCL from source)
+#### a) Use Docker (easiest)
 
 We provide a Docker image that contains all necessary python libraries like Tensorflow
 and the seismic modeling code SeisCL.

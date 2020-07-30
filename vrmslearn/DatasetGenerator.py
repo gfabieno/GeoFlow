@@ -8,16 +8,17 @@ import h5py as h5
 from vrmslearn.ModelGenerator import ModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator
 from vrmslearn.ModelParameters import ModelParameters
-from multiprocessing import Process, Queue, Event, Value
+from multiprocessing import Process, Queue
 
 
 class SampleGenerator:
     """
     Class to create one example: 1- generate models 2-simulate the data
     """
+
     def __init__(self, pars: ModelParameters, gpu: int = 0):
         """
-        Create the ModelGenerator and SeismicGenerator objects according to pars.
+        Create the ModelGenerator and SeismicGenerator objects from pars.
         @params:
         pars (ModelParameters): Parameters for data and model creation
         gpu  (int): The GPU id to use for data computations
@@ -56,7 +57,7 @@ class SampleGenerator:
 
         return data, labels, weights
 
-    def write(self, exampleid , savedir, data, labels, weights, filename=None):
+    def write(self, exampleid, savedir, data, labels, weights, filename=None):
         """
         This method writes one example in the hdf5 format
 
@@ -82,6 +83,7 @@ class SampleGenerator:
         for ii, weight in enumerate(weights):
             file[self.model_gen.weight_names[ii]] = weight
         file.close()
+
 
 class DatasetProcess(Process):
     """
@@ -126,6 +128,7 @@ class DatasetProcess(Process):
                 self.sample_generator.write(seed, self.savepath, data, labels,
                                             weights, filename=filename)
 
+
 def generate_dataset(pars: ModelParameters,
                      savepath: str,
                      nexamples: int,
@@ -139,8 +142,8 @@ def generate_dataset(pars: ModelParameters,
                             creating examples.
     savepath (str)   :     Path in which to create the dataset
     nexamples (int):       Number of examples to generate
-    seed0 (int):           First seed of the first example in the dataset. Seeds
-                           are incremented by 1 for subsequents examples.
+    seed0 (int):           First seed of the first example in the dataset.
+                           Seeds are incremented by 1 for subsequents examples.
     ngpu (int):            Number of available gpus for data creation
 
     """
@@ -149,7 +152,7 @@ def generate_dataset(pars: ModelParameters,
         os.makedirs(savepath)
 
     exampleids = Queue()
-    for el in np.arange(seed0, seed0 +nexamples):
+    for el in np.arange(seed0, seed0 + nexamples):
         exampleids.put(el)
 
     generators = []

@@ -1,10 +1,13 @@
-from Cases_define import Case_2Dtest, Case_1Dsmall
+import os
+import argparse
+
+import tensorflow as tf
+
+from Cases_define import *
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
-import argparse
-import tensorflow as tf
-import os
+from vrmslearn.Sequence import Sequence
 
 
 if __name__ == "__main__":
@@ -13,6 +16,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Add arguments to parse for training
+    parser.add_argument(
+        "--case",
+        type=str,
+        help="Name of the case class from `Cases_define` to use"
+    )
     parser.add_argument(
         "--logdir",
         type=str,
@@ -29,8 +37,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "--epochs",
         type=int,
-        default=500,
-        help="number of training epochs"
+        default=5,
+        help="number of epochs, with `steps` iterations per epoch"
+    )
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=100,
+        help="number of training iterations per epoch"
     )
     parser.add_argument(
         "--lr",
@@ -51,16 +65,40 @@ if __name__ == "__main__":
         help="size of the batches"
     )
     parser.add_argument(
-        "--beta1",
+        "--beta_1",
         type=float,
         default=0.9,
         help="beta1 for adadelta"
     )
     parser.add_argument(
-        "--beta2",
+        "--beta_2",
         type=float,
         default=0.98,
         help="beta2 for adadelta"
+    )
+    parser.add_argument(
+        "--loss_ref",
+        type=float,
+        default=0.8,
+        help="weight of event referencing in loss"
+    )
+    parser.add_argument(
+        "--loss_vrms",
+        type=float,
+        default=0.1,
+        help="weight of vrms in loss"
+    )
+    parser.add_argument(
+        "--loss_vint",
+        type=float,
+        default=0.1,
+        help="weight of vint in loss"
+    )
+    parser.add_argument(
+        "--loss_vdepth",
+        type=float,
+        default=0.0,
+        help="weight of vdepth in loss"
     )
     parser.add_argument(
         "--nmodel",
@@ -93,78 +131,96 @@ if __name__ == "__main__":
         help="1: Validate data by plotting."
     )
 
-    # Parse the input for training parameters
+    # Parse the input for training parameters.
     args, unparsed = parser.parse_known_args()
 
     logdir = args.logdir
     batch_size = args.batchsize
 
-    """
-        _______________________Define the parameters ______________________
-    """
-    #TODO Input argument choosing which case to run
+    # Define the parameters.
+    case = eval(args.case)(
+        trainsize=10000,
+        validatesize=0,
+        testsize=100,
+    )
 
-    # case = Case_2Dtest(
-    #     noise=args.noise,
-    #     trainsize=10000,
-    #     validatesize=1000,
-    #     testsize=1000,
-    # )
-    case = Case_1Dsmall(
-        trainsize=100,
-        validatesize=10,
-        testsize=10)
-    if args.training == 3 and case.testsize < batch_size:
-        batch_size = case.testsize
-
-    """
-        _______________________Generate the dataset________________________
-    """
-
+    # Generate the dataset.
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
 
     if args.plot:
         case.animated_dataset()
 
-    # TODO Test different loss_scales
-    sizes = case.get_dimensions()
-    nn = RCNN2D(input_size=sizes[0],
-                depth_size=sizes[-1][0],
-                batch_size=batch_size,
-                alpha=0.1,
-                beta=0.1,
-                use_peepholes=args.use_peepholes,
-                loss_scales={'ref': 0.2, 'vrms': 0.4, 'vint': 0.4})
-    """
-        _______________________Train the model_____________________________
-    """
-    if args.training in [1, 2]:
-        trainer = Trainer(nn=nn,
-                          case=case,
-                          checkpoint_dir=args.logdir,
-                          learning_rate=args.lr,
-                          beta1=args.beta1,
-                          beta2=args.beta2,
-                          epsilon=args.eps)
+    loss_scales = {
+        'ref': args.loss_ref,
+        'vrms': args.loss_vrms,
+        'vint': args.loss_vint,
+        'vdepth': args.loss_vdepth,
+    }
 
-        trainer.train_model(niter=args.epochs)
-    """
-        _______________________Validate results_____________________________
-    """
+    sizes = case.get_dimensions()
+    nn = RCNN2D(
+        input_size=sizes[0],
+        depth_size=sizes[-1][0],
+        batch_size=batch_size,
+        alpha=0.1,
+        beta=0.1,
+        use_peepholes=args.use_peepholes,
+        out_names=loss_scales.keys(),
+    )
+
+    # Train the model.
+    if args.training in [1, 2]:
+        sequence = Sequence(
+            is_training=True,
+            case=case,
+            batch_size=batch_size,
+            input_size=sizes[0],
+            depth_size=sizes[-1][0],
+            out_names=loss_scales.keys(),
+        )
+        trainer = Trainer(
+            nn=nn,
+            sequence=sequence,
+            checkpoint_dir=args.logdir,
+            learning_rate=args.lr,
+            beta_1=args.beta_1,
+            beta_2=args.beta_2,
+            epsilon=args.eps,
+            loss_scales=loss_scales,
+        )
+        restore_from = tf.train.latest_checkpoint(args.logdir)
+        trainer.train_model(
+            batch_size=batch_size,
+            epochs=args.epochs,
+            steps_per_epoch=args.steps,
+            restore_from=restore_from,
+        )
+
+    # Test model.
     if args.training == 3:
-        tester = Tester(nn=nn, case=case)
+        sequence = Sequence(
+            is_training=False,
+            case=case,
+            batch_size=batch_size,
+            input_size=sizes[0],
+            depth_size=sizes[-1][0],
+            out_names=loss_scales.keys(),
+        )
+        tester = Tester(nn=nn, sequence=sequence, case=case)
         savepath = os.path.join(case.datatest, "pred")
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
         restore_from = tf.train.latest_checkpoint(args.logdir)
-        tester.test_dataset(savepath=savepath,
-                            toeval={'ref': nn.outputs['ref'],
-                                    'vrms': nn.outputs['vrms'],
-                                    'vint': nn.outputs['vint']},
-                            restore_from=restore_from)
+        tester.test_dataset(
+            savepath=savepath,
+            batch_size=batch_size,
+            restore_from=restore_from,
+        )
 
         if args.plot:
-            tester.animated_predictions(labelnames=["ref", 'vrms', 'vint'],
-                                        savepath=savepath,
-                                        image=False)
+            tester.animated_predictions(
+                labelnames=["ref", 'vrms', 'vint', 'vdepth'],
+                savepath=savepath,
+                image="2D" in args.case,
+            )
