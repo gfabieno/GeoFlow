@@ -23,7 +23,7 @@ class SeismicGenerator(SeisCL):
                 self,
                 pars=ModelParameters(),
                 workdir="workdir",
-                gpu=0
+                gpu=0,
             ):
         """
 
@@ -92,11 +92,11 @@ class SeismicGenerator(SeisCL):
         if pars.gmin:
             gmin = pars.gmin
         else:
-            gmin = -(pars.NX - 2 * pars.Npad) // 2
+            gmin = pars.Npad
         if pars.gmax:
             gmax = pars.gmax
         else:
-            gmax = (pars.NX - 2 * pars.Npad) // 2
+            gmax = pars.NX - pars.Npad
 
         gx0 = np.arange(gmin, gmax, pars.dg) * pars.dh
         gx = np.concatenate([gx0 for s in sx], axis=0)
