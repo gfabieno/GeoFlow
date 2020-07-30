@@ -71,7 +71,8 @@ class Tester(object):
             )
             is_batch_incomplete = len(data) != len(filenames)
             if is_batch_incomplete:
-                evaluated = evaluated[:len(filenames)]
+                for i in range(len(evaluated)):
+                    evaluated[i] = evaluated[i][:len(filenames)]
 
             for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
                 if lbl != 'ref':
