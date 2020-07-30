@@ -6,7 +6,7 @@ This class tests a NN on a dataset.
 
 import fnmatch
 import os
-from os.path import join
+from os.path import join, basename
 
 import h5py as h5
 from matplotlib import pyplot as plt
@@ -38,9 +38,10 @@ class Tester(object):
         self.sequence = sequence
         self.case = case
 
+        self.out_names = self.nn.out_names
+
     def test_dataset(self,
                      savepath: str,
-                     toeval: dict,
                      filename: str = 'example_*',
                      batch_size: int = 1,
                      restore_from: str = None):
@@ -57,24 +58,32 @@ class Tester(object):
 
         @returns:
         """
-        eval_names = toeval.keys()
         if restore_from is not None:
-            self.nn.load_weights(
-                join(self.checkpoint_dir, restore_from)
+            self.nn.load_weights(restore_from)
+
+        self.sequence.reset_test_generator()
+
+        for data, filenames in self.sequence:
+            evaluated = self.nn.predict(
+                data,
+                max_queue_size=10,
+                use_multiprocessing=False,
             )
+            is_batch_incomplete = len(data) != len(filenames)
+            if is_batch_incomplete:
+                evaluated = evaluated[:len(filenames)]
 
-        evaluated = self.nn.predict(
-            self.sequence,
-            max_queue_size=10,
-            use_multiprocessing=False
-        )
+            for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
+                if lbl != 'ref':
+                    evaluated[i] = out[..., 0]
 
-        for i, bexample in enumerate(evaluated):
-            with h5.File(bexample, "w") as savefile:
-                for j, el in enumerate(eval_names):
-                    if el in savefile.keys():
-                        del savefile[el]
-                    savefile[el] = evaluated[j][i, :]
+            for i, example in enumerate(filenames):
+                example = join(savepath, basename(example))
+                with h5.File(example, "w") as savefile:
+                    for j, el in enumerate(self.out_names):
+                        if el in savefile.keys():
+                            del savefile[el]
+                        savefile[el] = evaluated[j][i, :]
 
     def get_preds(self,
                   prednames: list,

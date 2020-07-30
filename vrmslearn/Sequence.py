@@ -40,8 +40,15 @@ class Sequence(Sequence):
         gen = self.case.sample_generator.model_gen
         self.data_names = ["input", *gen.label_names, *gen.weight_names]
 
+        if not self.is_training:
+            self.reset_test_generator()
+
     def __len__(self):
         return len(self.case.files[self.phase])
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield self[i]
 
     def __getitem__(self, _):
         inputs = np.empty([self.batch_size, *self.input_size])
@@ -64,8 +71,21 @@ class Sequence(Sequence):
             'vint': 'tweight',
             'vdepth': 'dweight',
         }
+        if not self.is_training:
+            filenames = []
         for i in range(self.batch_size):
-            data = self.case.get_example(phase=self.phase)
+            if self.is_training:
+                data = self.case.get_example(phase=self.phase)
+            else:
+                try:
+                    filename = next(self.test_filenames_generator)
+                    data = self.case.get_example(
+                        filename=filename,
+                        phase=self.phase,
+                    )
+                    filenames.append(filename)
+                except StopIteration:
+                    break
 
             inputs[i] = data[0]
             for j, lbl in enumerate(self.out_names):
@@ -76,4 +96,9 @@ class Sequence(Sequence):
         if self.is_training:
             return inputs, labels
         else:
-            return inputs
+            return inputs, filenames
+
+    def reset_test_generator(self):
+        self.test_filenames_generator = (
+            f for f in self.case.files[self.phase]
+        )  # This is a generator. Extract the next value with `next`.

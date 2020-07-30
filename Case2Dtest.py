@@ -144,8 +144,6 @@ if __name__ == "__main__":
         validatesize=0,
         testsize=100,
     )
-    if args.training == 3 and case.testsize < batch_size:
-        batch_size = case.testsize
 
     # Generate the dataset.
     if args.training in [0, 2]:
@@ -217,12 +215,6 @@ if __name__ == "__main__":
         restore_from = tf.train.latest_checkpoint(args.logdir)
         tester.test_dataset(
             savepath=savepath,
-            toeval={
-                'ref': nn.outputs['ref'],
-                'vrms': nn.outputs['vrms'],
-                'vint': nn.outputs['vint'],
-                'vdepth': nn.outputs['vdepth'],
-            },
             batch_size=batch_size,
             restore_from=restore_from,
         )
