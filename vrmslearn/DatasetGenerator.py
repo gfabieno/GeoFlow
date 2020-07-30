@@ -56,7 +56,7 @@ class SampleGenerator:
 
         return data, labels, weights
 
-    def write(self, exampleid , savedir, data, labels, weights, filename=None):
+    def write(self, exampleid, savedir, data, labels, weights, filename=None):
         """
         This method writes one example in the hdf5 format
 
