@@ -4,11 +4,15 @@
 This class trains the neural network
 """
 
-import time
+from os.path import join, split
+
 import tensorflow as tf
-from vrmslearn.Inputqueue import BatchManager
+from tensorflow.keras import callbacks, optimizers
+
 from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Case import Case
+from vrmslearn.Sequence import Sequence, OUTS
+
+WEIGHTS_NAME = "{epoch:04d}.ckpt"
 
 
 class Trainer:
@@ -18,81 +22,62 @@ class Trainer:
 
     def __init__(self,
                  nn: RCNN2D,
-                 case: Case,
+                 sequence: Sequence,
                  checkpoint_dir: str = "./logs",
                  learning_rate: float = 0.001,
-                 beta1: float = 0.9,
-                 beta2: float = 0.999,
+                 beta_1: float = 0.9,
+                 beta_2: float = 0.999,
                  epsilon: float = 1e-8,
-                 var_to_minimize: list = None):
+                 loss_scales: dict = {'ref': 1.}):
         """
         Initialize the tester
 
         @params:
-        nn (RCNN) : A tensforlow neural net
-        case (Case) : A Case object on which to apply the NN
+        nn (RCNN) : A tensorflow neural net
+        sequence (Sequence) : A Sequence object providing data
         checkpoint_dir (str): The path in which to save checkpoints
         learning_rate (float): The learning rate.
         beta1 (float): beta1 of the Adam optimizer
         beta2 (float): beta2 of the Adam optimizer
         epsilon (float): epsilon of the Adam optimizer
-        var_to_minimize (list): A list of tf.Variables to optimize when training
+        loss_scales (dict): losses associated with each label
 
         @returns:
         """
         self.nn = nn
-        self.case = case
+        self.sequence = sequence
         self.checkpoint_dir = checkpoint_dir
-        with self.nn.graph.as_default():
-            self.global_step = tf.train.get_or_create_global_step()
 
-            # Output the graph for Tensorboard
-            writer = tf.summary.FileWriter(self.checkpoint_dir,
-                                           graph=tf.get_default_graph())
-            writer.close()
-            self.tomin = self.define_optimizer(learning_rate,
-                                               beta1,
-                                               beta2,
-                                               epsilon,
-                                               var_to_minimize)
+        for lbl in loss_scales.keys():
+            if lbl not in OUTS:
+                raise ValueError(f"`loss_scales` keys should be from {OUTS}")
+        self.loss_scales = loss_scales
+        self.out_names = [out for out in OUTS if out in loss_scales.keys()]
 
-    def define_optimizer(self,
-                         learning_rate: float = 0.001,
-                         beta1: float = 0.9,
-                         beta2: float = 0.999,
-                         epsilon: float = 1e-8,
-                         var_to_minimize: list = None):
-        """
-        This method creates an optimization node using Adam optimizer.
-
-        @params:
-        learning_rate (float): The learning rate.
-        beta1 (float): beta1 of the Adam optimizer
-        beta2 (float): beta2 of the Adam optimizer
-        epsilon (float): epsilon of the Adam optimizer
-
-        @returns:
-        tomin (tf.tensor) : Output of the optimizer node.
-        """
-        with tf.name_scope("Optimizer"):
-            opt = tf.train.AdamOptimizer(learning_rate=learning_rate,
-                                         beta1=beta1,
-                                         beta2=beta2,
-                                         epsilon=epsilon,
-                                         name="Adam")
-
-            # Add node to minimize loss
-            if var_to_minimize:
-                tomin = opt.minimize(self.nn.loss,
-                                     global_step=self.global_step,
-                                     var_list=var_to_minimize)
+        losses, losses_weights = [], []
+        for lbl in self.out_names:
+            if lbl == 'ref':
+                losses.append(ref_loss())
             else:
-                tomin = opt.minimize(self.nn.loss, global_step=self.global_step)
+                losses.append(v_compound_loss())
+            losses_weights.append(self.loss_scales[lbl])
 
-        return tomin
+        self.nn.compile(
+            optimizer=optimizers.Adam(
+                learning_rate=learning_rate,
+                beta_1=beta_1,
+                beta_2=beta_2,
+                epsilon=epsilon,
+                name="Adam",
+            ),
+            loss=losses,
+            loss_weights=losses_weights,
+        )
 
     def train_model(self,
-                    niter: int = 10,
+                    batch_size: int = 1,
+                    epochs: int = 5,
+                    steps_per_epoch: int = 100,
                     restore_from: str = None,
                     thread_read: int = 1):
         """
@@ -100,96 +85,104 @@ class Trainer:
         if any checkpoints are found in self.checkpoint_dir.
 
         @params:
-        niter (int) : Number of total training iterations to run.
+        batch_size (int): quantity of examples per batch
+        epochs (int): quantity of epochs, of `steps_per_epoch` iterations
+        steps_per_epoch (int): quantity of iterations per epoch
         restore_from (str): Checkpoint file from which to initialize parameters
         thread_read (int): Number of threads to create example by InputQueue
-
-        @returns:
         """
+        if restore_from is not None:
+            self.nn.load_weights(restore_from)
+            filename = split(restore_from)[-1]
+            initial_epoch = int(filename[:4])
+            epochs += initial_epoch
+        else:
+            initial_epoch = 0
 
-        # Print optimizer settings being used, batch size, niter
-        print("number of iterations (niter) = " + str(niter))
+        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir)
+        checkpoints = callbacks.ModelCheckpoint(
+            join(self.checkpoint_dir, WEIGHTS_NAME),
+            save_weights_only=True,
+            save_freq='epoch',
+        )
+        self.nn.fit(
+            self.sequence,
+            epochs=epochs,
+            callbacks=[tensorboard, checkpoints],
+            initial_epoch=initial_epoch,
+            steps_per_epoch=steps_per_epoch,
+            max_queue_size=10,
+            use_multiprocessing=False,
+        )
 
-        # Do the learning
-        generator_fun = [self.case.get_example] * thread_read
-        with BatchManager(batch_size=self.nn.batch_size,
-                          generator_fun=generator_fun,
-                          postprocess_fun=self.case.ex2batch) as batch_queue:
 
-            with self.nn.graph.as_default():
-                summary_op = tf.summary.merge_all()
+def ref_loss():
+    """Get the loss function for the reflection prediction."""
+    def loss(label, output):
+        label, weights = label[:, 0], label[:, 1]
+        #  Logistic regression of zero offset time of reflections
+        weights = tf.expand_dims(weights, -1)
+        # if self.with_masking:
+        #     weightsr = tf.expand_dims(self.weights['wtime'], -1)
+        # else:
+        #     weightsr = 1.0
+        output = output * weights
+        temp_lbl = tf.cast(label, tf.int32)
+        label = tf.one_hot(temp_lbl, 2) * weights
 
-                # The StopAtStepHook handles stopping after running given steps.
-                hooks = [tf.train.StopAtStepHook(last_step=niter),
-                         tf.train.SummarySaverHook(save_steps=10,
-                                                   summary_op=summary_op),
-                         tf.train.CheckpointSaverHook(
-                             checkpoint_dir=self.checkpoint_dir,
-                             save_steps=100,
-                             saver=tf.train.Saver(max_to_keep=None))]
+        loss = tf.reduce_mean(
+            tf.nn.softmax_cross_entropy_with_logits(
+                logits=output,
+                labels=label,
+            )
+        )
+        return loss
 
-                if restore_from is not None:
-                    saver = tf.train.Saver(tf.trainable_variables())
-                    with tf.Session() as sess:
-                        saver.restore(sess, restore_from)
-                        vars = tf.trainable_variables()
-                        trained_variables = sess.run(vars)
+    return loss
 
-                    assigns = [tf.assign(v, trained_variables[ii])
-                               for ii, v in enumerate(vars)]
 
-                # Run the training iterations
-                with tf.train.MonitoredTrainingSession(checkpoint_dir=self.checkpoint_dir,
-                                                       save_checkpoint_secs=None,
-                                                       save_summaries_steps=1,
-                                                       hooks=hooks) as sess:
+def v_compound_loss(alpha=0.2, beta=0.1):
+    """Get the three-part loss function for velocity.
 
-                    if restore_from is not None:
-                        batch = batch_queue.next_batch()
-                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
-                                     for lbl in self.nn.feed_dict}
-                        step = sess.run(self.global_step, feed_dict=feed_dict)
-                        if step == 0:
-                            sess.run(assigns, feed_dict=feed_dict)
+    @params:
+        alpha (scalar) : proportion of loss associated with minimizing the
+                         error between derivatives
+        beta (scalar) : proportion of loss associated with minimizing the
+                         gradient (blocky inversion)
 
-                    while not sess.should_stop():
-                        t0 = time.time()
-                        batch = batch_queue.next_batch()
-                        t1 = time.time()
+    @returns:
+        loss (tf.tensor) : Output of node calculating loss.
+    """
+    fact1 = 1 - alpha - beta
 
-                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
-                                     for lbl in self.nn.feed_dict}
-                        step, loss, _ = sess.run([self.global_step,
-                                                  self.nn.loss,
-                                                  self.tomin],
-                                                  feed_dict=feed_dict)
-                        t2 = time.time()
-                        print("Iteration %d, loss: %f, t_batch: %f, t_graph: %f , nqueue: %d" % (step, loss, t1 - t0, t2 - t1,
-                                                  batch_queue.n_in_queue.value))
+    def loss(label, output):
+        label, weight = label[:, 0], label[:, 1]
+        output = output[:, :, :, 0]
+        losses = []
 
-    def evaluate(self, toeval, niter, checkpoint_dir=None, batch=None):
-        """
-        This method compute outputs contained in toeval of a NN.
+        # Calculate mean squared error
+        if fact1 > 0:
+            num = tf.reduce_sum(weight * (label-output)**2)
+            den = tf.reduce_sum(weight * label**2)
+            losses.append(fact1 * num / den)
 
-        @params:
-        niter (int) : Training iterations of the checkpoint
-        checkpoint_dir (str): Directory of the checkpoint
-        batch (tuple): A batch as created by batch_generator, to predict from
+        #  Calculate mean squared error of the z derivative
+        if alpha > 0:
+            dlabel = label[:, 1:, :] - label[:, :-1, :]
+            dout = output[:, 1:, :] - output[:, :-1, :]
+            num = tf.reduce_sum(weight[:, :-1, :] * (dlabel-dout)**2)
+            den = tf.reduce_sum(weight[:, :-1, :] * dlabel**2) + 1E-6
+            losses.append(alpha * num / den)
 
-        @returns:
-        evaluated (list): A list of np.array containing evalutead tensors
-        """
+        # Minimize gradient (blocky inversion)
+        if beta > 0:
+            num = (
+                tf.norm(output[:, 1:, :] - output[:, :-1, :], ord=1)
+                + tf.norm(output[:, :, 1:] - output[:, :, :-1], ord=1)
+            )
+            den = tf.norm(output, ord=1) / 0.02
+            losses.append(beta * num / den)
 
-        if checkpoint_dir is None:
-            checkpoint_dir = self.checkpoint_dir
+        return tf.reduce_sum(losses)
 
-        feed_dict = dict(zip(self.nn.feed_dict, batch))
-
-        with self.nn.graph.as_default():
-            saver = tf.train.Saver()
-            with tf.Session() as sess:
-                saver.restore(sess,
-                              checkpoint_dir + '/model.ckpt-' + str(niter))
-                evaluated = sess.run(toeval, feed_dict=feed_dict)
-
-        return evaluated
+    return loss

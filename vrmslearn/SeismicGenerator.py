@@ -12,16 +12,19 @@ from SeisCL.SeisCL import SeisCL
 from vrmslearn.ModelParameters import ModelParameters
 from vrmslearn.SeismicUtilities import random_wavelet_generator
 
+
 class SeismicGenerator(SeisCL):
     """
     Class to generate seismic data with SeisCL and output an example to build
     a seismic dataset for training.
     """
-    def __init__(self,
-                 pars=ModelParameters(),
-                 workdir="workdir",
-                 gpu=0):
 
+    def __init__(
+                self,
+                pars=ModelParameters(),
+                workdir="workdir",
+                gpu=0,
+            ):
         """
 
         @params:
@@ -32,7 +35,7 @@ class SeismicGenerator(SeisCL):
         """
         super().__init__()
 
-        """____________Remove old working directory an assign a new one______"""
+        # Remove old working directory an assign a new one.
         shutil.rmtree(self.workdir, ignore_errors=True)
         shutil.rmtree(workdir, ignore_errors=True)
         try:
@@ -45,7 +48,7 @@ class SeismicGenerator(SeisCL):
             pass
         self.workdir = workdir
 
-        """____________Assign constants for modeling with SeisCL_____________"""
+        # Assign constants for modeling with SeisCL.
         self.csts['N'] = np.array([pars.NZ, pars.NX])
         self.csts['ND'] = 2
         self.csts['dh'] = pars.dh  # Grid spacing
@@ -56,12 +59,12 @@ class SeismicGenerator(SeisCL):
         self.csts['seisout'] = 2  # Output pressure
         self.csts['freesurf'] = int(pars.fs)  # Free surface
 
-        """____________________Assign the GPU to SeisCL_____________________"""
+        # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
         nouse = nouse[nouse != gpu]
         self.csts['no_use_GPUs'] = nouse
 
-        """________________Source and receiver positions_____________________"""
+        # Source and receiver positions.
         if pars.flat:
             # Add just one source in the middle
             sx = np.arange(pars.NX / 2, 1 + pars.NX / 2) * pars.dh
@@ -73,22 +76,27 @@ class SeismicGenerator(SeisCL):
         sz = np.full_like(sx, pars.source_depth)
         sid = np.arange(0, sx.shape[0])
 
-        self.src_pos_all = np.stack([sx,
-                                     np.zeros_like(sx),
-                                     sz,
-                                     sid,
-                                     np.full_like(sx, pars.sourcetype)], axis=0)
+        self.src_pos_all = np.stack(
+            [
+                sx,
+                np.zeros_like(sx),
+                sz,
+                sid,
+                np.full_like(sx, pars.sourcetype),
+            ],
+            axis=0,
+        )
         self.resampling = pars.resampling
 
         # Add receivers
         if pars.gmin:
             gmin = pars.gmin
         else:
-            gmin = -(pars.NX - 2 * pars.Npad) // 2
+            gmin = pars.Npad
         if pars.gmax:
             gmax = pars.gmax
         else:
-            gmax = (pars.NX - 2 * pars.Npad) // 2
+            gmax = pars.NX - pars.Npad
 
         gx0 = np.arange(gmin, gmax, pars.dg) * pars.dh
         gx = np.concatenate([gx0 for s in sx], axis=0)
@@ -96,20 +104,27 @@ class SeismicGenerator(SeisCL):
         gz = np.full_like(gx, pars.receiver_depth)
         gid = np.arange(0, len(gx))
 
-        self.rec_pos_all = np.stack([gx,
-                                   np.zeros_like(gx),
-                                   gz,
-                                   gsid,
-                                   gid,
-                                   np.full_like(gx, 2),
-                                   np.zeros_like(gx),
-                                   np.zeros_like(gx)], axis=0)
+        self.rec_pos_all = np.stack(
+            [
+                gx,
+                np.zeros_like(gx),
+                gz,
+                gsid,
+                gid,
+                np.full_like(gx, 2),
+                np.zeros_like(gx),
+                np.zeros_like(gx),
+            ],
+            axis=0,
+        )
 
-        self.wavelet_generator = random_wavelet_generator(pars.NT,
-                                                          pars.dt,
-                                                          pars.peak_freq,
-                                                          pars.df,
-                                                          pars.tdelay)
+        self.wavelet_generator = random_wavelet_generator(
+            pars.NT,
+            pars.dt,
+            pars.peak_freq,
+            pars.df,
+            pars.tdelay,
+        )
 
     def compute_data(self, vp, vs, rho):
         """
@@ -127,12 +142,14 @@ class SeismicGenerator(SeisCL):
         data (numpy.ndarray):  The modeled data.
         """
 
-        self.src_all = None #reset source to generate new random source
-        self.set_forward(self.src_pos_all[3, :],
-                         {'vp': vp, 'vs': vs, 'rho': rho},
-                         withgrad=False)
+        self.src_all = None  # Reset source to generate new random source.
+        self.set_forward(
+            self.src_pos_all[3, :],
+            {'vp': vp, 'vs': vs, 'rho': rho},
+            withgrad=False,
+        )
         self.execute()
         data = self.read_data()
-        data = data[0][::self.resampling, :] # resample the data to reduce space
+        data = data[0][::self.resampling, :]  # Resample data to reduce space.
 
         return data

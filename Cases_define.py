@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-    Defines parameters for different cases here.
-"""
+"""Define parameters for different cases"""
 
-from vrmslearn.Case import Case, CaseCollection
+from vrmslearn.Case import Case
 from vrmslearn.ModelParameters import ModelParameters
+
 
 class Case_1Dsmall(Case):
 
     name = "1Dsmall"
     pars = ModelParameters()
     pars.train_on_shots = True
+
 
 class Case_1Darticle(Case):
 
@@ -35,8 +35,8 @@ class Case_1Darticle(Case):
     pars.gmax = int((470 + 72 * pars.dg * pars.dh) / pars.dh)
     pars.minoffset = 470
 
-    pars.vp_min = 1300.0  # maximum value of vp (in m/s)
-    pars.vp_max = 4000.0  # minimum value of vp (in m/s)
+    pars.vp_min = 1300.0  # Maximum value of vp (in m/s).
+    pars.vp_max = 4000.0  # Minimum value of vp (in m/s).
 
     pars.marine = True
     pars.water_vmin = 1430
@@ -57,9 +57,12 @@ class Case_1Darticle(Case):
             self.pars.random_noise = True
             self.pars.random_noise_max = 0.02
         self.name = self.name + "_noise"
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
+        super().__init__(
+            trainsize=trainsize,
+            validatesize=validatesize,
+            testsize=testsize,
+        )
+
 
 class Case_2Dtest(Case):
 
@@ -82,7 +85,7 @@ class Case_2Dtest(Case):
     pars.max_deform_nfreq = 40
     pars.prob_deform_change = 0.7
     pars.angle_max = 20
-    pars.dangle_max = 10  # Maximum dip difference between two adjacent layers
+    pars.dangle_max = 10  # Maximum dip difference between two adjacent layers.
 
     pars.num_layers = 0
     pars.layer_num_min = 5
@@ -104,13 +107,13 @@ class Case_2Dtest(Case):
             self.pars.random_static_max = 1
             self.pars.random_noise = True
             self.pars.random_noise_max = 0.02
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
-
+        super().__init__(
+            trainsize=trainsize,
+            validatesize=validatesize,
+            testsize=testsize,
+        )
 
 
 if __name__ == "__main__":
-
     case = Case_1Dsmall()
     case.plot_model()

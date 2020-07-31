@@ -3,17 +3,19 @@
 """
 This class tests a NN on a dataset.
 """
+
 import fnmatch
 import os
+from os.path import join, basename
 
 import h5py as h5
-import tensorflow as tf
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case, postprocess
+from vrmslearn.Sequence import Sequence
 
 
 class Tester(object):
@@ -23,23 +25,25 @@ class Tester(object):
 
     def __init__(self,
                  nn: RCNN2D,
+                 sequence: Sequence,
                  case: Case):
         """
         Initialize the tester
 
         @params:
         nn (RCNN) : A tensforlow neural net
-        data_generator (SeismicGenerator): A data generator object
-
-        @returns:
+        sequence (Sequence) : A Sequence object providing data
         """
         self.nn = nn
+        self.sequence = sequence
         self.case = case
+
+        self.out_names = self.nn.out_names
 
     def test_dataset(self,
                      savepath: str,
-                     toeval: dict,
                      filename: str = 'example_*',
+                     batch_size: int = 1,
                      restore_from: str = None):
         """
         This method evaluate predictions on all examples contained in savepath,
@@ -49,49 +53,44 @@ class Tester(object):
         savepath (str) : The path in which the test examples are found
         toeval (dict): Dict of name: tensors to predict
         filename (str): The structure of the examples' filenames
+        batch_size (int): quantity of examples per batch
         restore_from (str): File containing the trained weights
 
         @returns:
         """
-        eval_names = toeval.keys()
-        eval_tensors = [toeval[key] for key in eval_names]
+        if restore_from is not None:
+            self.nn.load_weights(restore_from)
 
-        predictions = fnmatch.filter(os.listdir(savepath), filename)
-        with self.nn.graph.as_default():
-            saver = tf.train.Saver()
-            with tf.Session() as sess:
-                saver.restore(sess, restore_from)
-                batch = []
-                bexamples = []
-                for ii, example in enumerate(self.case.files["test"]):
-                    predname = os.path.basename(example)
-                    if predname not in predictions:
-                        bexamples.append(os.path.join(savepath, predname))
-                        batch.append(self.case.get_example(filename=example))
+        self.sequence.reset_test_generator()
 
-                    cond1 = len(batch) == self.nn.batch_size
-                    cond2 = len(batch) % self.nn.batch_size == self.case.testsize
-                    if cond1 or cond2:
-                        batch = self.case.ex2batch(batch)
-                        feed_dict = {self.nn.feed_dict[lbl]: batch[lbl]
-                                     for lbl in self.nn.feed_dict}
-                        evaluated = sess.run(eval_tensors, feed_dict=feed_dict)
+        for data, filenames in self.sequence:
+            evaluated = self.nn.predict(
+                data,
+                max_queue_size=10,
+                use_multiprocessing=False,
+            )
+            is_batch_incomplete = len(data) != len(filenames)
+            if is_batch_incomplete:
+                for i in range(len(evaluated)):
+                    evaluated[i] = evaluated[i][:len(filenames)]
 
-                        for jj, bexample in enumerate(bexamples):
-                            savefile = h5.File(bexample, "w")
-                            for kk, el in enumerate(eval_names):
-                                if el in savefile.keys():
-                                    del savefile[el]
-                                savefile[el] = evaluated[kk][jj, :]
-                            savefile.close()
-                        batch = []
-                        bexamples = []
+            for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
+                if lbl != 'ref':
+                    evaluated[i] = out[..., 0]
+
+            for i, example in enumerate(filenames):
+                example = join(savepath, basename(example))
+                with h5.File(example, "w") as savefile:
+                    for j, el in enumerate(self.out_names):
+                        if el in savefile.keys():
+                            del savefile[el]
+                        savefile[el] = evaluated[j][i, :]
 
     def get_preds(self,
                   prednames: list,
                   savepath: str,
                   examples: list = None,
-                  filename: str ='example_*'):
+                  filename: str = 'example_*'):
         """
         This method returns the labels and predictions for labels in prednames.
 
@@ -148,23 +147,35 @@ class Tester(object):
             else:
                 fig, axes = plt.subplots(1, len(labelnames), squeeze=False)
 
-            label, pred = postprocess({l: labels[l][ii] for l in labelnames},
-                                      {l: preds[l][ii] for l in labelnames},
-                                      self.case.pars)
+            label, pred = postprocess(
+                {l: labels[l][ii] for l in labelnames},
+                {l: preds[l][ii] for l in labelnames},
+                self.case.pars,
+            )
             for jj, labelname in enumerate(labelnames):
                 if image:
                     vmin = np.min(label[labelname])
                     vmax = np.max(label[labelname])
-                    axes[jj, 0].imshow(label[labelname], vmin=vmin, vmax=vmax,
-                                       cmap='inferno', aspect='auto')
-                    axes[jj, 1].imshow(pred[labelname], vmin=vmin, vmax=vmax,
-                                            cmap='inferno', aspect='auto')
+                    axes[jj, 0].imshow(
+                        label[labelname],
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap='inferno',
+                        aspect='auto',
+                    )
+                    axes[jj, 1].imshow(
+                        pred[labelname],
+                        vmin=vmin,
+                        vmax=vmax,
+                        cmap='inferno',
+                        aspect='auto',
+                    )
 
                 else:
                     y = np.arange(label[labelname].shape[0])
-                    axes[0,jj].plot(label[labelname][:,0], y)
-                    axes[0,jj].plot(pred[labelname][:,0], y)
-                    axes[0,jj].invert_yaxis()
+                    axes[0, jj].plot(label[labelname][:, 0], y)
+                    axes[0, jj].plot(pred[labelname][:, 0], y)
+                    axes[0, jj].invert_yaxis()
 
             plt.show()
 
@@ -191,11 +202,14 @@ class Tester(object):
                 if os.path.basename(f) in os.listdir(savepath)
             ]
         else:
-            examples = [os.path.basename(self.case.files["test"][ii])
-                        for ii in range(quantity)]
+            examples = [
+                os.path.basename(self.case.files["test"][ii])
+                for ii in range(quantity)
+            ]
 
-        labels, preds = self.get_preds(labelnames, savepath,
-                                       examples=examples)
+        labels, preds = self.get_preds(
+            labelnames, savepath, examples=examples,
+        )
         datas = labels['input']
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
@@ -207,30 +221,51 @@ class Tester(object):
         clip = 0.01
         vmax = np.max(datas) * clip
         vmin = -vmax
-        im1 = axs[0, 0].imshow(datas[0], animated=True, vmin=vmin, vmax=vmax,
-                               aspect='auto', cmap=plt.get_cmap('Greys'))
+        im1 = axs[0, 0].imshow(
+            datas[0],
+            animated=True,
+            vmin=vmin,
+            vmax=vmax,
+            aspect='auto',
+            cmap=plt.get_cmap('Greys'),
+        )
         axs[0, 0].set_title('data')
         ims = [im1]
 
-        label, pred = postprocess({l: labels[l][0] for l in labelnames},
-                                  {l: preds[l][0] for l in labelnames},
-                                  self.case.pars)
+        label, pred = postprocess(
+            {l: labels[l][0] for l in labelnames},
+            {l: preds[l][0] for l in labelnames},
+            self.case.pars,
+        )
 
         for ii, labelname in enumerate(labelnames):
             if image:
-                im1 = axs[0, 1 + ii].imshow(pred[labelname], vmin=0, vmax=1,
-                                            animated=True,
-                                            cmap='inferno', aspect='auto')
+                im1 = axs[0, 1 + ii].imshow(
+                    pred[labelname],
+                    vmin=0,
+                    vmax=1,
+                    animated=True,
+                    cmap='inferno',
+                    aspect='auto',
+                )
                 im2 = axs[1, 1 + ii].imshow(label[labelname], vmin=0, vmax=1,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
-                plt.colorbar(im1, ax=axs[0, 1 + ii],
-                             orientation="horizontal",
-                             pad=0.15, fraction=0.1)
-                plt.colorbar(im2, ax=axs[1, 1 + ii],
-                             orientation="horizontal",
-                             pad=0.15, fraction=0.1)
+                plt.colorbar(
+                    im1,
+                    ax=axs[0, 1 + ii],
+                    orientation="horizontal",
+                    pad=0.15,
+                    fraction=0.1,
+                )
+                plt.colorbar(
+                    im2,
+                    ax=axs[1, 1 + ii],
+                    orientation="horizontal",
+                    pad=0.15,
+                    fraction=0.1,
+                )
                 ims.append(im1)
                 ims.append(im2)
             else:
@@ -248,17 +283,19 @@ class Tester(object):
 
         def init():
             for ii, im in enumerate(ims):
-                label, pred = postprocess({l: labels[l][0] for l in labelnames},
-                                          {l: preds[l][0] for l in labelnames},
-                                          self.case.pars)
+                label, pred = postprocess(
+                    {l: labels[l][0] for l in labelnames},
+                    {l: preds[l][0] for l in labelnames},
+                    self.case.pars,
+                )
                 if ii == 0:
                     toplot = datas[0]
                     im.set_array(toplot)
                 else:
                     if ii % 2 == 0:
-                        toplot = pred[labelnames[int((ii - 1) / 2)]]
+                        toplot = pred[labelnames[(ii - 1) // 2]]
                     else:
-                        toplot = label[labelnames[int((ii - 1) / 2)]]
+                        toplot = label[labelnames[(ii - 1) // 2]]
                     if image:
                         im.set_array(toplot)
                     else:
@@ -267,18 +304,20 @@ class Tester(object):
             return ims
 
         def animate(t):
-            label, pred = postprocess({l: labels[l][t] for l in labelnames},
-                                      {l: preds[l][t] for l in labelnames},
-                                      self.case.pars)
+            label, pred = postprocess(
+                {l: labels[l][t] for l in labelnames},
+                {l: preds[l][t] for l in labelnames},
+                self.case.pars,
+            )
             for ii, im in enumerate(ims):
                 if ii == 0:
                     toplot = datas[t]
                     im.set_array(toplot)
                 else:
                     if ii % 2 == 0:
-                        toplot = pred[labelnames[int((ii - 1) / 2)]]
+                        toplot = pred[labelnames[(ii - 1) // 2]]
                     else:
-                        toplot = label[labelnames[int((ii - 1) / 2)]]
+                        toplot = label[labelnames[(ii - 1) // 2]]
                     if image:
                         im.set_array(toplot)
                     else:
@@ -286,7 +325,13 @@ class Tester(object):
                         im.set_data(toplot, y)
             return ims
 
-        anim = animation.FuncAnimation(fig, animate, init_func=init,
-                                       frames=len(datas),
-                                       interval=3000, blit=True, repeat=True)
+        _ = animation.FuncAnimation(
+            fig,
+            animate,
+            init_func=init,
+            frames=len(datas),
+            interval=3000,
+            blit=True,
+            repeat=True,
+        )
         plt.show()
