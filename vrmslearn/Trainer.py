@@ -99,7 +99,10 @@ class Trainer:
         else:
             initial_epoch = 0
 
-        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir)
+        tensorboard = callbacks.TensorBoard(
+            log_dir=self.checkpoint_dir,
+            profile_batch=0,
+        )
         checkpoints = callbacks.ModelCheckpoint(
             join(self.checkpoint_dir, WEIGHTS_NAME),
             save_weights_only=True,
