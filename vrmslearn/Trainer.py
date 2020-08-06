@@ -92,7 +92,7 @@ class Trainer:
         thread_read (int): Number of threads to create example by InputQueue
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from)
+            self.nn.load_weights(restore_from, by_name=True)
             filename = split(restore_from)[-1]
             initial_epoch = int(filename[:4])
             epochs += initial_epoch
