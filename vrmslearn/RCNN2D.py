@@ -82,6 +82,8 @@ class RCNN2D:
         return inputs
 
     def build_network(self):
+        is_1d = self.input_size[2] == 1
+
         outputs = {}
 
         data_stream = self.scale_inputs(self.inputs)
@@ -118,45 +120,72 @@ class RCNN2D:
                 )
                 outputs['ref'] = conv_2d(data_stream)
 
-
         rnn_vrms = build_rnn(units=200, name="rnn_vrms")
         data_stream = rnn_vrms(data_stream)
 
         if 'vrms' in self.out_names:
-            with tf.name_scope("decode_vrms"):
-                conv2d = Conv2D(
-                    1,
-                    [1, 1],
-                    padding='same',
-                    name="vrms",
-                )
-                outputs['vrms'] = conv2d(data_stream)
+            if is_1d:
+                with tf.name_scope("decode_vrms"):
+                    conv2d = Conv2D(
+                        1,
+                        [1, 1],
+                        padding='same',
+                        name="vrms",
+                    )
+            else:
+                with tf.name_scope("decode_vrms_2D"):
+                    conv2d = Conv2D(
+                        1,
+                        [1, 5],
+                        padding='same',
+                        name="vrms",
+                    )
+            outputs['vrms'] = conv2d(data_stream)
 
         rnn_vint = build_rnn(units=200, name="rnn_vint")
         data_stream = rnn_vint(data_stream)
 
         if 'vint' in self.out_names:
-            with tf.name_scope("decode_vint"):
-                conv2d = Conv2D(
-                    1,
-                    [1, 1],
-                    padding='same',
-                    name="vint",
-                )
-                outputs['vint'] = conv2d(data_stream)
+            if is_1d:
+                with tf.name_scope("decode_vint"):
+                    conv2d = Conv2D(
+                        1,
+                        [1, 1],
+                        padding='same',
+                        name="vint",
+                    )
+            else:
+                with tf.name_scope("decode_vint_2D"):
+                    conv2d = Conv2D(
+                        1,
+                        [1, 5],
+                        padding='same',
+                        name="vint",
+                    )
+            outputs['vint'] = conv2d(data_stream)
 
         rnn_vdepth = build_rnn(units=200, name="rnn_vdepth")
         data_stream = rnn_vdepth(data_stream)
 
         if 'vdepth' in self.out_names:
-            with tf.name_scope("decode_vdepth"):
-                conv_2d = Conv2D(
-                    1,
-                    [1, 1],
-                    padding='same',
-                    name="vdepth",
-                )
-                outputs['vdepth'] = conv_2d(data_stream)
+            if is_1d:
+                with tf.name_scope("decode_vdepth"):
+                    conv_2d = Conv2D(
+                        1,
+                        [1, 1],
+                        padding='same',
+                        name="vdepth",
+                    )
+                    outputs['vdepth'] = conv_2d(data_stream)
+            else:
+                with tf.name_scope("decode_vdepth_2D"):
+                    conv2d = Conv2D(
+                        1,
+                        [1, 5],
+                        padding='same',
+                        name="vdepth",
+                    )
+            outputs['vdepth'] = conv2d(data_stream)
 
         return [outputs[out] for out in self.out_names]
 
