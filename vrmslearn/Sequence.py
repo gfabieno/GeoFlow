@@ -60,7 +60,7 @@ class Sequence(Sequence):
             'ref': [self.batch_size, 2, n_t, n_cmp],
             'vrms': [self.batch_size, 2, n_t, n_cmp],
             'vint': [self.batch_size, 2, n_t, n_cmp],
-            'vdepth': [self.batch_size, 2, n_t, n_cmp],
+            'vdepth': [self.batch_size, 2, self.depth_size, n_cmp],
         }
         for lbl in self.out_names:
             labels.append(np.empty(LABEL_SHAPE[lbl]))

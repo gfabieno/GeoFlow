@@ -188,6 +188,7 @@ class RCNN2D:
                 lstm = LSTM(UNITS, return_sequences=True)
                 data_stream = lstm(data_stream)
                 self.rnn_vdepth_out = data_stream
+                data_stream = data_stream[:, :self.depth_size]
 
             data_stream = reshape(
                 data_stream,
@@ -195,7 +196,7 @@ class RCNN2D:
             )
             data_stream = Permute((2, 1, 3))(data_stream)
 
-            KERNELS = [[1, 3], [1, 3], [1, 3], [1, 3]]
+            KERNELS = [[3, 1], [3, 1], [3, 1], [3, 1]]
             QTIES_FILTERS = [
                 2 * UNITS,
                 2 * UNITS,
@@ -216,7 +217,7 @@ class RCNN2D:
                         data_stream = LeakyReLU()(data_stream)
                 conv_2d = Conv2D(
                     1,
-                    [1, 3],
+                    [3, 1],
                     padding='same',
                     name="vdepth",
                 )
