@@ -59,7 +59,7 @@ class Tester(object):
         @returns:
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from, by_name=True)
+            self.nn.load_weights(restore_from)
 
         self.sequence.reset_test_generator()
 
