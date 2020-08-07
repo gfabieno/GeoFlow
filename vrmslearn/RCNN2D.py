@@ -126,7 +126,7 @@ class RCNN2D:
         if 'vrms' in self.out_names:
             if is_1d:
                 with tf.name_scope("decode_vrms"):
-                    conv2d = Conv2D(
+                    conv_2d = Conv2D(
                         1,
                         [1, 1],
                         padding='same',
@@ -134,13 +134,13 @@ class RCNN2D:
                     )
             else:
                 with tf.name_scope("decode_vrms_2D"):
-                    conv2d = Conv2D(
+                    conv_2d = Conv2D(
                         1,
                         [1, 5],
                         padding='same',
                         name="vrms",
                     )
-            outputs['vrms'] = conv2d(data_stream)
+            outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, name="rnn_vint")
         data_stream = rnn_vint(data_stream)
@@ -148,7 +148,7 @@ class RCNN2D:
         if 'vint' in self.out_names:
             if is_1d:
                 with tf.name_scope("decode_vint"):
-                    conv2d = Conv2D(
+                    conv_2d = Conv2D(
                         1,
                         [1, 1],
                         padding='same',
@@ -156,13 +156,13 @@ class RCNN2D:
                     )
             else:
                 with tf.name_scope("decode_vint_2D"):
-                    conv2d = Conv2D(
+                    conv_2d = Conv2D(
                         1,
                         [1, 5],
                         padding='same',
                         name="vint",
                     )
-            outputs['vint'] = conv2d(data_stream)
+            outputs['vint'] = conv_2d(data_stream)
 
         data_stream = data_stream[:, :self.depth_size]
         rnn_vdepth = build_rnn(units=200, name="rnn_vdepth")
@@ -180,13 +180,13 @@ class RCNN2D:
                     outputs['vdepth'] = conv_2d(data_stream)
             else:
                 with tf.name_scope("decode_vdepth_2D"):
-                    conv2d = Conv2D(
+                    conv_2d = Conv2D(
                         1,
                         [1, 5],
                         padding='same',
                         name="vdepth",
                     )
-            outputs['vdepth'] = conv2d(data_stream)
+            outputs['vdepth'] = conv_2d(data_stream)
 
         return [outputs[out] for out in self.out_names]
 
