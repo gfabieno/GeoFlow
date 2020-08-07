@@ -56,11 +56,12 @@ class Sequence(Sequence):
 
         n_t = self.input_size[0]
         n_cmp = self.input_size[2]
+        n_z = min([n_t, self.depth_size])
         LABEL_SHAPE = {
             'ref': [self.batch_size, 2, n_t, n_cmp],
             'vrms': [self.batch_size, 2, n_t, n_cmp],
             'vint': [self.batch_size, 2, n_t, n_cmp],
-            'vdepth': [self.batch_size, 2, self.depth_size, n_cmp],
+            'vdepth': [self.batch_size, 2, n_z, n_cmp],
         }
         for lbl in self.out_names:
             labels.append(np.empty(LABEL_SHAPE[lbl]))
