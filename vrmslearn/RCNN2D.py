@@ -164,6 +164,7 @@ class RCNN2D:
                     )
             outputs['vint'] = conv2d(data_stream)
 
+        data_stream = data_stream[:, :self.depth_size]
         rnn_vdepth = build_rnn(units=200, name="rnn_vdepth")
         data_stream = rnn_vdepth(data_stream)
 
