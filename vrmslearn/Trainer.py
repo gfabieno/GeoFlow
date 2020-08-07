@@ -105,7 +105,7 @@ class Trainer:
         )
         checkpoints = callbacks.ModelCheckpoint(
             join(self.checkpoint_dir, WEIGHTS_NAME),
-            save_weights_only=True,
+            save_weights_only=False,  # Allow loading weights by name.
             save_freq='epoch',
         )
         self.nn.fit(
