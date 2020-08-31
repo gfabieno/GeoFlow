@@ -130,6 +130,11 @@ if __name__ == "__main__":
         default=1,
         help="1: Validate data by plotting."
     )
+    parser.add_argument(
+        "--no_weights",
+        action='store_false',
+        help="Discard weighting in losses when training."
+    )
 
     # Parse the input for training parameters.
     args, unparsed = parser.parse_known_args()
@@ -188,6 +193,7 @@ if __name__ == "__main__":
             beta_2=args.beta_2,
             epsilon=args.eps,
             loss_scales=loss_scales,
+            use_weights=not args.no_weights,
         )
         restore_from = tf.train.latest_checkpoint(args.logdir)
         trainer.train_model(

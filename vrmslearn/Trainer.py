@@ -28,7 +28,8 @@ class Trainer:
                  beta_1: float = 0.9,
                  beta_2: float = 0.999,
                  epsilon: float = 1e-8,
-                 loss_scales: dict = {'ref': 1.}):
+                 loss_scales: dict = {'ref': 1.},
+                 use_weights: bool = True):
         """
         Initialize the tester
 
@@ -57,9 +58,9 @@ class Trainer:
         losses, losses_weights = [], []
         for lbl in self.out_names:
             if lbl == 'ref':
-                losses.append(ref_loss())
+                losses.append(ref_loss(use_weights))
             else:
-                losses.append(v_compound_loss())
+                losses.append(v_compound_loss(use_weights))
             losses_weights.append(self.loss_scales[lbl])
 
         self.nn.compile(
@@ -119,16 +120,14 @@ class Trainer:
         )
 
 
-def ref_loss():
+def ref_loss(use_weights=True):
     """Get the loss function for the reflection prediction."""
     def loss(label, output):
         label, weights = label[:, 0], label[:, 1]
         #  Logistic regression of zero offset time of reflections
         weights = tf.expand_dims(weights, -1)
-        # if self.with_masking:
-        #     weightsr = tf.expand_dims(self.weights['wtime'], -1)
-        # else:
-        #     weightsr = 1.0
+        if not use_weights:
+            weights = tf.ones_like(weights)
         output = output * weights
         temp_lbl = tf.cast(label, tf.int32)
         label = tf.one_hot(temp_lbl, 2) * weights
@@ -144,7 +143,7 @@ def ref_loss():
     return loss
 
 
-def v_compound_loss(alpha=0.2, beta=0.1):
+def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
     """Get the three-part loss function for velocity.
 
     @params:
@@ -160,6 +159,8 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
     def loss(label, output):
         label, weight = label[:, 0], label[:, 1]
+        if not use_weights:
+            weight = tf.ones_like(weight)
         output = output[:, :, :, 0]
         losses = []
 
