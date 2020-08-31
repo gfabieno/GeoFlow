@@ -252,20 +252,20 @@ class Tester(object):
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
-                plt.colorbar(
-                    im1,
-                    ax=axs[0, 1 + ii],
-                    orientation="horizontal",
-                    pad=0.15,
-                    fraction=0.1,
-                )
-                plt.colorbar(
-                    im2,
-                    ax=axs[1, 1 + ii],
-                    orientation="horizontal",
-                    pad=0.15,
-                    fraction=0.1,
-                )
+                # plt.colorbar(
+                #     im1,
+                #     ax=axs[0, 1 + ii],
+                #     orientation="horizontal",
+                #     pad=0.15,
+                #     fraction=0.1,
+                # )
+                # plt.colorbar(
+                #     im2,
+                #     ax=axs[1, 1 + ii],
+                #     orientation="horizontal",
+                #     pad=0.15,
+                #     fraction=0.1,
+                # )
                 ims.append(im1)
                 ims.append(im2)
             else:
