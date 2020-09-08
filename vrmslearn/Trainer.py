@@ -58,9 +58,9 @@ class Trainer:
         losses, losses_weights = [], []
         for lbl in self.out_names:
             if lbl == 'ref':
-                losses.append(ref_loss(use_weights))
+                losses.append(ref_loss(use_weights=use_weights))
             else:
-                losses.append(v_compound_loss(use_weights))
+                losses.append(v_compound_loss(use_weights=use_weights))
             losses_weights.append(self.loss_scales[lbl])
 
         self.nn.compile(
