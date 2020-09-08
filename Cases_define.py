@@ -5,6 +5,13 @@
 from vrmslearn.Case import Case
 from vrmslearn.ModelParameters import ModelParameters
 
+class Case_surface_small(Case):
+
+    pars = ModelParameters()
+    pars.fs = True
+    pars.source_depth = 0
+    pars.receiver_depth = 0
+
 
 class Case_1Dsmall(Case):
 
