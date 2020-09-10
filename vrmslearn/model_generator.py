@@ -8,12 +8,13 @@ import argparse
 import copy
 
 import numpy as np
-from vrmslearn.ModelParameters import ModelParameters
 from scipy.signal import gaussian
-from vrmslearn.SeismicUtilities import (
+
+from vrmslearn.model_parameters import ModelParameters
+from vrmslearn.seismic_utilities import (
     smooth_velocity_wavelength, generate_reflections_ttime,
 )
-from vrmslearn.SeismicUtilities import vdepth2time, calculate_vrms
+from vrmslearn.seismic_utilities import vdepth2time, calculate_vrms
 
 
 class ModelGenerator(object):

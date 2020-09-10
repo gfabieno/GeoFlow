@@ -3,11 +3,11 @@ import argparse
 
 import tensorflow as tf
 
-from Cases_define import *
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Trainer import Trainer
-from vrmslearn.Tester import Tester
-from vrmslearn.Sequence import Sequence
+from defined_cases import *
+from vrmslearn.architecture import RCNN2D
+from vrmslearn.trainer import Trainer
+from vrmslearn.tester import Tester
+from vrmslearn.input_sequence import Sequence
 
 
 if __name__ == "__main__":

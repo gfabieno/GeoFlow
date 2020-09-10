@@ -7,10 +7,12 @@ python interface.
 
 import shutil
 import os
+
 import numpy as np
+
 from SeisCL.SeisCL import SeisCL
-from vrmslearn.ModelParameters import ModelParameters
-from vrmslearn.SeismicUtilities import random_wavelet_generator
+from vrmslearn.model_parameters import ModelParameters
+from vrmslearn.seismic_utilities import random_wavelet_generator
 
 
 class SeismicGenerator(SeisCL):

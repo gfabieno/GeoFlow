@@ -9,8 +9,8 @@ from os.path import join, split
 import tensorflow as tf
 from tensorflow.keras import callbacks, optimizers
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Sequence import Sequence, OUTS
+from vrmslearn.architecture import RCNN2D
+from vrmslearn.input_sequence import Sequence, OUTS
 
 WEIGHTS_NAME = "{epoch:04d}.ckpt"
 

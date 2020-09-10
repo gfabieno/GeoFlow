@@ -13,9 +13,9 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Case import Case, postprocess
-from vrmslearn.Sequence import Sequence
+from vrmslearn.architecture import RCNN2D
+from vrmslearn.case import Case, postprocess
+from vrmslearn.input_sequence import Sequence
 
 
 class Tester(object):
