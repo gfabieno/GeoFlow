@@ -53,18 +53,6 @@ if __name__ == "__main__":
         help="learning rate "
     )
     parser.add_argument(
-        "--eps",
-        type=float,
-        default=1e-5,
-        help="epsilon for adadelta"
-    )
-    parser.add_argument(
-        "--batchsize",
-        type=int,
-        default=50,
-        help="size of the batches"
-    )
-    parser.add_argument(
         "--beta_1",
         type=float,
         default=0.9,
@@ -75,6 +63,18 @@ if __name__ == "__main__":
         type=float,
         default=0.98,
         help="beta2 for adadelta"
+    )
+    parser.add_argument(
+        "--eps",
+        type=float,
+        default=1e-5,
+        help="epsilon for adadelta"
+    )
+    parser.add_argument(
+        "--batchsize",
+        type=int,
+        default=50,
+        help="size of the batches"
     )
     parser.add_argument(
         "--loss_ref",
