@@ -41,10 +41,8 @@ class Case:
     # incremented by 1.
     seed0 = 0
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0):
+    def __init__(self):
         """
-        Generate a gaussian wavelet
-
         @params:
         trainsize (int): Number of examples in the training set.
         validatesize (int): Number of examples in the validation set.
@@ -56,10 +54,6 @@ class Case:
         self.datatrain = os.path.join(self.basepath, self.name, "train")
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
         self.datatest = os.path.join(self.basepath, self.name, "test")
-
-        self.trainsize = trainsize
-        self.validatesize = validatesize
-        self.testsize = testsize
 
         # List of examples found in the dataset paths.
         self.files = {}
@@ -102,25 +96,25 @@ class Case:
         generate_dataset(
             self.pars,
             self.datatrain,
-            self.trainsize,
+            self.pars.trainsize,
             ngpu=ngpu,
             seed0=seed0,
         )
 
-        seed0 += self.trainsize
+        seed0 += self.pars.trainsize
         generate_dataset(
             self.pars,
             self.datavalidate,
-            self.validatesize,
+            self.pars.validatesize,
             ngpu=ngpu,
             seed0=seed0,
         )
 
-        seed0 += self.validatesize
+        seed0 += self.pars.validatesize
         generate_dataset(
             self.pars,
             self.datatest,
-            self.testsize,
+            self.pars.testsize,
             ngpu=ngpu,
             seed0=seed0,
         )

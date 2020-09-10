@@ -10,6 +10,10 @@ class ModelParameters(object):
     """
 
     def __init__(self):
+        # Quantity of examples in each subdataset.
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
 
         # Number of grid cells in X direction.
         self.NX = 256

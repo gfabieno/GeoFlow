@@ -49,25 +49,24 @@ class Case_1Darticle(Case):
     pars.receiver_depth = (pars.Npad + 4) * pars.dh
     pars.identify_direct = False
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
-
-        if noise == 1:
+    def __init__(self, noise=0):
+        if noise:
             self.pars.random_static = True
             self.pars.random_static_max = 1
             self.pars.random_noise = True
             self.pars.random_noise_max = 0.02
-        self.name = self.name + "_noise"
-        super().__init__(
-            trainsize=trainsize,
-            validatesize=validatesize,
-            testsize=testsize,
-        )
+            self.name = self.name + "_noise"
+        super().__init__()
 
 
 class Case_2Dtest(Case):
 
     name = "2Dtest"
     pars = ModelParameters()
+
+    pars.trainsize = 1005
+    pars.validatesize = 0
+    pars.testsize = 100
 
     pars.NX = 150
     pars.NZ = 100
@@ -100,18 +99,14 @@ class Case_2Dtest(Case):
     pars.flat = False
     pars.train_on_shots = True
 
-    def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
-
-        if noise == 1:
+    def __init__(self, noise=0):
+        if noise:
             self.pars.random_static = True
             self.pars.random_static_max = 1
             self.pars.random_noise = True
             self.pars.random_noise_max = 0.02
-        super().__init__(
-            trainsize=trainsize,
-            validatesize=validatesize,
-            testsize=testsize,
-        )
+            self.name = self.name + "_noise"
+        super().__init__()
 
 
 if __name__ == "__main__":
