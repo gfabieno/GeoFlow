@@ -4,17 +4,19 @@
 Plot one example with generated data
 """
 
-from vrmslearn.ModelParameters import ModelParameters
-from vrmslearn.SeismicGenerator import (
+import os
+import argparse
+from shutil import rmtree
+
+import h5py as h5
+import numpy as np
+import matplotlib.pyplot as plt
+
+from vlearn.model_parameters import ModelParameters
+from vlearn.seismic_generator import (
     SeismicGenerator, mute_direct, random_time_scaling, random_noise,
     random_static,
 )
-import argparse
-import matplotlib.pyplot as plt
-import numpy as np
-import os
-from shutil import rmtree
-import h5py as h5
 
 
 def plot_one_example(modeled_data, vrms, vp, tlabels, pars):

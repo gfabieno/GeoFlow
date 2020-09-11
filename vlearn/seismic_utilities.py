@@ -2,11 +2,10 @@
 Functions to handle seismic data and velocity models.
 """
 
-from scipy.signal import convolve2d
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.signal import convolve2d
 from scipy.ndimage.filters import gaussian_filter
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import interp1d, CubicSpline
 
 
 def gaussian(f0, t, o, amp=1.0, order=2):

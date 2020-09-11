@@ -2,13 +2,15 @@
 Classes and functions that combines a SeismicGenerator and a ModelGenerator
 to produce a dataset on multiple GPUs. Used by the Case class (Case.py).
 """
-import numpy as np
 import os
-import h5py as h5
-from vrmslearn.ModelGenerator import ModelGenerator
-from vrmslearn.SeismicGenerator import SeismicGenerator
-from vrmslearn.ModelParameters import ModelParameters
 from multiprocessing import Process, Queue
+
+import numpy as np
+import h5py as h5
+
+from vlearn.model_generator import ModelGenerator
+from vlearn.seismic_generator import SeismicGenerator
+from vlearn.model_parameters import ModelParameters
 
 
 class SampleGenerator:

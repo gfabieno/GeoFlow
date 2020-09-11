@@ -13,7 +13,7 @@ from tensorflow.keras.backend import (
     max as reduce_max, sum as reduce_sum, reshape,
 )
 
-from vrmslearn.Sequence import OUTS
+from vlearn.input_sequence import OUTS
 
 
 class RCNN2D:
