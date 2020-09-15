@@ -51,6 +51,8 @@ class ModelParameters(object):
         # Integer used by SeisCL for pressure source.
         self.sourcetype = 100
 
+        self.rectype = 2
+
         # Train on True:  shot gathers, False: CMP.
         self.train_on_shots = False
         # The direct arrival is contained in labels.

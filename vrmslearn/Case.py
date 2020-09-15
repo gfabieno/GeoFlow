@@ -203,6 +203,10 @@ class Case:
         vmax = np.max(toplots[0]) * clip
         vmin = -vmax
 
+        # plt.imshow(toplots[1]/np.sum(toplots[1]**2, axis = 0), aspect = 'auto')
+        # plt.show()
+        # alskde
+
         fig, axs = plt.subplots(1, len(toplots), figsize=[16, 8])
         im1 = axs[0].imshow(
             toplots[0],

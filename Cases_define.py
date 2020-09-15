@@ -7,10 +7,14 @@ from vrmslearn.ModelParameters import ModelParameters
 
 class Case_surface_small(Case):
 
+    name = "Case_surface_small"
     pars = ModelParameters()
     pars.fs = True
     pars.source_depth = 0
     pars.receiver_depth = 0
+    pars.train_on_shots = True
+    pars.sourcetype = 2
+    pars.rectype = 1
 
 
 class Case_1Dsmall(Case):

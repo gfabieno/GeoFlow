@@ -56,7 +56,7 @@ class SeismicGenerator(SeisCL):
         self.csts['dt'] = pars.dt  # Time step size
         self.csts['NT'] = pars.NT  # Nb of time steps
         self.csts['f0'] = pars.peak_freq  # Source frequency
-        self.csts['seisout'] = 2  # Output pressure
+        self.csts['seisout'] = pars.rectype  # Output pressure
         self.csts['freesurf'] = int(pars.fs)  # Free surface
 
         # Assign the GPU to SeisCL.
@@ -150,6 +150,9 @@ class SeismicGenerator(SeisCL):
         )
         self.execute()
         data = self.read_data()
-        data = data[0][::self.resampling, :]  # Resample data to reduce space.
+        if self.csts['seisout'] == 2:
+            data = data[0][::self.resampling, :]  # Resample data to reduce space.
+        if self.csts['seisout'] == 1:
+            data = data[1][::self.resampling, :]  # Resample data to reduce space.
 
         return data

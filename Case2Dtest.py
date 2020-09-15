@@ -139,9 +139,9 @@ if __name__ == "__main__":
 
     # Define the parameters.
     case = eval(args.case)(
-        trainsize=10000,
+        trainsize=2, #10000
         validatesize=0,
-        testsize=100,
+        testsize=0, #100
     )
 
     # Generate the dataset.
