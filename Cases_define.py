@@ -25,7 +25,7 @@ class Case_1Dsmall(Case):
 class Case_1Darticle(Case):
 
     name = "Case_1Darticle"
-    model = MarineModelGenerator()
+    Model = MarineModelGenerator
 
     def set_case(self):
 
@@ -76,7 +76,7 @@ class Case_1Darticle(Case):
 class Case_2Dtest(Case):
 
     name = "Case_2Dtest"
-    model = MarineModelGenerator()
+    Model = MarineModelGenerator
 
     def set_case(self):
 

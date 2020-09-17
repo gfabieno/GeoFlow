@@ -22,9 +22,6 @@ defined.
 *  A Case is implemented with the [Case](vrmslearn/Case.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*  The Case class contain a [ModelParameters](vrmslearn/ModelParameters.py)
-which regroup all parameters for model creation and data creation. A new Case
-is usually built by changing those parameters.
 *   The Case class contains the method 'generate_dataset' defined in
 [DatasetGenerator.py](vrmslearn/DatasetGenerator.py), which allows computing
 the seismic data on multiple GPUs. This creates the training, testing and validation

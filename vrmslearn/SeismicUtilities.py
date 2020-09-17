@@ -288,19 +288,19 @@ def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
             vlast = v
 
     if minoffset != 0:
-        dt = 2.0 * dh / vp
-        t0 = np.cumsum(dt)
-        vrms = np.sqrt(t0 * np.cumsum(vp**2 * dt))
+        delta = 2.0 * dh / vp
+        t0 = np.cumsum(delta)
+        vrms = np.sqrt(t0 * np.cumsum(vp**2 * delta))
         tref = np.sqrt(t0[ind]**2+minoffset**2/vrms[ind]**2) + tdelay
     else:
         ttime = 2 * np.cumsum(dh / vp) + tdelay
         tref = ttime[ind]
 
     if identify_direct:
-        dt = 0
+        delta = 0
         if minoffset != 0:
-            dt = minoffset / vp[0]
-        tref = np.insert(tref, 0, tdelay + dt)
+            delta = minoffset / vp[0]
+        tref = np.insert(tref, 0, tdelay + delta)
 
     tlabel = np.zeros(nt)
     for t in tref:

@@ -99,7 +99,7 @@ class Acquisition:
             gmax = self.model.NX - self.Npad
 
         gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
-        gx = np.concatenate([gx0 for s in sx], axis=0)
+        gx = np.concatenate([gx0 for _ in sx], axis=0)
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
         gz = np.full_like(gx, self.receiver_depth)
         gid = np.arange(0, len(gx))

@@ -23,12 +23,11 @@ class Case:
     name = "BaseCase"
     basepath = "Datasets"
 
-    model = BaseModelGenerator()
-    acquire = Acquisition(model)
-    label = LabelGenerator(acquire=acquire, model=model)
-    sample = SampleGenerator(model=model, acquire=acquire, label=label)
+    Model = BaseModelGenerator
+    Acquire = Acquisition
+    Label = LabelGenerator
+    Sample = SampleGenerator
 
-    example_order = ['input', *label.label_names, *label.weight_names]
     # Seed of the 1st model generated. Seeds fo subsequent models are
     # incremented by 1.
     seed0 = 0
@@ -45,6 +44,13 @@ class Case:
         @returns:
         """
 
+        self.model = self.Model()
+        self.acquire = self.Acquire(self.model)
+        self.label = self.Label(acquire=self.acquire, model=self.model)
+        self.sample = self.Sample(model=self.model, acquire=self.acquire,
+                                  label=self.label)
+        self.example_order = ['input', *self.label.label_names,
+                              *self.label.weight_names]
         self.set_case()
 
         # Paths of the test, train and validation dataset.

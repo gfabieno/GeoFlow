@@ -111,9 +111,9 @@ class LabelGenerator:
             dweights[dweights[:, ii] != 0, ii] = 1
 
         # Normalize so the labels are between 0 and 1
-        vrms = (vrms - self.modgen.vp_min) / (self.modgen.vp_max - self.modgen.vp_min)
-        vint = (vint - self.modgen.vp_min) / (self.modgen.vp_max - self.modgen.vp_min)
-        vp = (vp - self.modgen.vp_min) / (self.modgen.vp_max - self.modgen.vp_min)
+        vrms = (vrms - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
+        vint = (vint - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
+        vp = (vp - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
 
         labels = [refs, vrms, vint, vp]
         weights = [tweights, dweights]
@@ -195,7 +195,7 @@ class LabelGenerator:
 
         return data, labels, weights
 
-    def postprocess(self, labels, preds, vproc=False):
+    def postprocess(self, labels, preds, vproc=True):
         """
         A function to postprocess the predictions.
 

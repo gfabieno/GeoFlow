@@ -19,6 +19,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--case",
         type=str,
+        default="Case_1Dsmall",
         help="Name of the case class from `Cases_define` to use"
     )
     parser.add_argument(
@@ -139,13 +140,11 @@ if __name__ == "__main__":
 
     # Define the parameters.
     case = eval(args.case)(
-        trainsize=10000,
+        trainsize=2,
         validatesize=0,
-        testsize=100,
+        testsize=0,
     )
 
-    if args.plot:
-        case.model.animated_dataset()
     # Generate the dataset.
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
