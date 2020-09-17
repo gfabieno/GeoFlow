@@ -3,67 +3,69 @@
 """Define parameters for different cases"""
 
 from vrmslearn.Case import Case
-from vrmslearn.ModelParameters import ModelParameters
-
-class Case_surface_small(Case):
-
-    pars = ModelParameters()
-    pars.fs = True
-    pars.source_depth = 0
-    pars.receiver_depth = 0
-
+from vrmslearn.VelocityModelGenerator import MarineModelGenerator
+import argparse
 
 class Case_1Dsmall(Case):
 
-    name = "1Dsmall"
-    pars = ModelParameters()
-    pars.train_on_shots = True
+    name = "Case_1Dsmall"
+    def set_case(self):
+        super().set_case()
+        self.label.train_on_shots = True
 
-
+#
+# class Case_surface_small(Case):
+#
+#     pars = ModelParameters()
+#     pars.fs = True
+#     pars.source_depth = 0
+#     pars.receiver_depth = 0
+#
+#
 class Case_1Darticle(Case):
 
-    name = "1Darticle"
-    pars = ModelParameters()
-    pars.layer_dh_min = 5
-    pars.layer_num_min = 48
+    name = "Case_1Darticle"
+    model = MarineModelGenerator()
 
-    pars.dh = 6.25
-    pars.peak_freq = 26
-    pars.df = 5
-    pars.wavefuns = [0, 1]
-    pars.NX = 692 * 2
-    pars.NZ = 752 * 2
-    pars.dt = 0.0004
-    pars.NT = int(8.0 / pars.dt)
-    pars.resampling = 10
+    def set_case(self):
 
-    pars.dg = 8
-    pars.gmin = int(470 / pars.dh)
-    pars.gmax = int((470 + 72 * pars.dg * pars.dh) / pars.dh)
-    pars.minoffset = 470
+        self.model.layer_dh_min = 5
+        self.model.layer_num_min = 48
+        self.model.dh = dh = 6.25
+        self.model.NX = 692 * 2
+        self.model.NZ = 752 * 2
+        self.model.water_vmin = 1430
+        self.model.water_vmax = 1560
+        self.model.water_dmin = 2500
+        self.model.water_dmax = 4500
+        self.model.vp_min = 1300.0
+        self.model.vp_max = 4000.0
 
-    pars.vp_min = 1300.0  # Maximum value of vp (in m/s).
-    pars.vp_max = 4000.0  # Minimum value of vp (in m/s).
+        self.acquire.peak_freq = 26
+        self.acquire.df = 5
+        self.acquire.wavefuns = [0, 1]
+        self.acquire.dt = dt = 0.0004
+        self.acquire.NT = int(8.0 / dt)
+        self.acquire.resampling = 10
+        self.acquire.dg = dg = 8
+        self.acquire.gmin = int(470 / dh)
+        self.acquire.gmax = int((470 + 72 * dg * dh) / dh)
+        self.acquire.minoffset = 470
+        self.acquire.fs = False
+        self.acquire.source_depth = (self.acquire.Npad + 4) * dh
+        self.acquire.receiver_depth = (self.acquire.Npad + 4) * dh
 
-    pars.marine = True
-    pars.water_vmin = 1430
-    pars.water_vmax = 1560
-    pars.water_dmin = 2500
-    pars.water_dmax = 4500
-
-    pars.fs = False
-    pars.source_depth = (pars.Npad + 4) * pars.dh
-    pars.receiver_depth = (pars.Npad + 4) * pars.dh
-    pars.identify_direct = False
+        self.label.identify_direct = False
+        self.label.train_on_shots = True
 
     def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
 
         if noise == 1:
-            self.pars.random_static = True
-            self.pars.random_static_max = 1
-            self.pars.random_noise = True
-            self.pars.random_noise_max = 0.02
-        self.name = self.name + "_noise"
+            self.label.random_static = True
+            self.label.random_static_max = 1
+            self.label.random_noise = True
+            self.label.random_noise_max = 0.02
+            self.name = self.name + "_noise"
         super().__init__(
             trainsize=trainsize,
             validatesize=validatesize,
@@ -73,47 +75,48 @@ class Case_1Darticle(Case):
 
 class Case_2Dtest(Case):
 
-    name = "2Dtest"
-    pars = ModelParameters()
+    name = "Case_2Dtest"
+    model = MarineModelGenerator()
 
-    pars.NX = 150
-    pars.NZ = 100
+    def set_case(self):
 
-    pars.marine = True
+        self.model.NX = 150
+        self.model.NZ = 100
+        self.model.water_dmin = 300
+        self.model.water_dmax = 600
+        self.model.vp_trend_min = 0
+        self.model.vp_trend_max = 2
 
-    pars.water_dmin = 300
-    pars.water_dmax = 600
-    pars.vp_trend_min = 0
-    pars.vp_trend_max = 2
+        self.model.max_deform_freq = 0.06
+        self.model.min_deform_freq = 0.0001
+        self.model.amp_max = 8
+        self.model.max_deform_nfreq = 40
+        self.model.prob_deform_change = 0.7
+        self.model.dip_max = 20
+        self.model.ddip_max = 10
 
-    pars.max_deform_freq = 0.06
-    pars.min_deform_freq = 0.0001
-    pars.amp_max = 8
-    pars.max_deform_nfreq = 40
-    pars.prob_deform_change = 0.7
-    pars.angle_max = 20
-    pars.dangle_max = 10  # Maximum dip difference between two adjacent layers.
+        self.model.layer_num_min = 5
+        self.model.layer_dh_min = 10
 
-    pars.num_layers = 0
-    pars.layer_num_min = 5
-    pars.layer_dh_min = 10
-    pars.NT = 2560
 
-    pars.dg = 5
-    pars.ds = 5
-    pars.gmin = pars.dg
-    pars.gmax = pars.NX - pars.gmin
+        self.acquire.NT = 2560
 
-    pars.flat = False
-    pars.train_on_shots = True
+        self.acquire.dg = 5
+        self.acquire.ds = 5
+        self.acquire.gmin = self.acquire.dg
+        self.acquire.gmax = self.model.NX - self.acquire.gmin
+
+        self.acquire.singleshot = False
+        self.label.train_on_shots = True
 
     def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
 
         if noise == 1:
-            self.pars.random_static = True
-            self.pars.random_static_max = 1
-            self.pars.random_noise = True
-            self.pars.random_noise_max = 0.02
+            self.label.random_static = True
+            self.label.random_static_max = 1
+            self.label.random_noise = True
+            self.label.random_noise_max = 0.02
+            self.name = self.name + "_noise"
         super().__init__(
             trainsize=trainsize,
             validatesize=validatesize,
@@ -122,5 +125,14 @@ class Case_2Dtest(Case):
 
 
 if __name__ == "__main__":
-    case = Case_1Dsmall()
-    case.plot_model()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--case",
+        type=str,
+        default="Case_1Dsmall",
+        help="Name of the case to use"
+    )
+    args, unparsed = parser.parse_known_args()
+
+    case = eval(args.case)()
+    case.model.animated_dataset()

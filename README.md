@@ -30,7 +30,7 @@ is usually built by changing those parameters.
 the seismic data on multiple GPUs. This creates the training, testing and validation
 sets of a Case.
 *   [DatasetGenerator.py](vrmslearn/DatasetGenerator.py) builds on two classes:
-[ModelGenerator](vrmslearn/ModelGenerator.py) and the
+[ModelGenerator](vrmslearn/VelocityModelGenerator.py) and the
 [SeismicGenerator](vrmslearn/SeismicGenerator.py) that respectively generate
 a velocity model and the seismic data.
 

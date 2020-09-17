@@ -144,6 +144,8 @@ if __name__ == "__main__":
         testsize=100,
     )
 
+    if args.plot:
+        case.model.animated_dataset()
     # Generate the dataset.
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
