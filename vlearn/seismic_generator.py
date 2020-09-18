@@ -11,8 +11,8 @@ import os
 import numpy as np
 
 from SeisCL.SeisCL import SeisCL
-from vrmslearn.model_parameters import ModelParameters
-from vrmslearn.seismic_utilities import random_wavelet_generator
+from vlearn.model_parameters import ModelParameters
+from vlearn.seismic_utilities import random_wavelet_generator
 
 
 class SeismicGenerator(SeisCL):

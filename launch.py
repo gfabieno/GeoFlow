@@ -1,13 +1,14 @@
 import os
+import json
 import argparse
 
 import tensorflow as tf
 
 from defined_cases import *
-from vrmslearn.architecture import RCNN2D
-from vrmslearn.trainer import Trainer
-from vrmslearn.tester import Tester
-from vrmslearn.input_sequence import Sequence
+from vlearn.architecture import RCNN2D
+from vlearn.trainer import Trainer
+from vlearn.tester import Tester
+from vlearn.input_sequence import Sequence
 
 
 if __name__ == "__main__":
@@ -101,6 +102,16 @@ if __name__ == "__main__":
         help="weight of vdepth in loss"
     )
     parser.add_argument(
+        "--loss_compound_weights",
+        type=json.loads,
+        default="{}",
+        help=(
+            "A dictionary of label and (`alpha`, `beta`) pairs formatted as a "
+            "string. See `vlearn.trainer.Trainer` and "
+            "`vlearn.trainer.v_compound_loss` for explanations."
+        )
+    )
+    parser.add_argument(
         "--nmodel",
         type=int,
         default=1,
@@ -189,6 +200,7 @@ if __name__ == "__main__":
             beta_2=args.beta_2,
             epsilon=args.eps,
             loss_scales=loss_scales,
+            loss_compound_weights=args.loss_compound_weights,
             use_weights=not args.no_weights,
         )
         restore_from = tf.train.latest_checkpoint(args.logdir)

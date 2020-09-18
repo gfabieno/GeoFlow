@@ -8,9 +8,9 @@ from multiprocessing import Process, Queue
 import numpy as np
 import h5py as h5
 
-from vrmslearn.model_generator import ModelGenerator
-from vrmslearn.seismic_generator import SeismicGenerator
-from vrmslearn.model_parameters import ModelParameters
+from vlearn.model_generator import ModelGenerator
+from vlearn.seismic_generator import SeismicGenerator
+from vlearn.model_parameters import ModelParameters
 
 
 class SampleGenerator:
