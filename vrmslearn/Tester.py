@@ -42,8 +42,6 @@ class Tester(object):
 
     def test_dataset(self,
                      savepath: str,
-                     filename: str = 'example_*',
-                     batch_size: int = 1,
                      restore_from: str = None):
         """
         This method evaluate predictions on all examples contained in savepath,
@@ -147,9 +145,9 @@ class Tester(object):
             else:
                 fig, axes = plt.subplots(1, len(labelnames), squeeze=False)
 
-            label, pred = self.case.postprocess(
-                {l: labels[l][ii] for l in labelnames},
-                {l: preds[l][ii] for l in labelnames})
+            labeld = {la: labels[la][ii] for la in labelnames}
+            predd = {la: preds[la][ii] for la in labelnames}
+            label, pred = self.case.label.postprocess(labeld, predd)
             for jj, labelname in enumerate(labelnames):
                 if image:
                     vmin = np.min(label[labelname])
@@ -230,9 +228,9 @@ class Tester(object):
         axs[0, 0].set_title('data')
         ims = [im1]
 
-        label, pred = self.case.postprocess(
-            {l: labels[l][0] for l in labelnames},
-            {l: preds[l][0] for l in labelnames})
+        labeld = {la: labels[la][0] for la in labelnames}
+        predd = {la: preds[la][0] for la in labelnames}
+        label, pred = self.case.label.postprocess(labeld, predd)
 
         for ii, labelname in enumerate(labelnames):
             if image:
@@ -279,9 +277,9 @@ class Tester(object):
 
         def init():
             for ii, im in enumerate(ims):
-                label, pred = self.case.postprocess(
-                    {l: labels[l][0] for l in labelnames},
-                    {l: preds[l][0] for l in labelnames})
+                labeld = {la: labels[la][0] for la in labelnames}
+                predd = {la: preds[la][0] for la in labelnames}
+                label, pred = self.case.label.postprocess(labeld, predd)
                 if ii == 0:
                     toplot = datas[0]
                     im.set_array(toplot)
@@ -298,9 +296,10 @@ class Tester(object):
             return ims
 
         def animate(t):
-            label, pred = self.case.postprocess(
-                {l: labels[l][t] for l in labelnames},
-                {l: preds[l][t] for l in labelnames})
+            labeld = {la: labels[la][t] for la in labelnames}
+            predd = {la: preds[la][t] for la in labelnames}
+            label, pred = self.case.label.postprocess(labeld, predd)
+
             for ii, im in enumerate(ims):
                 if ii == 0:
                     toplot = datas[t]
@@ -317,13 +316,11 @@ class Tester(object):
                         im.set_data(toplot, y)
             return ims
 
-        _ = animation.FuncAnimation(
-            fig,
-            animate,
-            init_func=init,
-            frames=len(datas),
-            interval=3000,
-            blit=True,
-            repeat=True,
-        )
+        _ = animation.FuncAnimation(fig,
+                                    animate,
+                                    init_func=init,
+                                    frames=len(datas),
+                                    interval=3000,
+                                    blit=True,
+                                    repeat=True)
         plt.show()

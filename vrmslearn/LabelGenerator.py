@@ -2,12 +2,16 @@
 import numpy as np
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.SeismicUtilities import (random_noise, random_time_scaling,
-                                        random_static, top_mute,
-                                        mute_nearoffset, sortcmp,
+from vrmslearn.SeismicUtilities import (random_noise,
+                                        random_time_scaling,
+                                        random_static,
+                                        top_mute,
+                                        mute_nearoffset,
+                                        sortcmp,
                                         smooth_velocity_wavelength,
                                         generate_reflections_ttime,
-                                        vdepth2time, calculate_vrms)
+                                        vdepth2time,
+                                        calculate_vrms)
 
 
 class LabelGenerator:
@@ -18,7 +22,7 @@ class LabelGenerator:
     def __init__(self, model: BaseModelGenerator, acquire: Acquisition):
         """
 
-        :param acqui: An Acquisition object describing the seismic acquisition
+        :param acquire: An Acquisition object describing the seismic acquisition
         :param model: A VelocityModelGenerator describing model creation
         """
         self.acquire = acquire
@@ -210,11 +214,11 @@ class LabelGenerator:
         if vproc:
             for el in ['vrms', 'vint', 'vdepth']:
                 if el in labels:
-                    labels[el] = labels[el] * (
-                                self.model.vp_max - self.model.vp_min) + self.model.vp_min
+                    labels[el] = labels[el] * (self.model.vp_max -
+                                          self.model.vp_min) + self.model.vp_min
                 if el in preds:
-                    preds[el] = preds[el] * (
-                                self.model.vp_max - self.model.vp_min) + self.model.vp_min
+                    preds[el] = preds[el] * (self.model.vp_max -
+                                 self.model.vp_min) + self.model.vp_min
         if 'ref' in preds:
             preds['ref'] = np.argmax(preds['ref'], axis=2)
 

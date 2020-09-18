@@ -12,7 +12,7 @@ from SeisCL.SeisCL import SeisCL
 from vrmslearn.SeismicUtilities import random_wavelet_generator
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 
-#TODO dh, NX not in Acquisition, correct that
+
 class Acquisition:
     """
     This class contains all model parameters needed to model seismic data
@@ -111,13 +111,14 @@ class Acquisition:
                             gid,
                             np.full_like(gx, 2),
                             np.zeros_like(gx),
-                            np.zeros_like(gx),], axis=0,)
+                            np.zeros_like(gx)], axis=0,)
 
         return src_pos, rec_pos
 
     def source_generator(self):
         return random_wavelet_generator(self.NT, self.dt, self.peak_freq,
                                         self.df, self.tdelay)
+
 
 class SeismicGenerator(SeisCL):
     """

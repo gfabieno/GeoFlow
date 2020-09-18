@@ -10,7 +10,8 @@ from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
 from multiprocessing import Process, Queue
 
-#TODO change seismic to forward with input a dict, making it agnotistic
+
+# TODO change seismic to forward with input a dict, making it agnotistic
 class SampleGenerator:
     """
     Class to create one example: 1- generate models 2-simulate the data
@@ -96,12 +97,12 @@ class SampleGenerator:
         This function creates a dataset on multiple GPUs.
 
         @params:
-        pars (ModelParameter): A ModelParameter object containg the parameters for
-                                creating examples.
+        pars (ModelParameter): A ModelParameter object containg the parameters
+                               for creating examples.
         savepath (str)   :     Path in which to create the dataset
         nexamples (int):       Number of examples to generate
         seed0 (int):           First seed of the first example in the dataset.
-                               Seeds are incremented by 1 for subsequents examples.
+                               Seeds are incremented by 1 at each example.
         ngpu (int):            Number of available gpus for data creation
 
         """
@@ -123,6 +124,7 @@ class SampleGenerator:
             generators.append(thisgen)
         for gen in generators:
             gen.join()
+
 
 class DatasetProcess(Process):
     """

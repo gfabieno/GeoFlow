@@ -15,6 +15,7 @@ from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.LabelGenerator import LabelGenerator
 
+
 class Case:
     """
     Base class of a Case. Build a specific case by creating a new class from
@@ -63,12 +64,8 @@ class Case:
         self.testsize = testsize
 
         # List of examples found in the dataset paths.
-        self.files = {}
-        self.files["train"] = []
-        self.files["validate"] = []
-        self.files["test"] = []
+        self.files = {"train": [], "validate": [], "test": []}
         self._getfilelist()
-
 
     def set_case(self):
         """
@@ -85,23 +82,20 @@ class Case:
         """
         try:
             files = fnmatch.filter(os.listdir(self.datatrain), 'example_*')
-            self.files["train"] = [
-                os.path.join(self.datatrain, f) for f in files
-            ]
+            self.files["train"] = [os.path.join(self.datatrain, f)
+                                   for f in files]
         except FileNotFoundError:
             pass
         try:
             files = fnmatch.filter(os.listdir(self.datavalidate), 'example_*')
-            self.files["validate"] = [
-                os.path.join(self.datavalidate, f) for f in files
-            ]
+            self.files["validate"] = [os.path.join(self.datavalidate, f)
+                                      for f in files]
         except FileNotFoundError:
             pass
         try:
             files = fnmatch.filter(os.listdir(self.datatest), 'example_*')
-            self.files["test"] = [
-                os.path.join(self.datatest, f) for f in files
-            ]
+            self.files["test"] = [os.path.join(self.datatest, f)
+                                  for f in files]
         except FileNotFoundError:
             pass
 
@@ -114,7 +108,7 @@ class Case:
                                      seed0=seed0)
 
         seed0 += self.trainsize
-        self.sample.generate_dataset(self.datavalidate,self.validatesize,
+        self.sample.generate_dataset(self.datavalidate, self.validatesize,
                                      ngpu=ngpu, seed0=seed0)
 
         seed0 += self.validatesize
@@ -196,16 +190,17 @@ class Case:
                   aspect='auto')
 
         ax.set_xlabel("Receiver Index", fontsize=12, fontweight='normal')
-        ax.set_ylabel( f"Time Index, "
-                       f"dt = {self.acquire.dt * 1000 * self.acquire.resampling}"
-                       f" ms", fontsize=12, fontweight='normal')
+        ax.set_ylabel(f"Time Index, "
+                      f"dt = {self.acquire.dt * 1000 * self.acquire.resampling}"
+                      f" ms", fontsize=12, fontweight='normal')
         ax.set_title("Shot Gather", fontsize=16, fontweight='bold')
 
         plt.show()
 
         fig, ax = plt.subplots(1, len(labels), figsize=[12, 8])
         ims = [[] for _ in range(len(labels))]
-        labels[0] = labels[0] * (self.model.vp_max - self.model.vp_min) + self.model.vp_min
+        labels[0] = labels[0] * (self.model.vp_max
+                                 - self.model.vp_min) + self.model.vp_min
         for ii, label in enumerate(labels):
             ims[ii] = ax[ii].imshow(label, cmap=plt.get_cmap('hot'),
                                     aspect='auto')
@@ -226,7 +221,7 @@ class Case:
 
         plt.show()
 
-    def animated_dataset(self, phase='train', show="all"):
+    def animated_dataset(self, phase='train'):
         """
         Produces an animation of a dataset, showing the input data, and the
         different labels for each example.
@@ -246,7 +241,7 @@ class Case:
         im1 = axs[0].imshow(toplots[0], animated=True, vmin=vmin, vmax=vmax,
                             aspect='auto', cmap=plt.get_cmap('Greys'))
         ims = [im1] + [axs[ii].imshow(toplots[ii], animated=True, vmin=0,
-                                      vmax=1,aspect='auto', cmap='inferno')
+                                      vmax=1, aspect='auto', cmap='inferno')
                        for ii in range(1, len(toplots))]
 
         for ii, ax in enumerate(axs):
@@ -296,10 +291,7 @@ class CaseCollection:
     def __init__(self, cases):
 
         self.cases = cases
-        self.files = {}
-        self.files["train"] = []
-        self.files["validate"] = []
-        self.files["test"] = []
+        self.files = {"train": [], "validate": [], "test": []}
         for case in cases:
             self.files["train"].append(case.files["train"])
             self.files["validate"].append(case.files["validate"])

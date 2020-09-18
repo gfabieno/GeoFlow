@@ -10,10 +10,10 @@ seismic data.
 This repository is organized in the following fashion. From highest level to
 lowest:
 
-*   The file [Case2Dtest.py](Case2Dtest.py) shows an example of how to generate
+*   The file [Case2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
 *   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
-This class builds the NN and the loss. It is used in [Case2Dtest.py](Case2Dtest.py).
+This class builds the NN and the loss. It is used in [Case2Dtest.py](main.py).
 To build a new network, a child class can be defined from RCNN2D.
 *   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
 It needs a Case class and a RCNN2D-like class as input.

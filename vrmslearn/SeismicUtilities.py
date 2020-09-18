@@ -76,7 +76,7 @@ def shift_trace(signal, phase):
     return np.real(s) * np.cos(phase) + np.imag(s) * np.sin(phase)
 
 
-def random_wavelet_generator(nt, dt, peak_freq, df, tdelay, shapes=[1]):
+def random_wavelet_generator(nt, dt, peak_freq, df, tdelay, shapes=(1,)):
     """
     Generate function (callable) that output random wavelets.
 
@@ -386,7 +386,7 @@ def vint2vrms(vint, t):
     return vrms
 
 
-def calculate_vrms(vp, dh, Npad, nt, dt, tdelay, source_depth):
+def calculate_vrms(vp, dh, npad, nt, dt, tdelay, source_depth):
     """
     This method inputs vp and outputs the vrms. The global parameters in
     common.py are used for defining the depth spacing, source and receiver
@@ -398,7 +398,7 @@ def calculate_vrms(vp, dh, Npad, nt, dt, tdelay, source_depth):
     @params:
     vp (numpy.ndarray) :  1D vp values in meters/sec.
     dh (float) : the spatial grid size
-    Npad (int) : Number of absorbing padding grid points over the source
+    npad (int) : Number of absorbing padding grid points over the source
     nt (int)   : Number of time steps of output
     dt (float) : Time step of the output
     tdelay (float): Time before source peak
@@ -416,9 +416,9 @@ def calculate_vrms(vp, dh, Npad, nt, dt, tdelay, source_depth):
     # Create a list of tuples of (relative depths, velocity) of the layers
     # following the depth of the source / receiver depths, till the last layer
     # before the padding zone at the bottom.
-    last_depth = dh * (nz - Npad - 1)
+    last_depth = dh * (nz - npad - 1)
     rdepth_vel_pairs = [(d - source_depth, vp[i]) for i, d in enumerate(depth)
-                        if d > source_depth and d <= last_depth]
+                        if source_depth < d <= last_depth]
     first_layer_vel = rdepth_vel_pairs[0][1]
     rdepth_vel_pairs.insert(0, (0.0, first_layer_vel))
 

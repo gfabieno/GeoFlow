@@ -6,9 +6,11 @@ from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import MarineModelGenerator
 import argparse
 
-class Case_1Dsmall(Case):
 
-    name = "Case_1Dsmall"
+class Case1Dsmall(Case):
+
+    name = "Case1Dsmall"
+
     def set_case(self):
         super().set_case()
         self.label.train_on_shots = True
@@ -20,11 +22,11 @@ class Case_1Dsmall(Case):
 #     pars.fs = True
 #     pars.source_depth = 0
 #     pars.receiver_depth = 0
-#
-#
-class Case_1Darticle(Case):
 
-    name = "Case_1Darticle"
+
+class Case1Darticle(Case):
+
+    name = "Case1Darticle"
     Model = MarineModelGenerator
 
     def set_case(self):
@@ -73,9 +75,9 @@ class Case_1Darticle(Case):
         )
 
 
-class Case_2Dtest(Case):
+class Case2Dtest(Case):
 
-    name = "Case_2Dtest"
+    name = "Case2Dtest"
     Model = MarineModelGenerator
 
     def set_case(self):
@@ -97,7 +99,6 @@ class Case_2Dtest(Case):
 
         self.model.layer_num_min = 5
         self.model.layer_dh_min = 10
-
 
         self.acquire.NT = 2560
 

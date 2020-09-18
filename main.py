@@ -1,6 +1,4 @@
 import os
-import argparse
-
 import tensorflow as tf
 
 from Cases_define import *

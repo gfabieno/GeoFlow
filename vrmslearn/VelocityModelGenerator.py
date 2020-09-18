@@ -5,11 +5,10 @@
 """
 
 import argparse
-from scipy.signal import gaussian
 from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy, Deformation,
                             Property, Lithology)
 
-#TODO texture range
+
 class BaseModelGenerator(ModelGenerator):
 
     def __init__(self):
@@ -141,99 +140,6 @@ class MarineModelGenerator(BaseModelGenerator):
 
         return strati
 
-
-# if __name__ == "__main__":
-#     import matplotlib.pyplot as plt
-#
-#     # Initialize argument parser
-#     parser = argparse.ArgumentParser()
-#
-#     parser.add_argument(
-#         "--ND",
-#         type=int,
-#         default=2,
-#         help="Dimension of the model to display"
-#     )
-#     # Parse the input for training parameters
-#     args, unparsed = parser.parse_known_args()
-#
-#     pars = ModelParameters()
-#     pars.layer_dh_min = 20
-#     pars.num_layers = 0
-#     pars.marine = True
-#     pars.water_dmin = 100
-#     pars.water_dmax = 1000
-#     pars.vp_trend_min = 0
-#     pars.vp_trend_max = 2
-#     if args.ND == 1:
-#         # Maximum nb of frequencies of boundary
-#         pars.max_deform_nfreq = 0
-#         # Probability that a boundary shape will change
-#         pars.prob_deform_change = 0.7
-#         pars.angle_max = 0
-#         pars.max_texture = 0
-#
-#         pars.num_layers = 0
-#         pars.layer_num_min = 15
-#         pars.layer_dh_min = 10
-#         vp, vs, rho, vels, layers, angles = generate_random_2Dlayered(pars)
-#         plt.imshow(vp)
-#         plt.show()
-#         vp = vp[:, 0]
-#         vp = vp[int(pars.source_depth / pars.dh):]
-#         vint = vdepth2time(
-#             vp,
-#             pars.dh,
-#             np.arange(0, pars.NT, 1) * pars.dt,
-#             t0=pars.tdelay,
-#         )
-#         vrms = calculate_vrms(
-#             vp,
-#             pars.dh,
-#             pars.Npad,
-#             pars.NT,
-#             pars.dt,
-#             pars.tdelay,
-#             pars.source_depth,
-#         )
-#
-#         plt.plot(vint)
-#         plt.plot(vrms)
-#         plt.show()
-#     else:
-#         # Max frequency of the layer boundary function
-#         pars.max_deform_freq = 0.1
-#         # Min frequency of the layer boundary function
-#         pars.min_deform_freq = 0.0001
-#         # Maximum amplitude of boundary deformations
-#         pars.amp_max = 26
-#         # Maximum nb of frequencies of boundary
-#         pars.max_deform_nfreq = 40
-#         # Probability that a boundary shape will change
-#         pars.prob_deform_change = 0.7
-#         pars.dip_max = 20
-#
-#         pars.num_layers = 0
-#         pars.layer_num_min = 5
-#         pars.layer_dh_min = 10
-#         pars.NT = 2000
-#         seed = np.random.randint(0, 10000)
-#         print(seed)
-#         gen = ModelGenerator(pars)
-#         vp, vs, rho = gen.generate_model()
-#         labels, weights = gen.generate_labels(vp, vs, rho)
-#         fig, ax = plt.subplots(2, len(labels))
-#         for ii, label in enumerate(labels):
-#             print(np.max(label))
-#             ax[0, ii].imshow(label, aspect='auto')
-#         for ii, weight in enumerate(weights):
-#             ax[1, ii].imshow(weight, aspect='auto')
-#         plt.show()
-#         print(np.max(vp))
-#         # for lt in [0]:#[0, 10, 50, 100, 150, 200]:
-#         #     vdepth = smooth_velocity_wavelength(vp, pars.dh, lt*0.001, lt/25)
-#         #     plt.imshow(vdepth)
-#         #     plt.show()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
