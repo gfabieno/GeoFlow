@@ -17,7 +17,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--case",
         type=str,
-        default="Case_1Dsmall",
+        default="Case1Dsmall",
         help="Name of the case class from `Cases_define` to use"
     )
     parser.add_argument(
