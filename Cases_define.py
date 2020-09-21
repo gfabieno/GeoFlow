@@ -21,14 +21,6 @@ class Case1Dsmall(Case):
 
         return model, acquire, label
 
-#
-# class Case_surface_small(Case):
-#
-#     pars = ModelParameters()
-#     pars.fs = True
-#     pars.source_depth = 0
-#     pars.receiver_depth = 0
-
 
 class Case1Darticle(Case):
 
