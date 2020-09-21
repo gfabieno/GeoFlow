@@ -10,10 +10,10 @@ seismic data.
 This repository is organized in the following fashion. From highest level to
 lowest:
 
-*   The file [Case2Dtest.py](Case2Dtest.py) shows an example of how to generate
+*   The file [Case2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
 *   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
-This class builds the NN and the loss. It is used in [Case2Dtest.py](Case2Dtest.py).
+This class builds the NN and the loss. It is used in [Case2Dtest.py](main.py).
 To build a new network, a child class can be defined from RCNN2D.
 *   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
 It needs a Case class and a RCNN2D-like class as input.
@@ -22,15 +22,12 @@ defined.
 *  A Case is implemented with the [Case](vrmslearn/Case.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*  The Case class contain a [ModelParameters](vrmslearn/ModelParameters.py)
-which regroup all parameters for model creation and data creation. A new Case
-is usually built by changing those parameters.
 *   The Case class contains the method 'generate_dataset' defined in
 [DatasetGenerator.py](vrmslearn/DatasetGenerator.py), which allows computing
 the seismic data on multiple GPUs. This creates the training, testing and validation
 sets of a Case.
 *   [DatasetGenerator.py](vrmslearn/DatasetGenerator.py) builds on two classes:
-[ModelGenerator](vrmslearn/ModelGenerator.py) and the
+[ModelGenerator](vrmslearn/VelocityModelGenerator.py) and the
 [SeismicGenerator](vrmslearn/SeismicGenerator.py) that respectively generate
 a velocity model and the seismic data.
 

@@ -5,18 +5,20 @@ to produce a dataset on multiple GPUs. Used by the Case class (Case.py).
 import numpy as np
 import os
 import h5py as h5
-from vrmslearn.ModelGenerator import ModelGenerator
-from vrmslearn.SeismicGenerator import SeismicGenerator
-from vrmslearn.ModelParameters import ModelParameters
+from vrmslearn.VelocityModelGenerator import BaseModelGenerator
+from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
+from vrmslearn.LabelGenerator import LabelGenerator
 from multiprocessing import Process, Queue
 
 
+# TODO change seismic to forward with input a dict, making it agnotistic
 class SampleGenerator:
     """
     Class to create one example: 1- generate models 2-simulate the data
     """
 
-    def __init__(self, pars: ModelParameters, gpu: int = 0):
+    def __init__(self, model: BaseModelGenerator, acquire: Acquisition,
+                 label: LabelGenerator, gpu: int = 0):
         """
         Create the ModelGenerator and SeismicGenerator objects from pars.
         @params:
@@ -25,9 +27,11 @@ class SampleGenerator:
 
         """
 
-        self.model_gen = ModelGenerator(pars)
-        self.data_gen = SeismicGenerator(pars, gpu=gpu,
-                                         workdir="workdir%d" % gpu)
+        self.model = model
+        self.label = label
+        self.acquire = acquire
+        self.seismic = SeismicGenerator(acquire, model, gpu=gpu,
+                                        workdir="workdir%d" % gpu)
         self.files_list = {}
 
     def generate(self, seed):
@@ -37,9 +41,9 @@ class SampleGenerator:
         seed (int): Seed of the model to generate
 
         """
-        vp, vs, rho = self.model_gen.generate_model(seed=seed)
-        data = self.data_gen.compute_data(vp, vs, rho)
-        labels, weights = self.model_gen.generate_labels(vp, vs, rho)
+        (vp, vs, rho), _, _ = self.model.generate_model(seed=seed)
+        data = self.seismic.compute_data(vp, vs, rho)
+        labels, weights = self.label.generate_labels(vp, vs, rho)
 
         return data, labels, weights
 
@@ -48,10 +52,10 @@ class SampleGenerator:
         file = h5.File(filename, "r")
         data = file["data"][:]
         labels = []
-        for labelname in self.model_gen.label_names:
+        for labelname in self.label.label_names:
             labels.append(file[labelname][:])
         weights = []
-        for wname in self.model_gen.weight_names:
+        for wname in self.label.weight_names:
             weights.append(file[wname][:])
         file.close()
 
@@ -79,10 +83,47 @@ class SampleGenerator:
         file = h5.File(filename, "w")
         file["data"] = data
         for ii, label in enumerate(labels):
-            file[self.model_gen.label_names[ii]] = label
+            file[self.label.label_names[ii]] = label
         for ii, weight in enumerate(weights):
-            file[self.model_gen.weight_names[ii]] = weight
+            file[self.label.weight_names[ii]] = weight
         file.close()
+
+    def generate_dataset(self,
+                         savepath: str,
+                         nexamples: int,
+                         seed0: int = None,
+                         ngpu: int = 3):
+        """
+        This function creates a dataset on multiple GPUs.
+
+        @params:
+        pars (ModelParameter): A ModelParameter object containg the parameters
+                               for creating examples.
+        savepath (str)   :     Path in which to create the dataset
+        nexamples (int):       Number of examples to generate
+        seed0 (int):           First seed of the first example in the dataset.
+                               Seeds are incremented by 1 at each example.
+        ngpu (int):            Number of available gpus for data creation
+
+        """
+
+        if not os.path.isdir(savepath):
+            os.makedirs(savepath)
+
+        exampleids = Queue()
+        for el in np.arange(seed0, seed0 + nexamples):
+            exampleids.put(el)
+
+        generators = []
+        for jj in range(ngpu):
+            sg = self.__class__(model=self.model,
+                                label=self.label,
+                                acquire=self.acquire, gpu=jj)
+            thisgen = DatasetProcess(savepath, sg, exampleids)
+            thisgen.start()
+            generators.append(thisgen)
+        for gen in generators:
+            gen.join()
 
 
 class DatasetProcess(Process):
@@ -127,40 +168,3 @@ class DatasetProcess(Process):
 
                 self.sample_generator.write(seed, self.savepath, data, labels,
                                             weights, filename=filename)
-
-
-def generate_dataset(pars: ModelParameters,
-                     savepath: str,
-                     nexamples: int,
-                     seed0: int = None,
-                     ngpu: int = 3):
-    """
-    This function creates a dataset on multiple GPUs.
-
-    @params:
-    pars (ModelParameter): A ModelParameter object containg the parameters for
-                            creating examples.
-    savepath (str)   :     Path in which to create the dataset
-    nexamples (int):       Number of examples to generate
-    seed0 (int):           First seed of the first example in the dataset.
-                           Seeds are incremented by 1 for subsequents examples.
-    ngpu (int):            Number of available gpus for data creation
-
-    """
-
-    if not os.path.isdir(savepath):
-        os.makedirs(savepath)
-
-    exampleids = Queue()
-    for el in np.arange(seed0, seed0 + nexamples):
-        exampleids.put(el)
-
-    generators = []
-    for jj in range(ngpu):
-        thisgen = DatasetProcess(savepath,
-                                 SampleGenerator(pars, gpu=jj),
-                                 exampleids)
-        thisgen.start()
-        generators.append(thisgen)
-    for gen in generators:
-        gen.join()
