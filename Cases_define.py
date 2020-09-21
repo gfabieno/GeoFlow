@@ -15,14 +15,6 @@ class Case1Dsmall(Case):
         super().set_case()
         self.label.train_on_shots = True
 
-#
-# class Case_surface_small(Case):
-#
-#     pars = ModelParameters()
-#     pars.fs = True
-#     pars.source_depth = 0
-#     pars.receiver_depth = 0
-
 
 class Case1Darticle(Case):
 
