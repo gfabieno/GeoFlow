@@ -79,8 +79,6 @@ class Case:
 
         label = LabelGenerator(model=model, acquire=acquire)
 
-
-
         return model, acquire, label
 
     def _getfilelist(self):

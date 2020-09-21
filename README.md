@@ -14,22 +14,26 @@ lowest:
 a training set, and train a NN with it. This is the starting point.
 *   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
 This class builds the NN and the loss. It is used in [Case2Dtest.py](main.py).
-To build a new network, a child class can be defined from RCNN2D.
+To build a new network, a child class can be defined from `RCNN2D`.
 *   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
-It needs a Case class and a RCNN2D-like class as input.
+It needs a Case class and a `RCNN2D`-like class as input.
 *   The file [Case_define.py](Case_define.py) is where different cases are
 defined.
-*  A Case is implemented with the [Case](vrmslearn/Case.py) class. It provides an
+*  A `Case` is implemented with the [Case](vrmslearn/Case.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*   The Case class contains the method 'generate_dataset' defined in
-[DatasetGenerator.py](vrmslearn/DatasetGenerator.py), which allows computing
-the seismic data on multiple GPUs. This creates the training, testing and validation
-sets of a Case.
-*   [DatasetGenerator.py](vrmslearn/DatasetGenerator.py) builds on two classes:
-[ModelGenerator](vrmslearn/VelocityModelGenerator.py) and the
-[SeismicGenerator](vrmslearn/SeismicGenerator.py) that respectively generate
-a velocity model and the seismic data.
+*   The `Case` class contains the method `set_case`. A new case can be defined 
+by defining a child class from the `Case` base class and overriding `set_case`.
+This method needs to return three objects based on three classes
+    *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
+    to generate a random model. It is based the ModGen library available upon
+    request. Different model generator can be defined from this case (see 
+    [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
+    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters 
+    for the creation of the seismic data by SeisCL. In particular, override the 
+    method `set_rec_src` to define a different acquisition setup.
+    * [LabelGenerator](vrmslearn/LabelGenerator.py) is a class that generate the
+    labels from the model and acquires objects. 
 
 
 ## Installation
