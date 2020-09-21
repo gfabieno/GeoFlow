@@ -75,6 +75,7 @@ class Trainer:
         )
 
     def train_model(self,
+                    batch_size: int = 10,
                     epochs: int = 5,
                     steps_per_epoch: int = 100,
                     restore_from: str = None):
@@ -83,6 +84,7 @@ class Trainer:
         if any checkpoints are found in self.checkpoint_dir.
 
         @params:
+        batch_ize (int): Size of the batches
         epochs (int): quantity of epochs, of `steps_per_epoch` iterations
         steps_per_epoch (int): quantity of iterations per epoch
         restore_from (str): Checkpoint file from which to initialize parameters
@@ -101,6 +103,7 @@ class Trainer:
                                                 save_weights_only=True,
                                                 save_freq='epoch')
         self.nn.fit(self.sequence,
+                    batch_size=batch_size,
                     epochs=epochs,
                     callbacks=[tensorboard, checkpoints],
                     initial_epoch=initial_epoch,
