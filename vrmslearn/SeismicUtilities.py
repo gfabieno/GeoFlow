@@ -69,19 +69,19 @@ def shift_trace(signal, phase):
     (numpy.array): The rotated wavelet signal
     """
     S = np.fft.fft(signal)
-    NT = len(signal)
-    S[1:NT//2] *= 2.0
-    S[NT//2+1:] *= 0
+    nt = len(signal)
+    S[1:nt//2] *= 2.0
+    S[nt//2+1:] *= 0
     s = np.fft.ifft(S)
     return np.real(s) * np.cos(phase) + np.imag(s) * np.sin(phase)
 
 
-def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes=[1]):
+def random_wavelet_generator(nt, dt, peak_freq, df, tdelay, shapes=(1,)):
     """
     Generate function (callable) that output random wavelets.
 
     @params:
-    NT  (float): Number of time steps
+    nt  (float): Number of time steps
     dt   (float): Time step
     peak_freq (float): Mean peak frequency of the wavelets
     df (float): Peak frequency will be peak_freq +- df
@@ -105,7 +105,7 @@ def random_wavelet_generator(NT, dt, peak_freq, df, tdelay, shapes=[1]):
     allwavefuns = [allwavefuns[ii] for ii in shapes]
 
     def random_wavelet():
-        t = np.arange(0, NT) * dt
+        t = np.arange(0, nt) * dt
         fmin = peak_freq - df
         fmax = peak_freq + df
         f0 = np.random.rand(1) * (fmax - fmin) + fmin
@@ -124,12 +124,12 @@ def mask_batch(batch,
                mask_time_frac):
     for ii, el in enumerate(batch):
         data = el[0]
-        NT = data.shape[0]
+        nt = data.shape[0]
         ng = data.shape[1]
 
         # Mask time and offset
         frac = np.random.rand() * mask_time_frac
-        twindow = int(frac * NT)
+        twindow = int(frac * nt)
         owindow = int(frac * ng / 2)
         batch[ii][0][-twindow:, :] = 0
         batch[ii][0][:, :owindow] = 0
@@ -149,25 +149,17 @@ def mask_batch(batch,
     return batch
 
 
-def mute_direct(data, vp0, pars, offsets=None):
-    wind_length = int(2 / pars.peak_freq / pars.dt / pars.resampling)
+def top_mute(data, vp0, wind_length, offsets, dt, tdelay):
+
     taper = np.arange(wind_length)
     taper = np.sin(np.pi * taper / (2 * wind_length - 1)) ** 2
-    NT = data.shape[0]
-    ng = data.shape[1]
-    if offsets is None:
-        if pars.gmin is None or pars.gmax is None:
-            offsets = (np.arange(0, ng) - (ng) / 2) * pars.dh * pars.dg
-        else:
-            offsets = (np.arange(pars.gmin, pars.gmax, pars.dg)) * pars.dh
+    nt = data.shape[0]
 
     for ii, off in enumerate(offsets):
-        tmute = int(
-            (np.abs(off)/vp0+1.5*pars.tdelay) / pars.dt / pars.resampling
-        )
-        if tmute <= NT:
+        tmute = int((np.abs(off) / vp0 + 1.5 * tdelay) / dt)
+        if tmute <= nt:
             data[0:tmute, ii] = 0
-            mute_max = np.min([tmute + wind_length, NT])
+            mute_max = np.min([tmute + wind_length, nt])
             nmute = mute_max - tmute
             data[tmute:mute_max, ii] = data[tmute:mute_max, ii] * taper[:nmute]
         else:
@@ -264,25 +256,30 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
     return data * scal
 
 
-def generate_reflections_ttime(vp,
-                               pars,
-                               tol=0.015,
+def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
+                               tdelay, minoffset, identify_direct, tol=0.015,
                                window_width=0.45):
     """
-    Output the reflection travel time at the minimum offset of a CMP gather
-
-    @params:
-    vp (numpy.ndarray) :  A 1D array containing the Vp profile in depth
-    pars (ModelParameter): Parameters used to generate the model
-    tol (float): The minimum relative velocity change to consider a reflection
-    window_width (float): time window width in percentage of pars.peak_freq
-
-    @returns:
-
-    tabel (numpy.ndarray) : A 2D array with pars.NT elements with 1 at reflecion
-                            times +- window_width/pars.peak_freq, 0 elsewhere
+    Generate an array with 1 at time of primary reflections for the minimum 
+    offset trace of a gather. Valid for a flat layered model.
+    
+    :param vp: A 1D array containing the Vp profile in depth
+    :param source_depth: Depth of the source (in m)
+    :param dh: Spatial grid size
+    :param nt: Number of time steps 
+    :param dt: Sampling interval (in s)
+    :param peak_freq: Peak frequency of the source
+    :param tdelay: Delay of the source
+    :param minoffset: Minimum offset of the gather
+    :param identify_direct: Output an event of the direct arrival if True
+    :param tol: The minimum relative velocity change to consider a reflection
+    :param window_width: time window width in percentage of peak_freq
+    
+    :return: A 2D array with nt elements with 1 at reflecion times 
+             +- window_width/peak_freq, 0 elsewhere
     """
-    vp = vp[int(pars.source_depth / pars.dh):]
+
+    vp = vp[int(source_depth / dh):]
     vlast = vp[0]
     ind = []
     for ii, v in enumerate(vp):
@@ -290,26 +287,26 @@ def generate_reflections_ttime(vp,
             ind.append(ii - 1)
             vlast = v
 
-    if pars.minoffset != 0:
-        dt = 2.0 * pars.dh / vp
-        t0 = np.cumsum(dt)
-        vrms = np.sqrt(t0 * np.cumsum(vp**2 * dt))
-        tref = np.sqrt(t0[ind]**2+pars.minoffset**2/vrms[ind]**2) + pars.tdelay
+    if minoffset != 0:
+        delta = 2.0 * dh / vp
+        t0 = np.cumsum(delta)
+        vrms = np.sqrt(t0 * np.cumsum(vp**2 * delta))
+        tref = np.sqrt(t0[ind]**2+minoffset**2/vrms[ind]**2) + tdelay
     else:
-        ttime = 2 * np.cumsum(pars.dh / vp) + pars.tdelay
+        ttime = 2 * np.cumsum(dh / vp) + tdelay
         tref = ttime[ind]
 
-    if pars.identify_direct:
-        dt = 0
-        if pars.minoffset != 0:
-            dt = pars.minoffset / vp[0]
-        tref = np.insert(tref, 0, pars.tdelay + dt)
+    if identify_direct:
+        delta = 0
+        if minoffset != 0:
+            delta = minoffset / vp[0]
+        tref = np.insert(tref, 0, tdelay + delta)
 
-    tlabel = np.zeros(pars.NT)
+    tlabel = np.zeros(nt)
     for t in tref:
-        imin = int(t / pars.dt - window_width / pars.peak_freq / pars.dt)
-        imax = int(t / pars.dt + window_width / pars.peak_freq / pars.dt)
-        if imin <= pars.NT and imax <= pars.NT:
+        imin = int(t / dt - window_width / peak_freq / dt)
+        imax = int(t / dt + window_width / peak_freq / dt)
+        if imin <= nt and imax <= nt:
             tlabel[imin:imax] = 1
 
     return tlabel
@@ -329,8 +326,6 @@ def two_way_travel_time(vp, dh, t0=0):
     t (numpy.ndarray) :  The two-way travel time of each cell
     """
     t = 2 * np.cumsum(dh / vp) + t0
-    # t = t[t < pars.NT * pars.dt]
-    # vpt = vpt[:len(t)]
 
     return t
 
@@ -391,7 +386,7 @@ def vint2vrms(vint, t):
     return vrms
 
 
-def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
+def calculate_vrms(vp, dh, npad, nt, dt, tdelay, source_depth):
     """
     This method inputs vp and outputs the vrms. The global parameters in
     common.py are used for defining the depth spacing, source and receiver
@@ -403,30 +398,27 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
     @params:
     vp (numpy.ndarray) :  1D vp values in meters/sec.
     dh (float) : the spatial grid size
-    Npad (int) : Number of absorbing padding grid points over the source
-    NT (int)   : Number of time steps of output
+    npad (int) : Number of absorbing padding grid points over the source
+    nt (int)   : Number of time steps of output
     dt (float) : Time step of the output
     tdelay (float): Time before source peak
     source_depth (float) The source depth in meters
 
     @returns:
-    vrms (numpy.ndarray) : numpy array of shape (NT, ) with vrms
+    vrms (numpy.ndarray) : numpy array of shape (nt, ) with vrms
                            values in meters/sec.
     """
-    NZ = vp.shape[0]
+    nz = vp.shape[0]
 
     # Create a numpy array of depths corresponding to the vp grid locations.
-    depth = np.arange(0, NZ) * dh
+    depth = np.arange(0, nz) * dh
 
     # Create a list of tuples of (relative depths, velocity) of the layers
     # following the depth of the source / receiver depths, till the last layer
     # before the padding zone at the bottom.
-    last_depth = dh * (NZ - Npad - 1)
-    rdepth_vel_pairs = [
-        (d - source_depth, vp[i])
-        for i, d in enumerate(depth)
-        if d > source_depth and d <= last_depth
-    ]
+    last_depth = dh * (nz - npad - 1)
+    rdepth_vel_pairs = [(d - source_depth, vp[i]) for i, d in enumerate(depth)
+                        if source_depth < d <= last_depth]
     first_layer_vel = rdepth_vel_pairs[0][1]
     rdepth_vel_pairs.insert(0, (0.0, first_layer_vel))
 
@@ -441,23 +433,23 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
         total_time += time
         t[i] = total_time
 
-    # The last time must be 'dt' * 'NT', so adjust the lists 'rdepth_vel_pairs'
+    # The last time must be 'dt' * 'nt', so adjust the lists 'rdepth_vel_pairs'
     # and 't' by cropping and adjusting the last sample accordingly.
     rdepth_vel_pairs = [
         (rdepth_vel_pairs[i][0], rdepth_vel_pairs[i][1])
         for i, time in enumerate(t)
-        if time <= NT * dt
+        if time <= nt * dt
     ]
-    t = [time for time in t if time <= NT * dt]
+    t = [time for time in t if time <= nt * dt]
     last_index = len(t) - 1
     extra_distance = (
-        (NT*dt-t[last_index]) * rdepth_vel_pairs[last_index][1] / 2.
+        (nt*dt-t[last_index]) * rdepth_vel_pairs[last_index][1] / 2.
     )
     rdepth_vel_pairs[last_index] = (
         extra_distance + rdepth_vel_pairs[last_index][0],
         rdepth_vel_pairs[last_index][1]
     )
-    t[last_index] = NT * dt
+    t[last_index] = nt * dt
 
     # Compute vrms at the times in t.
     vrms = [first_layer_vel]
@@ -469,7 +461,7 @@ def calculate_vrms(vp, dh, Npad, NT, dt, tdelay, source_depth):
         vrms.append((sum_numerator / t[i])**.5)
 
     # Interpolate vrms to uniform time grid.
-    tgrid = np.asarray(range(0, NT)) * dt
+    tgrid = np.asarray(range(0, nt)) * dt
     vrms = np.interp(tgrid, t, vrms)
     vrms = np.reshape(vrms, [-1])
     # Adjust for time delay.
@@ -498,9 +490,9 @@ def smooth_velocity_wavelength(vp, dh, lt, lx):
     """
     vdepth = vp * 0
     dt = dh / np.max(vp) / 10.0
-    NT = int(np.max(2 * np.cumsum(dh / vp, axis=0)) / dt)
-    t = np.arange(1, NT+1, 1) * dt
-    vint = np.zeros([NT, vp.shape[1]])
+    nt = int(np.max(2 * np.cumsum(dh / vp, axis=0)) / dt)
+    t = np.arange(1, nt+1, 1) * dt
+    vint = np.zeros([nt, vp.shape[1]])
     for ii in range(0, vp.shape[1]):
         ti = 2 * np.cumsum(dh / vp[:, ii])
         ti = ti - ti[0]
@@ -536,7 +528,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         Sort data according to CMP positions
 
         @params:
-        data (numpy.ndarray) :  Data Array NT X Ntraces
+        data (numpy.ndarray) :  Data Array nt X ntraces
         src_pos (numpy.ndarray) : SeisCL array containing source position
         rec_pos (numpy.ndarray): SeisCL array containing receiver position
         binsize (float): Bin size for CMPs
@@ -548,7 +540,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
     if binsize is None:
         binsize = src_pos[0, 1] - src_pos[0, 0]
 
-    sx = [src_pos[0, int(srcid)] for srcid in rec_pos[3, :]]
+    sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
     cmps = ((sx + gx) / 2 / binsize).astype(int) * binsize
     offsets = sx - gx
@@ -576,13 +568,13 @@ def stack(cmp, times, offsets, velocities):
         Compute the stacked trace of a list of CMP gathers
 
         @params:
-        cmps (numpy.ndarray) :  CMP gathers NT X Noffset
+        cmps (numpy.ndarray) :  CMP gathers nt X Noffset
         times (numpy.ndarray) : 1D array containing the time
         offsets (numpy.ndarray): 1D array containing the offset of each trace
-        velocities (numpy.ndarray): 1D array NT containing the velocities
+        velocities (numpy.ndarray): 1D array nt containing the velocities
 
         @returns:
-        stacked (numpy.ndarray) : a numpy array NT long containing the stacked
+        stacked (numpy.ndarray) : a numpy array nt long containing the stacked
                                   traces of each CMP
         """
 
@@ -594,18 +586,18 @@ def semblance_gather(cmp, times, offsets, velocities):
     Compute the semblance panel of a CMP gather
 
     @params:
-    cmp (numpy.ndarray) :  CMP gather NT X Noffset
+    cmp (numpy.ndarray) :  CMP gather nt X Noffset
     times (numpy.ndarray) : 1D array containing the time
     offsets (numpy.ndarray): 1D array containing the offset of each trace
     velocities (numpy.ndarray): 1D array containing the test Nv velocities
 
     @returns:
-    semb (numpy.ndarray) : numpy array NTxNv containing semblance
+    semb (numpy.ndarray) : numpy array ntxNv containing semblance
     """
-    NT = cmp.shape[0]
-    semb = np.zeros([NT, len(velocities)])
+    nt = cmp.shape[0]
+    semb = np.zeros([nt, len(velocities)])
     for ii, vel in enumerate(velocities):
-        nmo = nmo_correction(cmp, times, offsets, np.ones(NT) * vel)
+        nmo = nmo_correction(cmp, times, offsets, np.ones(nt) * vel)
         semb[:, ii] = semblance(nmo)
 
     return semb
@@ -616,14 +608,14 @@ def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
     Compute the NMO corrected CMP gather
 
     @params:
-    cmp (numpy.ndarray) :  CMP gather NT X Noffset
+    cmp (numpy.ndarray) :  CMP gather nt X Noffset
     times (numpy.ndarray) : 1D array containing the time
     offsets (numpy.ndarray): 1D array containing the offset of each trace
-    velocities (numpy.ndarray): 1D array containing the test NT velocities
+    velocities (numpy.ndarray): 1D array containing the test nt velocities
                                 in time
 
     @returns:
-    nmo (numpy.ndarray) : array NTxNoffset containing the NMO corrected CMP
+    nmo (numpy.ndarray) : array ntxNoffset containing the NMO corrected CMP
     """
     nmo = np.zeros_like(cmp)
     for j, x in enumerate(offsets):
@@ -660,11 +652,11 @@ def semblance(nmo_corrected, window=10):
     Compute the semblance of a nmo corrected gather
 
     @params:
-    nmo_corrected (numpy.ndarray) :  NMO corrected CMP gather NT X Noffset
+    nmo_corrected (numpy.ndarray) :  NMO corrected CMP gather nt X Noffset
     window (int): Number of time samples to average
 
     @returns:
-    semblance (numpy.ndarray): Array NTx1 containing semblance
+    semblance (numpy.ndarray): Array ntx1 containing semblance
     """
     num = np.sum(nmo_corrected, axis=1) ** 2
     den = np.sum(nmo_corrected ** 2, axis=1) + 1e-12

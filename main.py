@@ -1,6 +1,4 @@
 import os
-import argparse
-
 import tensorflow as tf
 
 from Cases_define import *
@@ -19,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--case",
         type=str,
+        default="Case1Dsmall",
         help="Name of the case class from `Cases_define` to use"
     )
     parser.add_argument(
@@ -138,11 +137,7 @@ if __name__ == "__main__":
     batch_size = args.batchsize
 
     # Define the parameters.
-    case = eval(args.case)(
-        trainsize=2, #10000
-        validatesize=0,
-        testsize=0, #100
-    )
+    case = eval(args.case)(trainsize=5, validatesize=0, testsize=0)
 
     # Generate the dataset.
     if args.training in [0, 2]:
