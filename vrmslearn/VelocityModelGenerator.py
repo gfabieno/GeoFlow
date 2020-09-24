@@ -140,6 +140,76 @@ class MarineModelGenerator(BaseModelGenerator):
 
         return strati
 
+class MaswModelGenerator(BaseModelGenerator):
+
+    def __init__(self):
+
+        super().__init__()
+
+    def build_stratigraphy(self):
+
+        name = "unsaturated_sand"
+        vp = Property("vp", vmin=300, vmax=500, texture=100)
+        vpvs = Property("vpvs", vmin=1.8, vmax=2.5, texture=0.2)
+        rho = Property("rho", vmin=1500, vmax=1800, texture=50)
+        q = Property("q", vmin=7, vmax=20, texture=4)
+        unsaturated_sand = Lithology(name=name, properties=[vp, vpvs, rho, q])
+
+        name = "saturated_sand"
+        vp = Property("vp", vmin=1400, vmax=1800, texture=50)
+        vpvs = Property("vpvs", vmin=3.5, vmax=12, texture=1)
+        rho = Property("rho", vmin=1800, vmax=2200, texture=50)
+        q = Property("q", vmin=7, vmax=20, texture=4)
+        saturated_sand = Lithology(name=name, properties=[vp, vpvs, rho, q])
+
+        name = "saturated_clay"
+        vp = Property("vp", vmin=1500, vmax=1800, texture=50)
+        vpvs = Property("vpvs", vmin=6, vmax=20, texture=1)
+        rho = Property("rho", vmin=1800, vmax=2200, texture=50)
+        q = Property("q", vmin=15, vmax=30, texture=4)
+        saturated_clay = Lithology(name=name, properties=[vp, vpvs, rho, q])
+
+        name = "weathered_shale"
+        vp = Property("vp", vmin=1950, vmax=2100, texture=50)
+        vpvs = Property("vpvs", vmin=2.4, vmax=4.5, texture=1)
+        rho = Property("rho", vmin=2000, vmax=2400, texture=50)
+        q = Property("q", vmin=15, vmax=30, texture=4)
+        weathered_shale = Lithology(name=name, properties=[vp, vpvs, rho, q])
+
+        name = "shale"
+        vp = Property("vp", vmin=2000, vmax=2500, texture=20)
+        vpvs = Property("vpvs", vmin=2.6, vmax=4.5, texture=1)
+        rho = Property("rho", vmin=2000, vmax=2400, texture=50)
+        q = Property("q", vmin=30, vmax=60, texture=4)
+        shale = Lithology(name=name, properties=[vp, vpvs, rho, q])
+
+        deform = Deformation(max_deform_freq=0.02,
+                             min_deform_freq=0.0001,
+                             amp_max=8,
+                             max_deform_nfreq=40,
+                             prob_deform_change=0.1)
+
+        unsat_seq = Sequence(name="unsaturated",
+                             lithologies=[unsaturated_sand],
+                             thick_max=25)
+        sat_seq = Sequence(name="saturated",
+                           lithologies=[saturated_clay,
+                                        saturated_sand],
+                           thick_max=100)
+        weathered_seq = Sequence(name="weathered",
+                                 lithologies=[weathered_shale],
+                                 thick_max=50)
+        roc_seq = Sequence(name="roc",
+                           lithologies=[shale],
+                           thick_max=99999)
+
+        strati = Stratigraphy(sequences=[unsat_seq,
+                                         sat_seq,
+                                         weathered_seq,
+                                         roc_seq])
+
+        return strati
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

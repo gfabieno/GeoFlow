@@ -4,12 +4,68 @@
 
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
-                                              BaseModelGenerator)
+                                              BaseModelGenerator, MaswModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.LabelGenerator import LabelGenerator
 import argparse
 
+class Case_masw(Case):
+
+    name = "Case_masw"
+
+    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
+
+        if noise == 1:
+            self.name = self.name + "_noise"
+        super().__init__(trainsize=trainsize,
+                         validatesize=validatesize,
+                         testsize=testsize)
+        if noise == 1:
+            self.label.random_static = True
+            self.label.random_static_max = 1
+            self.label.random_noise = True
+            self.label.random_noise_max = 0.02
+
+
+
+    def set_case(self):
+
+        model = MaswModelGenerator()
+        model.NX = 500
+        model.NZ = 100
+        model.dh = dh = 1
+
+        model.marine = False
+        model.texture_xrange = 3
+        model.texture_zrange = 1.95 * model.NZ / 2
+
+        model.dip_0 = True
+        model.dip_max = 0
+        model.ddip_max = 0
+
+        model.layer_num_min = 1
+        model.layer_dh_min = 5
+        model.layer_dh_max = 20
+
+        acquire = Acquisition(model=model)
+        acquire.peak_freq = 26
+        acquire.sourcetype = 2
+        acquire.dt = dt = 0.0001
+        acquire.NT = int(2 / dt)
+        acquire.dg = dg = 3
+        acquire.gmin = int(100/ dh)
+        acquire.gmax = int(acquire.gmin*dg)
+        acquire.fs = True
+        acquire.source_depth = 0
+        acquire.receiver_depth = 0
+        acquire.rectype = 1
+
+        label = LabelGenerator(model=model, acquire=acquire)
+        label.identify_direct = False
+        label.train_on_shots = True
+
+        return model, acquire, label
 
 class Case1Dsmall(Case):
 
