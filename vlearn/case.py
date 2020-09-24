@@ -5,6 +5,7 @@ See Case2Dtest for usage example.
 """
 
 import os
+import gc
 import fnmatch
 import random
 import matplotlib.pyplot as plt
@@ -251,6 +252,7 @@ class Case:
             repeat=True,
         )
         plt.show()
+        gc.collect()
 
 
 def plot_model(self, seed=None):

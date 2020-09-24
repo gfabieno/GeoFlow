@@ -55,13 +55,15 @@ class RCNN2D:
         self.batch_size = batch_size
         self.use_peepholes = use_peepholes
 
-        self.inputs = self.build_inputs()
-        self.outputs = self.build_network()
-        self.model = Model(
-            inputs=self.inputs,
-            outputs=self.outputs,
-            name="RCNN2D",
-        )
+        strategy = tf.distribute.MirroredStrategy()
+        with strategy.scope():
+            self.inputs = self.build_inputs()
+            self.outputs = self.build_network()
+            self.model = Model(
+                inputs=self.inputs,
+                outputs=self.outputs,
+                name="RCNN2D",
+            )
 
         # `RCNN2D` has the same interface as a keras `Model`, but subclassing
         # is avoided by using the functional API. This is necessary for model
