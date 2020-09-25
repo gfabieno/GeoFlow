@@ -41,9 +41,9 @@ class SampleGenerator:
         seed (int): Seed of the model to generate
 
         """
-        (vp, vs, rho), _, _ = self.model.generate_model(seed=seed)
-        data = self.seismic.compute_data(vp, vs, rho)
-        labels, weights = self.label.generate_labels(vp, vs, rho)
+        props, _, _ = self.model.generate_model(seed=seed)
+        data = self.seismic.compute_data(props)
+        labels, weights = self.label.generate_labels(props)
 
         return data, labels, weights
 
@@ -113,7 +113,6 @@ class SampleGenerator:
         exampleids = Queue()
         for el in np.arange(seed0, seed0 + nexamples):
             exampleids.put(el)
-
         generators = []
         for jj in range(ngpu):
             sg = self.__class__(model=self.model,

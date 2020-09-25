@@ -175,26 +175,17 @@ class SeismicGenerator(SeisCL):
 
         self.wavelet_generator = acquire.source_generator()
 
-    def compute_data(self, vp, vs, rho):
+    def compute_data(self, props: dict):
         """
-        This method generates compute the data for a vp, vs and rho model.
+        This method generates compute the data a seismic properties in props.
 
-        @params:
-        workdir (str)   : A string containing the working direction of SeisCL
+        :param props: A Dict containint {name_of_property: array_of_property}
 
-        @returns:
-        vp (numpy.ndarray)  : Vp velocity
-        vs (numpy.ndarray)  : Vs velocity
-        rho (numpy.ndarray)  : Density
-
-        @returns:
-        data (numpy.ndarray):  The modeled data.
+        :return: An array containing the modeled seismic data
         """
 
         self.src_all = None  # Reset source to generate new random source.
-        self.set_forward(self.src_pos_all[3, :],
-                         {'vp': vp, 'vs': vs, 'rho': rho},
-                         withgrad=False)
+        self.set_forward(self.src_pos_all[3, :], props, withgrad=False)
         self.execute()
         data = self.read_data()
         data = data[0][::self.resampling, :]  # Resample data to reduce space.

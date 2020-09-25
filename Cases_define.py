@@ -27,8 +27,6 @@ class Case_masw(Case):
             self.label.random_noise = True
             self.label.random_noise_max = 0.02
 
-
-
     def set_case(self):
 
         model = MaswModelGenerator()

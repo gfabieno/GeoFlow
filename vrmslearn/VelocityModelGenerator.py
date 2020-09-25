@@ -76,9 +76,10 @@ class BaseModelGenerator(ModelGenerator):
         """
         if self.strati is None:
             self.strati = self.build_stratigraphy()
-        (vp, vs, rho), layerids, layers = super().generate_model(self.strati,
+        props2D, layerids, layers = super().generate_model(self.strati,
                                                                  seed=seed)
-        return (vp, vs, rho), layerids, layers
+
+        return props2D, layerids, layers
 
     def build_stratigraphy(self):
 
@@ -210,6 +211,12 @@ class MaswModelGenerator(BaseModelGenerator):
 
         return strati
 
+    def generate_model(self, seed=None):
+
+        props2D, layerids, layers = super().generate_model(seed=seed)
+        props2D["vs"] = props2D["vp"] / props2D["vpvs"]
+
+        return props2D, layerids, layers
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

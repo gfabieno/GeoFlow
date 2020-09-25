@@ -59,19 +59,17 @@ class LabelGenerator:
         # Train on True:  shot gathers, False: CMP.
         self.train_on_shots = False
 
-    def generate_labels(self, vp, vs, rho):
+    def generate_labels(self, props):
         """
-           Output the labels attached to modelling of a particular dataset. In
-           this case, we want to predict vp in depth from cmp gathers.
+        Output the labels attached to modelling of a particular dataset. In
+        this case, we want to predict vp in depth from cmp gathers.
 
-           @params:
+        :param props: A dict with {name_of_prop: array of property}
+        :return: labels A list of labels
+                 weights A list of weights
+        """
 
-           @returns:
-           vp (numpy.ndarray)  : numpy containg the normalized vp model.
-           valid (numpy.ndarray) : numpy array with 1 before the last reflection
-                                   0 afterwards
-           """
-
+        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
             vrms[:, ii] = calculate_vrms(vp[:, ii],
