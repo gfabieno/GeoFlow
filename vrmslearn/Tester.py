@@ -147,20 +147,16 @@ class Tester(object):
                 if image:
                     vmin = np.min(label[labelname])
                     vmax = np.max(label[labelname])
-                    axes[jj, 0].imshow(
-                        label[labelname],
-                        vmin=vmin,
-                        vmax=vmax,
-                        cmap='inferno',
-                        aspect='auto',
-                    )
-                    axes[jj, 1].imshow(
-                        pred[labelname],
-                        vmin=vmin,
-                        vmax=vmax,
-                        cmap='inferno',
-                        aspect='auto',
-                    )
+                    axes[jj, 0].imshow(label[labelname],
+                                       vmin=vmin,
+                                       vmax=vmax,
+                                       cmap='inferno',
+                                       aspect='auto')
+                    axes[jj, 1].imshow(pred[labelname],
+                                       vmin=vmin,
+                                       vmax=vmax,
+                                       cmap='inferno',
+                                       aspect='auto')
 
                 else:
                     y = np.arange(label[labelname].shape[0])
@@ -188,19 +184,13 @@ class Tester(object):
                         else plot 1D profiles.
         """
         if quantity is None:
-            examples = [
-                os.path.basename(f) for f in self.case.files["test"]
-                if os.path.basename(f) in os.listdir(savepath)
-            ]
+            examples = [os.path.basename(f) for f in self.case.files["test"]
+                        if os.path.basename(f) in os.listdir(savepath)]
         else:
-            examples = [
-                os.path.basename(self.case.files["test"][ii])
-                for ii in range(quantity)
-            ]
+            examples = [os.path.basename(self.case.files["test"][ii])
+                        for ii in range(quantity)]
 
-        labels, preds = self.get_preds(
-            labelnames, savepath, examples=examples,
-        )
+        labels, preds = self.get_preds(labelnames, savepath, examples=examples)
         datas = labels['input']
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
@@ -212,14 +202,12 @@ class Tester(object):
         clip = 0.01
         vmax = np.max(datas) * clip
         vmin = -vmax
-        im1 = axs[0, 0].imshow(
-            datas[0],
-            animated=True,
-            vmin=vmin,
-            vmax=vmax,
-            aspect='auto',
-            cmap=plt.get_cmap('Greys'),
-        )
+        im1 = axs[0, 0].imshow(datas[0],
+                               animated=True,
+                               vmin=vmin,
+                               vmax=vmax,
+                               aspect='auto',
+                               cmap=plt.get_cmap('Greys'))
         axs[0, 0].set_title('data')
         ims = [im1]
 
@@ -246,20 +234,6 @@ class Tester(object):
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
-                # plt.colorbar(
-                #     im1,
-                #     ax=axs[0, 1 + ii],
-                #     orientation="horizontal",
-                #     pad=0.15,
-                #     fraction=0.1,
-                # )
-                # plt.colorbar(
-                #     im2,
-                #     ax=axs[1, 1 + ii],
-                #     orientation="horizontal",
-                #     pad=0.15,
-                #     fraction=0.1,
-                # )
                 ims.append(im1)
                 ims.append(im2)
             else:
