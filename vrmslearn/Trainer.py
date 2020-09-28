@@ -29,7 +29,6 @@ class Trainer:
                  beta_2: float = 0.999,
                  epsilon: float = 1e-8,
                  loss_scales: dict = {'ref': 1.},
-                 loss_compound_weights: dict = {},
                  use_weights: bool = True):
         """
         Initialize the tester
@@ -43,13 +42,7 @@ class Trainer:
         beta2 (float): beta2 of the Adam optimizer
         epsilon (float): epsilon of the Adam optimizer
         loss_scales (dict): losses associated with each label
-        loss_compound_weights (dict): a dictionary that maps each label name to
-            a tuple with elements `alpha` and `beta` used in computing
-            `v_compound_loss`. Defaults to `alpha=.2` and `beta=.1` when the
-            label name is missing.
         use_weights (bool): whether to use weights or not in losses.
-
-        @returns:
         """
         self.nn = nn
         self.sequence = sequence
@@ -66,11 +59,7 @@ class Trainer:
             if lbl == 'ref':
                 losses.append(ref_loss(use_weights=use_weights))
             else:
-                try:
-                    alpha, beta = loss_compound_weights[lbl]
-                    loss = v_compound_loss(alpha, beta, use_weights)
-                except KeyError:
-                    loss = v_compound_loss(use_weights=use_weights)
+                loss = v_compound_loss(use_weights=use_weights)
                 losses.append(loss)
             losses_weights.append(self.loss_scales[lbl])
 

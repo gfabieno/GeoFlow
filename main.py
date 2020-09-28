@@ -1,5 +1,4 @@
 import os
-import json
 import argparse
 
 import tensorflow as tf
@@ -75,14 +74,6 @@ if __name__ == "__main__":
                         type=float,
                         default=0.0,
                         help="weight of vdepth in loss")
-    parser.add_argument("--loss_compound_weights",
-                        type=json.loads,
-                        default="{}",
-                        help="A dictionary of label and (`alpha`, `beta`) "
-                             "pairs formatted as a string. See "
-                             "`vrmslearn.Trainer.Trainer` and "
-                             "`vrmslearn.Trainer.v_compound_loss` for "
-                             "explanations.")
     parser.add_argument("--nmodel",
                         type=int,
                         default=1,
