@@ -87,21 +87,19 @@ class Trainer:
         )
 
     def train_model(self,
-                    batch_size: int = 1,
+                    batch_size: int = 10,
                     epochs: int = 5,
                     steps_per_epoch: int = 100,
-                    restore_from: str = None,
-                    thread_read: int = 1):
+                    restore_from: str = None):
         """
         This method trains the model. The training is restarted automatically
         if any checkpoints are found in self.checkpoint_dir.
 
         @params:
-        batch_size (int): quantity of examples per batch
+        batch_ize (int): Size of the batches
         epochs (int): quantity of epochs, of `steps_per_epoch` iterations
         steps_per_epoch (int): quantity of iterations per epoch
         restore_from (str): Checkpoint file from which to initialize parameters
-        thread_read (int): Number of threads to create example by InputQueue
         """
         if restore_from is not None:
             self.nn.load_weights(restore_from)
@@ -111,24 +109,18 @@ class Trainer:
         else:
             initial_epoch = 0
 
-        tensorboard = callbacks.TensorBoard(
-            log_dir=self.checkpoint_dir,
-            profile_batch=0,
-        )
-        checkpoints = callbacks.ModelCheckpoint(
-            join(self.checkpoint_dir, WEIGHTS_NAME),
-            save_weights_only=True,
-            save_freq='epoch',
-        )
-        self.nn.fit(
-            self.sequence,
-            epochs=epochs,
-            callbacks=[tensorboard, checkpoints],
-            initial_epoch=initial_epoch,
-            steps_per_epoch=steps_per_epoch,
-            max_queue_size=10,
-            use_multiprocessing=False,
-        )
+        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir)
+        checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
+                                                     WEIGHTS_NAME),
+                                                save_weights_only=True,
+                                                save_freq='epoch')
+        self.nn.fit(self.sequence,
+                    epochs=epochs,
+                    callbacks=[tensorboard, checkpoints],
+                    initial_epoch=initial_epoch,
+                    steps_per_epoch=steps_per_epoch,
+                    max_queue_size=10,
+                    use_multiprocessing=False)
 
 
 def ref_loss(use_weights=True):
@@ -143,12 +135,9 @@ def ref_loss(use_weights=True):
         temp_lbl = tf.cast(label, tf.int32)
         label = tf.one_hot(temp_lbl, 2) * weights
 
-        loss = tf.reduce_mean(
-            tf.nn.softmax_cross_entropy_with_logits(
-                logits=output,
-                labels=label,
-            )
-        )
+        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
+            logits=output,
+            labels=label))
         return loss
 
     return loss

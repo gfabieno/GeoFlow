@@ -37,9 +37,6 @@ class Sequence(Sequence):
                 raise ValueError(f"`out_names` should be from {OUTS}")
         self.out_names = [name for name in OUTS if name in out_names]
 
-        gen = self.case.sample_generator.model_gen
-        self.data_names = ["input", *gen.label_names, *gen.weight_names]
-
         if not self.is_training:
             self.reset_test_generator()
 
@@ -90,8 +87,8 @@ class Sequence(Sequence):
 
             inputs[i] = data[0]
             for j, lbl in enumerate(self.out_names):
-                label_idx = self.data_names.index(lbl)
-                weight_idx = self.data_names.index(WEIGHT_MAPPING[lbl])
+                label_idx = self.case.example_order.index(lbl)
+                weight_idx = self.case.example_order.index(WEIGHT_MAPPING[lbl])
                 labels[j][i] = [data[label_idx][:n_t], data[weight_idx][:n_t]]
 
         if self.is_training:
