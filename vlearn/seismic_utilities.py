@@ -266,7 +266,7 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
 def generate_reflections_ttime(vp,
                                pars,
                                tol=0.015,
-                               window_width=0.45):
+                               window_width=0.2):
     """
     Output the reflection travel time at the minimum offset of a CMP gather
 
