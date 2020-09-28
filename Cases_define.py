@@ -176,54 +176,6 @@ class Case2Dtest(Case):
             self.label.random_noise_max = 0.02
 
 
-class Case_2Dtest_fix_timescale(Case2Dtest):
-    name = "2Dtest_fix_timescale"
-
-    def set_case(self):
-        model, acquire, label = super().set_case()
-
-        self.trainsize = 1000
-        self.validatesize = 0
-        self.testsize = 10
-
-        model.water_dmax = 400
-        model.num_layers = 3
-        model.layer_dh_min = 20
-        model.vp_trend_max = 1
-        model.angle_max = 10
-
-        return model, acquire, label
-
-
-class Case_2Dtest_receiverdensity(Case_2Dtest_fix_timescale):
-    name = "2Dtest_receiverdensity"
-
-    def set_case(self):
-        model, acquire, label = super().set_case()
-
-        self.trainsize = 100
-        self.validatesize = 0
-        self.testsize = 10
-
-        model.dg = 1
-        model.ds = 20
-        model.gmin = 20 * model.dg
-        model.gmax = model.NX - model.gmin
-
-        return model, acquire, label
-
-
-class Case_2Dtest_sourcedensity(Case_2Dtest_receiverdensity):
-    name = "2Dtest_sourcedensity"
-
-    def set_case(self):
-        model, acquire, label = super().set_case()
-
-        model.ds = 5
-
-        return model, acquire, label
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
