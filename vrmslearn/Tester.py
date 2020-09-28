@@ -229,15 +229,20 @@ class Tester(object):
 
         for ii, labelname in enumerate(labelnames):
             if image:
-                im1 = axs[0, 1 + ii].imshow(
-                    pred[labelname],
-                    vmin=0,
-                    vmax=1,
-                    animated=True,
-                    cmap='inferno',
-                    aspect='auto',
-                )
-                im2 = axs[1, 1 + ii].imshow(label[labelname], vmin=0, vmax=1,
+                if labelname == "ref":
+                    vmin, vmax = 0, 1
+                else:
+                    vmin = self.case.model.vp_min
+                    vmax = self.case.model.vp_max
+                im1 = axs[0, 1 + ii].imshow(pred[labelname],
+                                            vmin=vmin,
+                                            vmax=vmax,
+                                            animated=True,
+                                            cmap='inferno',
+                                            aspect='auto')
+                im2 = axs[1, 1 + ii].imshow(label[labelname],
+                                            vmin=vmin,
+                                            vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
