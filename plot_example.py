@@ -12,8 +12,8 @@ import h5py as h5
 import numpy as np
 import matplotlib.pyplot as plt
 
-from vlearn.model_parameters import ModelParameters
-from vlearn.seismic_generator import (
+from vrmslearn.model_parameters import ModelParameters
+from vrmslearn.SeismicGenerator import (
     SeismicGenerator, mute_direct, random_time_scaling, random_noise,
     random_static,
 )

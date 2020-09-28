@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different cases"""
 
-from vlearn.case import Case
-from vlearn.model_parameters import ModelParameters
+from vrmslearn.Case import Case
+from vrmslearn.model_parameters import ModelParameters
 
 
 class Case_1Dsmall(Case):

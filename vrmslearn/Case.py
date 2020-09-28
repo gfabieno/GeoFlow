@@ -11,17 +11,17 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from vlearn.dataset_generator import generate_dataset, SampleGenerator
-from vlearn.model_generator import ModelGenerator
-from vlearn.model_parameters import ModelParameters
-from vlearn.seismic_utilities import (
+from vrmslearn.DatasetGenerator import generate_dataset, SampleGenerator
+from vrmslearn.ModelGenerator import ModelGenerator
+from vrmslearn.model_parameters import ModelParameters
+from vrmslearn.SeismicUtilities import (
     random_noise, random_time_scaling, random_static, mute_direct,
     mute_nearoffset,
 )
-from vlearn.seismic_utilities import (
+from vrmslearn.SeismicUtilities import (
     smooth_velocity_wavelength, sortcmp,
 )
-from vlearn.seismic_generator import SeismicGenerator
+from vrmslearn.SeismicGenerator import SeismicGenerator
 
 
 class Case:

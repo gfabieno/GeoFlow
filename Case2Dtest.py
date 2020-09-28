@@ -4,11 +4,11 @@ import argparse
 
 import tensorflow as tf
 
-from defined_cases import *
-from vlearn.architecture import RCNN2D
-from vlearn.trainer import Trainer
-from vlearn.tester import Tester
-from vlearn.input_sequence import Sequence
+from Cases_define import *
+from vrmslearn.RCNN2D import RCNN2D
+from vrmslearn.Trainer import Trainer
+from vrmslearn.Tester import Tester
+from vrmslearn.Sequence import Sequence
 
 
 if __name__ == "__main__":
@@ -107,8 +107,8 @@ if __name__ == "__main__":
         default="{}",
         help=(
             "A dictionary of label and (`alpha`, `beta`) pairs formatted as a "
-            "string. See `vlearn.trainer.Trainer` and "
-            "`vlearn.trainer.v_compound_loss` for explanations."
+            "string. See `vrmslearn.Trainer.Trainer` and "
+            "`vrmslearn.Trainer.v_compound_loss` for explanations."
         )
     )
     parser.add_argument(
