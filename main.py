@@ -144,7 +144,6 @@ if __name__ == "__main__":
                           beta_2=args.beta_2,
                           epsilon=args.eps,
                           loss_scales=loss_scales,
-                          loss_compound_weights=args.loss_compound_weights,
                           use_weights=not args.no_weights)
         restore_from = tf.train.latest_checkpoint(args.logdir)
         trainer.train_model(epochs=args.epochs,
