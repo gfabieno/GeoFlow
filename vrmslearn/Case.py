@@ -33,11 +33,6 @@ class Case:
         """
         Initiate a Case by setting the training, validation and test sets size.
 
-        @params:
-        trainsize (int): Number of examples in the training set.
-        validatesize (int): Number of examples in the validation set.
-        testsize (int): Number of examples in the test set.
-
         @returns:
         """
 
@@ -66,6 +61,10 @@ class Case:
             acquire: An Acquisition objects that set data creation
             label: A LabelGenerator object that performs label generation
         """
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
+
         model = BaseModelGenerator()
         model.texture_xrange = 3
         model.texture_zrange = 1.95 * model.NZ / 2
