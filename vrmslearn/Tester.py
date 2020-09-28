@@ -49,12 +49,7 @@ class Tester(object):
 
         @params:
         savepath (str) : The path in which the test examples are found
-        toeval (dict): Dict of name: tensors to predict
-        filename (str): The structure of the examples' filenames
-        batch_size (int): quantity of examples per batch
         restore_from (str): File containing the trained weights
-
-        @returns:
         """
         if restore_from is not None:
             self.nn.load_weights(restore_from)

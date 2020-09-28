@@ -206,7 +206,6 @@ if __name__ == "__main__":
         )
         restore_from = tf.train.latest_checkpoint(args.logdir)
         trainer.train_model(
-            batch_size=batch_size,
             epochs=args.epochs,
             steps_per_epoch=args.steps,
             restore_from=restore_from,
@@ -229,7 +228,6 @@ if __name__ == "__main__":
         restore_from = tf.train.latest_checkpoint(args.logdir)
         tester.test_dataset(
             savepath=savepath,
-            batch_size=batch_size,
             restore_from=restore_from,
         )
 
