@@ -12,6 +12,7 @@ import h5py as h5
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import tensorflow as tf
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
@@ -52,7 +53,9 @@ class Tester(object):
         restore_from (str): File containing the trained weights
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from)
+            strategy = tf.distribute.MirroredStrategy()
+            with strategy.scope():
+                self.nn.load_weights(restore_from)
 
         self.sequence.reset_test_generator()
 

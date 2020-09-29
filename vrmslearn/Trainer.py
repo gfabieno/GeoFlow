@@ -89,7 +89,9 @@ class Trainer:
         restore_from (str): Checkpoint file from which to initialize parameters
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from)
+            strategy = tf.distribute.MirroredStrategy()
+            with strategy.scope():
+                self.nn.load_weights(restore_from)
             filename = split(restore_from)[-1]
             initial_epoch = int(filename[:4])
             epochs += initial_epoch
