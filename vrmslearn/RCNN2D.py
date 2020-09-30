@@ -6,12 +6,10 @@ Class to build the neural network for 2D prediction vp in depth
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import (
-    Conv3D, Conv2D, LeakyReLU, LSTM, Permute, Input,
-)
-from tensorflow.keras.backend import (
-    max as reduce_max, sum as reduce_sum, reshape,
-)
+from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
+                                     Input)
+from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
+                                      reshape)
 
 from vrmslearn.Sequence import OUTS
 
@@ -59,11 +57,9 @@ class RCNN2D:
         with strategy.scope():
             self.inputs = self.build_inputs()
             self.outputs = self.build_network()
-            self.model = Model(
-                inputs=self.inputs,
-                outputs=self.outputs,
-                name="RCNN2D",
-            )
+            self.model = Model(inputs=self.inputs,
+                               outputs=self.outputs,
+                               name="RCNN2D")
 
         # `RCNN2D` has the same interface as a keras `Model`, but subclassing
         # is avoided by using the functional API. This is necessary for model
@@ -75,11 +71,9 @@ class RCNN2D:
 
     def build_inputs(self):
         with tf.name_scope('Inputs'):
-            inputs = Input(
-                shape=self.input_size,
-                batch_size=self.batch_size,
-                dtype=tf.float32,
-            )
+            inputs = Input(shape=self.input_size,
+                           batch_size=self.batch_size,
+                           dtype=tf.float32)
 
         return inputs
 
@@ -90,23 +84,17 @@ class RCNN2D:
 
         data_stream = self.scale_inputs(self.inputs)
 
-        encoder = build_encoder(
-            kernels=[
-                [15, 1, 1],
-                [1, 9, 1],
-                [15, 1, 1],
-                [1, 9, 1],
-            ],
-            qties_filters=[16, 16, 32, 32],
-        )
+        encoder = build_encoder(kernels=[[15, 1, 1],
+                                         [1, 9, 1],
+                                         [15, 1, 5],
+                                         [1, 9, 5]],
+                                qties_filters=[16, 16, 32, 32])
         data_stream = encoder(data_stream)
 
-        time_rcnn = build_rcnn(
-            reps=7,
-            kernel=[15, 3, 1],
-            qty_filters=32,
-            name="time_rcnn",
-        )
+        time_rcnn = build_rcnn(reps=7,
+                               kernel=[15, 3, 5],
+                               qty_filters=32,
+                               name="time_rcnn")
         data_stream = time_rcnn(data_stream)
 
         with tf.name_scope("global_pooling"):
@@ -114,12 +102,7 @@ class RCNN2D:
 
         if 'ref' in self.out_names:
             with tf.name_scope("decode_ref"):
-                conv_2d = Conv2D(
-                    2,
-                    [1, 1],
-                    padding='same',
-                    name="ref",
-                )
+                conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
                 outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, name="rnn_vrms")
@@ -131,12 +114,7 @@ class RCNN2D:
                     kernel = [1, 1]
                 else:
                     kernel = [1, 5]
-                conv_2d = Conv2D(
-                    1,
-                    kernel,
-                    padding='same',
-                    name="vrms",
-                )
+                conv_2d = Conv2D(1, kernel, padding='same', name="vrms")
                 outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, name="rnn_vint")
@@ -148,12 +126,7 @@ class RCNN2D:
                     kernel = [1, 1]
                 else:
                     kernel = [1, 5]
-                conv_2d = Conv2D(
-                    1,
-                    kernel,
-                    padding='same',
-                    name="vint",
-                )
+                conv_2d = Conv2D(1, kernel, padding='same', name="vint")
                 outputs['vint'] = conv_2d(data_stream)
 
         data_stream = data_stream[:, :self.depth_size]
@@ -166,12 +139,7 @@ class RCNN2D:
                     kernel = [1, 1]
                 else:
                     kernel = [1, 5]
-                conv_2d = Conv2D(
-                    1,
-                    kernel,
-                    padding='same',
-                    name="vdepth",
-                )
+                conv_2d = Conv2D(1, kernel, padding='same', name="vdepth")
                 outputs['vdepth'] = conv_2d(data_stream)
 
         return [outputs[out] for out in self.out_names]
@@ -185,31 +153,25 @@ class RCNN2D:
         @returns:
         scaled (tf.tensor)  : The scaled input data
         """
-        scaled = inputs / (
-            tf.sqrt(reduce_sum(inputs ** 2, axis=[1],  keepdims=True))
-            + np.finfo(np.float32).eps
-        )
-        scaled = 1000 * scaled / tf.reduce_max(
-            scaled, axis=[1, 2, 3], keepdims=True,
-        )
+        trace_rms = tf.sqrt(reduce_sum(inputs**2, axis=[1], keepdims=True))
+        scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
+        cmp_rms = tf.reduce_max(scaled, axis=[1, 2, 3], keepdims=True)
+        scaled = 1000 * scaled / cmp_rms
         return scaled
 
 
 def build_encoder(kernels, qties_filters, name="encoder"):
     def encoder(data_stream):
         with tf.name_scope(name):
-            for i, (kernel, qty_filters) in (
-                        enumerate(zip(kernels, qties_filters))
-                    ):
+            for i, (kernel, qty_filters) in enumerate(zip(kernels,
+                                                          qties_filters)):
                 with tf.name_scope(f'CNN_{i}'):
-                    conv3d = Conv3D(
-                        qty_filters,
-                        kernel,
-                        padding='same',
-                    )
+                    conv3d = Conv3D(qty_filters,
+                                    kernel,
+                                    padding='same')
                     data_stream = conv3d(data_stream)
                     data_stream = LeakyReLU()(data_stream)
-            return data_stream
+        return data_stream
     return encoder
 
 
@@ -217,11 +179,9 @@ def build_rcnn(reps, kernel, qty_filters, name="rcnn"):
     def rcnn(data_stream):
         with tf.name_scope(name):
             for _ in range(reps):
-                conv3d = Conv3D(
-                    qty_filters,
-                    kernel,
-                    padding='same',
-                )
+                conv3d = Conv3D(qty_filters,
+                                kernel,
+                                padding='same')
                 data_stream = conv3d(data_stream)
                 data_stream = LeakyReLU()(data_stream)
         return data_stream
@@ -233,16 +193,12 @@ def build_rnn(units, name="rnn"):
         with tf.name_scope(name):
             data_stream = Permute((2, 1, 3))(data_stream)
             batches, shots, timesteps, filter_dim = data_stream.get_shape()
-            data_stream = reshape(
-                data_stream,
-                [batches*shots, timesteps, filter_dim],
-            )
+            data_stream = reshape(data_stream,
+                                  [batches*shots, timesteps, filter_dim])
             lstm = LSTM(units, return_sequences=True)
             data_stream = lstm(data_stream)
-            data_stream = reshape(
-                data_stream,
-                [batches, shots, timesteps, units],
-            )
+            data_stream = reshape(data_stream,
+                                  [batches, shots, timesteps, units])
             data_stream = Permute((2, 1, 3))(data_stream)
         return data_stream
     return rnn
