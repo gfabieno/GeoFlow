@@ -86,8 +86,8 @@ class RCNN2D:
 
         encoder = build_encoder(kernels=[[15, 1, 1],
                                          [1, 9, 1],
-                                         [15, 1, 5],
-                                         [1, 9, 5]],
+                                         [15, 1, 1],
+                                         [1, 9, 1]],
                                 qties_filters=[16, 16, 32, 32])
         data_stream = encoder(data_stream)
 
