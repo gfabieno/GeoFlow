@@ -92,7 +92,7 @@ class RCNN2D:
         data_stream = encoder(data_stream)
 
         time_rcnn = build_rcnn(reps=7,
-                               kernel=[15, 3, 5],
+                               kernel=[15, 3, 1],
                                qty_filters=32,
                                name="time_rcnn")
         data_stream = time_rcnn(data_stream)
