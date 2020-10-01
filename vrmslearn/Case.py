@@ -42,6 +42,10 @@ class Case:
         self.example_order = ['input', *self.label.label_names,
                               *self.label.weight_names]
 
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
+
         # Paths of the test, train and validation dataset.
         self.datatrain = os.path.join(self.basepath, self.name, "train")
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
@@ -61,10 +65,6 @@ class Case:
             acquire: An Acquisition objects that set data creation
             label: A LabelGenerator object that performs label generation
         """
-        self.trainsize = 10000
-        self.validatesize = 0
-        self.testsize = 100
-
         model = BaseModelGenerator()
         model.texture_xrange = 3
         model.texture_zrange = 1.95 * model.NZ / 2
