@@ -155,8 +155,8 @@ class RCNN2D:
         """
         trace_rms = tf.sqrt(reduce_sum(inputs**2, axis=[1], keepdims=True))
         scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
-        cmp_rms = tf.reduce_max(scaled, axis=[1, 2, 3], keepdims=True)
-        scaled = 1000 * scaled / cmp_rms
+        shot_max = tf.reduce_max(scaled, axis=[1, 2, 3], keepdims=True)
+        scaled = 1000 * scaled / shot_max
         return scaled
 
 
