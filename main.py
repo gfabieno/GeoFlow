@@ -36,7 +36,8 @@ def main(args):
                 alpha=0.1,
                 beta=0.1,
                 use_peepholes=args.use_peepholes,
-                out_names=loss_scales.keys())
+                out_names=loss_scales.keys(),
+                freeze_to=args.freeze_to)
 
     # Train the model.
     if args.training in [1, 2]:
@@ -178,6 +179,11 @@ if __name__ == "__main__":
                         default=None,
                         help="The weights file used for inference. Defaults "
                              "to the last checkpoint in `args.logdir`.")
+    parser.add_argument("--freeze_to",
+                        type=str,
+                        default=None,
+                        help="A label name. All layers before this label's "
+                             "decoder will not be trainable.")
 
     # Parse the input for training parameters.
     args, unparsed = parser.parse_known_args()

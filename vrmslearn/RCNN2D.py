@@ -27,7 +27,8 @@ class RCNN2D:
                  batch_size: int = 1,
                  alpha: float = 0,
                  beta: float = 0,
-                 use_peepholes: bool = False):
+                 use_peepholes: bool = False,
+                 freeze_to: str = None):
         """
         Build the neural net in tensorflow, along the cost function
 
@@ -40,8 +41,8 @@ class RCNN2D:
         beta (float): Fraction of the loss dedicated minimize model derivative
         use_peepholes (bool): If true, use peephole LSTM
         ndim (int): Number of dimensions (2 for layered models, 3 for dipping)
-
-        @returns:
+        freeze_to (str): A label name. All layers before this label's decoder
+                         will not be trainable.
         """
         for l in out_names:
             if l not in OUTS:
@@ -56,7 +57,7 @@ class RCNN2D:
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             self.inputs = self.build_inputs()
-            self.outputs = self.build_network()
+            self.outputs = self.build_network(freeze_to)
             self.model = Model(inputs=self.inputs,
                                outputs=self.outputs,
                                name="RCNN2D")
@@ -77,7 +78,7 @@ class RCNN2D:
 
         return inputs
 
-    def build_network(self):
+    def build_network(self, freeze_to):
         is_1d = self.input_size[2] == 1
 
         outputs = {}
@@ -89,12 +90,16 @@ class RCNN2D:
                                          [15, 1, 1],
                                          [1, 9, 1]],
                                 qties_filters=[16, 16, 32, 32])
+        if freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
+            encoder.trainable = False
         data_stream = encoder(data_stream)
 
         time_rcnn = build_rcnn(reps=7,
                                kernel=[15, 3, 1],
                                qty_filters=32,
                                name="time_rcnn")
+        if freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
+            time_rcnn.trainable = False
         data_stream = time_rcnn(data_stream)
 
         with tf.name_scope("global_pooling"):
@@ -106,6 +111,8 @@ class RCNN2D:
                 outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, name="rnn_vrms")
+        if freeze_to in ['vrms', 'vint', 'vdepth']:
+            rnn_vrms.trainable = False
         data_stream = rnn_vrms(data_stream)
 
         if 'vrms' in self.out_names:
@@ -118,6 +125,8 @@ class RCNN2D:
                 outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, name="rnn_vint")
+        if freeze_to in ['vint', 'vdepth']:
+            rnn_vint.trainable = False
         data_stream = rnn_vint(data_stream)
 
         if 'vint' in self.out_names:
@@ -131,6 +140,8 @@ class RCNN2D:
 
         data_stream = data_stream[:, :self.depth_size]
         rnn_vdepth = build_rnn(units=200, name="rnn_vdepth")
+        if freeze_to in ['vdepth']:
+            rnn_vdepth.trainable = False
         data_stream = rnn_vdepth(data_stream)
 
         if 'vdepth' in self.out_names:
