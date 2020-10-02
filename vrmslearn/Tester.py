@@ -55,7 +55,7 @@ class Tester(object):
         if restore_from is not None:
             strategy = tf.distribute.MirroredStrategy()
             with strategy.scope():
-                self.nn.load_weights(restore_from)
+                self.nn.load_weights(restore_from).expect_partial()
 
         self.sequence.reset_test_generator()
 
