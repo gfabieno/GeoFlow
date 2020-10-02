@@ -72,7 +72,10 @@ def main(args):
         savepath = os.path.join(case.datatest, "pred")
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
-        restore_from = tf.train.latest_checkpoint(logdir)
+        if args.restore_from is None:
+            restore_from = tf.train.latest_checkpoint(logdir)
+        else:
+            restore_from = args.restore_from
         tester.test_dataset(savepath=savepath,
                             restore_from=restore_from)
 
@@ -170,6 +173,11 @@ if __name__ == "__main__":
     parser.add_argument("--no_weights",
                         action='store_false',
                         help="Discard weighting in losses when training.")
+    parser.add_argument("--restore_from",
+                        type=str,
+                        default=None,
+                        help="The weights file used for inference. Defaults "
+                             "to the last checkpoint in `args.logdir`.")
 
     # Parse the input for training parameters.
     args, unparsed = parser.parse_known_args()
