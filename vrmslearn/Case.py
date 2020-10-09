@@ -35,7 +35,9 @@ class Case:
 
         @returns:
         """
-
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
         self.model, self.acquire, self.label = self.set_case()
         self.sample = SampleGenerator(model=self.model, acquire=self.acquire,
                                       label=self.label)
