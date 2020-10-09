@@ -7,7 +7,9 @@ python interface.
 
 import shutil
 import os
+
 import numpy as np
+
 from SeisCL.SeisCL import SeisCL
 from vrmslearn.SeismicUtilities import random_wavelet_generator
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator

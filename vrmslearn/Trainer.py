@@ -28,7 +28,8 @@ class Trainer:
                  beta_1: float = 0.9,
                  beta_2: float = 0.999,
                  epsilon: float = 1e-8,
-                 loss_scales: dict = {'ref': 1.}):
+                 loss_scales: dict = {'ref': 1.},
+                 use_weights: bool = True):
         """
         Initialize the tester
 
@@ -41,8 +42,7 @@ class Trainer:
         beta2 (float): beta2 of the Adam optimizer
         epsilon (float): epsilon of the Adam optimizer
         loss_scales (dict): losses associated with each label
-
-        @returns:
+        use_weights (bool): whether to use weights or not in losses.
         """
         self.nn = nn
         self.sequence = sequence
@@ -57,9 +57,10 @@ class Trainer:
         losses, losses_weights = [], []
         for lbl in self.out_names:
             if lbl == 'ref':
-                losses.append(ref_loss())
+                losses.append(ref_loss(use_weights=use_weights))
             else:
-                losses.append(v_compound_loss())
+                loss = v_compound_loss(use_weights=use_weights)
+                losses.append(loss)
             losses_weights.append(self.loss_scales[lbl])
 
         self.nn.compile(
@@ -75,7 +76,6 @@ class Trainer:
         )
 
     def train_model(self,
-                    batch_size: int = 10,
                     epochs: int = 5,
                     steps_per_epoch: int = 100,
                     restore_from: str = None):
@@ -84,13 +84,14 @@ class Trainer:
         if any checkpoints are found in self.checkpoint_dir.
 
         @params:
-        batch_ize (int): Size of the batches
         epochs (int): quantity of epochs, of `steps_per_epoch` iterations
         steps_per_epoch (int): quantity of iterations per epoch
         restore_from (str): Checkpoint file from which to initialize parameters
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from)
+            strategy = tf.distribute.MirroredStrategy()
+            with strategy.scope():
+                self.nn.load_weights(restore_from)
             filename = split(restore_from)[-1]
             initial_epoch = int(filename[:4])
             epochs += initial_epoch
@@ -103,7 +104,6 @@ class Trainer:
                                                 save_weights_only=True,
                                                 save_freq='epoch')
         self.nn.fit(self.sequence,
-                    batch_size=batch_size,
                     epochs=epochs,
                     callbacks=[tensorboard, checkpoints],
                     initial_epoch=initial_epoch,
@@ -112,16 +112,14 @@ class Trainer:
                     use_multiprocessing=False)
 
 
-def ref_loss():
+def ref_loss(use_weights=True):
     """Get the loss function for the reflection prediction."""
     def loss(label, output):
         label, weights = label[:, 0], label[:, 1]
         #  Logistic regression of zero offset time of reflections
         weights = tf.expand_dims(weights, -1)
-        # if self.with_masking:
-        #     weightsr = tf.expand_dims(self.weights['wtime'], -1)
-        # else:
-        #     weightsr = 1.0
+        if not use_weights:
+            weights = tf.ones_like(weights)
         output = output * weights
         temp_lbl = tf.cast(label, tf.int32)
         label = tf.one_hot(temp_lbl, 2) * weights
@@ -134,7 +132,7 @@ def ref_loss():
     return loss
 
 
-def v_compound_loss(alpha=0.2, beta=0.1):
+def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
     """Get the three-part loss function for velocity.
 
     @params:
@@ -150,6 +148,8 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
     def loss(label, output):
         label, weight = label[:, 0], label[:, 1]
+        if not use_weights:
+            weight = tf.ones_like(weight)
         output = output[:, :, :, 0]
         losses = []
 

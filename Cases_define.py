@@ -4,23 +4,21 @@
 
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
-                                              BaseModelGenerator, MaswModelGenerator)
+                                              MaswModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.LabelGenerator import LabelGenerator
 import argparse
+
 
 class Case_masw(Case):
 
     name = "Case_masw"
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
+    def __init__(self, noise=0):
 
         if noise == 1:
             self.name = self.name + "_noise"
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
+        super().__init__()
         if noise == 1:
             self.label.random_static = True
             self.label.random_static_max = 1
@@ -52,7 +50,7 @@ class Case_masw(Case):
         acquire.dt = dt = 0.0001
         acquire.NT = int(2 / dt)
         acquire.dg = dg = 3
-        acquire.gmin = int(100/ dh)
+        acquire.gmin = int(100 / dh)
         acquire.gmax = int(acquire.gmin*dg)
         acquire.fs = True
         acquire.source_depth = 0
@@ -64,6 +62,7 @@ class Case_masw(Case):
         label.train_on_shots = True
 
         return model, acquire, label
+
 
 class Case1Dsmall(Case):
 
@@ -116,13 +115,11 @@ class Case1Darticle(Case):
 
         return model, acquire, label
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
+    def __init__(self, noise=0):
 
         if noise == 1:
             self.name = self.name + "_noise"
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
+        super().__init__()
         if noise == 1:
             self.label.random_static = True
             self.label.random_static_max = 1
@@ -166,14 +163,12 @@ class Case2Dtest(Case):
 
         return model, acquire, label
 
-    def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
+    def __init__(self, noise=0):
 
         if noise == 1:
             self.name = self.name + "_noise"
 
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
+        super().__init__()
         if noise == 1:
             self.label.random_static = True
             self.label.random_static_max = 1

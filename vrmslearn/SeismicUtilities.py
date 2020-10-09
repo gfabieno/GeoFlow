@@ -2,11 +2,10 @@
 Functions to handle seismic data and velocity models.
 """
 
-from scipy.signal import convolve2d
 import numpy as np
-from scipy.interpolate import interp1d
+from scipy.signal import convolve2d
 from scipy.ndimage.filters import gaussian_filter
-from scipy.interpolate import CubicSpline
+from scipy.interpolate import interp1d, CubicSpline
 
 
 def gaussian(f0, t, o, amp=1.0, order=2):
@@ -260,13 +259,13 @@ def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
                                tdelay, minoffset, identify_direct, tol=0.015,
                                window_width=0.45):
     """
-    Generate an array with 1 at time of primary reflections for the minimum 
+    Generate an array with 1 at time of primary reflections for the minimum
     offset trace of a gather. Valid for a flat layered model.
-    
+
     :param vp: A 1D array containing the Vp profile in depth
     :param source_depth: Depth of the source (in m)
     :param dh: Spatial grid size
-    :param nt: Number of time steps 
+    :param nt: Number of time steps
     :param dt: Sampling interval (in s)
     :param peak_freq: Peak frequency of the source
     :param tdelay: Delay of the source
@@ -274,8 +273,8 @@ def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
     :param identify_direct: Output an event of the direct arrival if True
     :param tol: The minimum relative velocity change to consider a reflection
     :param window_width: time window width in percentage of peak_freq
-    
-    :return: A 2D array with nt elements with 1 at reflecion times 
+
+    :return: A 2D array with nt elements with 1 at reflecion times
              +- window_width/peak_freq, 0 elsewhere
     """
 

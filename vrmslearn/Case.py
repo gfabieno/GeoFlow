@@ -5,6 +5,7 @@ See Case2Dtest for usage example.
 """
 
 import os
+import gc
 import fnmatch
 import random
 import matplotlib.pyplot as plt
@@ -28,18 +29,15 @@ class Case:
     # incremented by 1.
     seed0 = 0
 
-    def __init__(self, trainsize=1, validatesize=0, testsize=0):
+    def __init__(self):
         """
         Initiate a Case by setting the training, validation and test sets size.
 
-        @params:
-        trainsize (int): Number of examples in the training set.
-        validatesize (int): Number of examples in the validation set.
-        testsize (int): Number of examples in the test set.
-
         @returns:
         """
-
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
         self.model, self.acquire, self.label = self.set_case()
         self.sample = SampleGenerator(model=self.model, acquire=self.acquire,
                                       label=self.label)
@@ -50,10 +48,6 @@ class Case:
         self.datatrain = os.path.join(self.basepath, self.name, "train")
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
         self.datatest = os.path.join(self.basepath, self.name, "test")
-
-        self.trainsize = trainsize
-        self.validatesize = validatesize
-        self.testsize = testsize
 
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
@@ -275,6 +269,7 @@ class Case:
                                     frames=len(self.files[phase]),
                                     interval=3000, blit=True, repeat=True)
         plt.show()
+        gc.collect()
 
 
 class CaseCollection:
