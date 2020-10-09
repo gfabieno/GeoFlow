@@ -93,7 +93,6 @@ class Trainer:
                                             profile_batch=0)
         checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
                                                      WEIGHTS_NAME),
-                                                save_weights_only=True,
                                                 save_freq='epoch')
         self.nn.fit(self.sequence,
                     epochs=epochs,

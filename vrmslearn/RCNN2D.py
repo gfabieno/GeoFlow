@@ -63,16 +63,19 @@ class RCNN2D:
             self.model = Model(inputs=self.inputs,
                                outputs=self.outputs,
                                name="RCNN2D")
-            if restore_from is not None:
-                self.load_weights(restore_from).expect_partial()
 
-        # `RCNN2D` has the same interface as a keras `Model`, but subclassing
-        # is avoided by using the functional API. This is necessary for model
-        # intelligibility.
-        self.compile = self.model.compile
-        self.fit = self.model.fit
-        self.load_weights = self.model.load_weights
-        self.predict = self.model.predict
+            # `RCNN2D` has the same interface as a keras `Model`, but
+            # subclassing is avoided by using the functional API. This is
+            # necessary for model intelligibility.
+            self.compile = self.model.compile
+            self.fit = self.model.fit
+            self.predict = self.model.predict
+            self.set_weights = self.model.set_weights
+            self.get_weights = self.model.get_weights
+            self.layers = self.model.layers
+
+            if restore_from is not None:
+                self.load_weights(restore_from)
 
     def build_inputs(self):
         with tf.name_scope('Inputs'):
@@ -174,6 +177,52 @@ class RCNN2D:
         scaled = 1000 * scaled / shot_max
         return scaled
 
+    def load_weights(self, filepath, by_name=False, skip_mismatch=False):
+        """
+        Load weights into the model and broadcast 1D to 2D correctly.
+
+        :param filepath: String, path to the weights file to load. For weight
+                         files in TensorFlow format, this is the file prefix
+                         (the same as was passed to save_weights).
+        :param by_name: Boolean, whether to load weights by name or by
+                        topological order. Only topological loading is
+                        supported for weight files in TensorFlow format. This
+                        is not implemented in this model subclassing.
+        :param skip_mismatch: Boolean, whether to skip loading of layers where
+                              there is a mismatch in the number of weights, or
+                              a mismatch in the shape of the weight (only valid
+                              when by_name=True). This is not implemented in
+                              this model subclassing.
+        """
+        if by_name or skip_mismatch:
+            raise NotImplementedError
+
+        model = tf.keras.models.load_model(filepath, compile=False)
+        weights = self.get_weights()
+        new_weights = model.get_weights()
+        for i, (layer, new_layer) in enumerate(zip(weights, new_weights)):
+            if layer.shape != new_layer.shape:
+                assert_broadcastable(layer, new_layer,
+                                     "Weights dimensions are not compatible.")
+                mismatches = np.not_equal(layer.shape, new_layer.shape)
+                mismatch_idx = np.nonzero(mismatches)[0]
+                if len(mismatch_idx) != 1:
+                    raise NotImplementedError("No loading strategy is "
+                                              "implemented for weights with "
+                                              "more than 1 mismatching "
+                                              "dimension.")
+
+                # Extend `new_layer` in the missing dimension and rescale it
+                # to account for the addition of duplicated layers.
+                mismatch_idx = mismatch_idx[0]
+                repeats = layer.shape[mismatch_idx]
+                new_layer = np.repeat(new_layer, repeats, axis=mismatch_idx)
+                new_layer /= repeats
+                new_layer += np.random.uniform(0, np.amax(new_layer)*1E-2,
+                                               size=new_layer.shape)
+                new_weights[i] = new_layer
+        self.set_weights(new_weights)
+
 
 def build_encoder(kernels, qties_filters, name="encoder"):
     def encoder(data_stream):
@@ -217,3 +266,12 @@ def build_rnn(units, name="rnn"):
             data_stream = Permute((2, 1, 3))(data_stream)
         return data_stream
     return rnn
+
+
+def assert_broadcastable(arr1, arr2, message=None):
+    try:
+        np.broadcast(arr1, arr2)
+    except ValueError:
+        if message is None:
+            message = "Arrays are compatible for broadcasting."
+        raise AssertionError(message)
