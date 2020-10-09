@@ -35,16 +35,14 @@ class Case:
 
         @returns:
         """
-
+        self.trainsize = 10000
+        self.validatesize = 0
+        self.testsize = 100
         self.model, self.acquire, self.label = self.set_case()
         self.sample = SampleGenerator(model=self.model, acquire=self.acquire,
                                       label=self.label)
         self.example_order = ['input', *self.label.label_names,
                               *self.label.weight_names]
-
-        self.trainsize = 10000
-        self.validatesize = 0
-        self.testsize = 100
 
         # Paths of the test, train and validation dataset.
         self.datatrain = os.path.join(self.basepath, self.name, "train")
