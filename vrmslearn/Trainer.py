@@ -77,8 +77,8 @@ class Trainer:
 
     def train_model(self,
                     epochs: int = 5,
-                    steps_per_epoch: int = 100,
-                    restore_from: str = None):
+                    initial_epoch: int = 0,
+                    steps_per_epoch: int = 100):
         """
         This method trains the model. The training is restarted automatically
         if any checkpoints are found in self.checkpoint_dir.
@@ -86,17 +86,8 @@ class Trainer:
         @params:
         epochs (int): quantity of epochs, of `steps_per_epoch` iterations
         steps_per_epoch (int): quantity of iterations per epoch
-        restore_from (str): Checkpoint file from which to initialize parameters
         """
-        if restore_from is not None:
-            strategy = tf.distribute.MirroredStrategy()
-            with strategy.scope():
-                self.nn.load_weights(restore_from)
-            filename = split(restore_from)[-1]
-            initial_epoch = int(filename[:4])
-            epochs += initial_epoch
-        else:
-            initial_epoch = 0
+        epochs += initial_epoch
 
         tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir,
                                             profile_batch=0)

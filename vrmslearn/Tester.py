@@ -42,8 +42,7 @@ class Tester(object):
         self.out_names = self.nn.out_names
 
     def test_dataset(self,
-                     savepath: str,
-                     restore_from: str = None):
+                     savepath: str):
         """
         This method evaluate predictions on all examples contained in savepath,
         and save the predictions in hdf5 files.
@@ -52,11 +51,6 @@ class Tester(object):
         savepath (str) : The path in which the test examples are found
         restore_from (str): File containing the trained weights
         """
-        if restore_from is not None:
-            strategy = tf.distribute.MirroredStrategy()
-            with strategy.scope():
-                self.nn.load_weights(restore_from).expect_partial()
-
         self.sequence.reset_test_generator()
 
         for data, filenames in self.sequence:

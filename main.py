@@ -1,4 +1,5 @@
 import os
+from os.path import split
 import argparse
 
 import tensorflow as tf
@@ -30,6 +31,13 @@ def main(args):
                    'vdepth': args.loss_vdepth}
 
     sizes = case.get_dimensions()
+    if args.restore_from is None:
+        restore_from = tf.train.latest_checkpoint(logdir)
+        filename = split(restore_from)[-1]
+        current_epoch = int(filename[:4])
+    else:
+        restore_from = args.restore_from
+        current_epoch = 0
     nn = RCNN2D(input_size=sizes[0],
                 depth_size=sizes[-1][0],
                 batch_size=batch_size,
@@ -37,6 +45,7 @@ def main(args):
                 beta=0.1,
                 use_peepholes=args.use_peepholes,
                 out_names=loss_scales.keys(),
+                restore_from=restore_from,
                 freeze_to=args.freeze_to)
 
     # Train the model.
@@ -56,10 +65,9 @@ def main(args):
                           epsilon=args.eps,
                           loss_scales=loss_scales,
                           use_weights=not args.no_weights)
-        restore_from = tf.train.latest_checkpoint(logdir)
         trainer.train_model(epochs=args.epochs,
-                            steps_per_epoch=args.steps,
-                            restore_from=restore_from)
+                            initial_epoch=current_epoch,
+                            steps_per_epoch=args.steps)
 
     # Test model.
     if args.training == 3:
@@ -73,12 +81,7 @@ def main(args):
         savepath = os.path.join(case.datatest, "pred")
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
-        if args.restore_from is None:
-            restore_from = tf.train.latest_checkpoint(logdir)
-        else:
-            restore_from = args.restore_from
-        tester.test_dataset(savepath=savepath,
-                            restore_from=restore_from)
+        tester.test_dataset(savepath=savepath)
 
         if args.plot:
             tester.animated_predictions(labelnames=['ref', 'vrms',

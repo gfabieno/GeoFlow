@@ -28,6 +28,7 @@ class RCNN2D:
                  alpha: float = 0,
                  beta: float = 0,
                  use_peepholes: bool = False,
+                 restore_from: str = None,
                  freeze_to: str = None):
         """
         Build the neural net in tensorflow, along the cost function
@@ -41,6 +42,7 @@ class RCNN2D:
         beta (float): Fraction of the loss dedicated minimize model derivative
         use_peepholes (bool): If true, use peephole LSTM
         ndim (int): Number of dimensions (2 for layered models, 3 for dipping)
+        restore_from (str): Checkpoint file from which to initialize parameters
         freeze_to (str): A label name. All layers before this label's decoder
                          will not be trainable.
         """
@@ -61,6 +63,8 @@ class RCNN2D:
             self.model = Model(inputs=self.inputs,
                                outputs=self.outputs,
                                name="RCNN2D")
+            if restore_from is not None:
+                self.load_weights(restore_from).expect_partial()
 
         # `RCNN2D` has the same interface as a keras `Model`, but subclassing
         # is avoided by using the functional API. This is necessary for model
