@@ -1,8 +1,6 @@
 import os
-from os.path import split
+import re
 import argparse
-
-import tensorflow as tf
 
 from Cases_define import *
 from vrmslearn.RCNN2D import RCNN2D
@@ -32,11 +30,11 @@ def main(args):
 
     sizes = case.get_dimensions()
     if args.restore_from is None:
-        restore_from = tf.train.latest_checkpoint(logdir)
+        restore_from = find_latest_checkpoint(logdir)
     else:
         restore_from = args.restore_from
     if restore_from is not None:
-        filename = split(restore_from)[-1]
+        filename = os.path.split(restore_from)[-1]
         current_epoch = int(filename[:4])
     else:
         current_epoch = 0
@@ -90,6 +88,18 @@ def main(args):
                                                     'vint', 'vdepth'],
                                         savepath=savepath,
                                         image="2D" in args.case)
+
+
+def find_latest_checkpoint(logdir):
+    expr = re.compile(r"[0-9]{4}\.ckpt")
+    checkpoints = [f for f in os.listdir(logdir) if expr.match(f)]
+    if checkpoints:
+        checkpoints.sort()
+        restore_from = checkpoints[-1]
+        restore_from = os.path.join(logdir, restore_from)
+    else:
+        restore_from = None
+    return restore_from
 
 
 if __name__ == "__main__":
