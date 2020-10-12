@@ -33,10 +33,12 @@ def main(args):
     sizes = case.get_dimensions()
     if args.restore_from is None:
         restore_from = tf.train.latest_checkpoint(logdir)
+    else:
+        restore_from = args.restore_from
+    if restore_from is not None:
         filename = split(restore_from)[-1]
         current_epoch = int(filename[:4])
     else:
-        restore_from = args.restore_from
         current_epoch = 0
     nn = RCNN2D(input_size=sizes[0],
                 depth_size=sizes[-1][0],
