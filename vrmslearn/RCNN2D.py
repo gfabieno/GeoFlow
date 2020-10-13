@@ -5,7 +5,7 @@ Class to build the neural network for 2D prediction vp in depth
 """
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model
+from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
@@ -117,7 +117,8 @@ class RCNN2D:
                 conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
                 outputs['ref'] = conv_2d(data_stream)
 
-        rnn_vrms = build_rnn(units=200, name="rnn_vrms")
+        rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
+                             batch_size=self.batch_size, name="rnn_vrms")
         if freeze_to in ['vrms', 'vint', 'vdepth']:
             rnn_vrms.trainable = False
         data_stream = rnn_vrms(data_stream)
@@ -131,7 +132,8 @@ class RCNN2D:
                 conv_2d = Conv2D(1, kernel, padding='same', name="vrms")
                 outputs['vrms'] = conv_2d(data_stream)
 
-        rnn_vint = build_rnn(units=200, name="rnn_vint")
+        rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
+                             batch_size=self.batch_size, name="rnn_vint")
         if freeze_to in ['vint', 'vdepth']:
             rnn_vint.trainable = False
         data_stream = rnn_vint(data_stream)
@@ -146,7 +148,8 @@ class RCNN2D:
                 outputs['vint'] = conv_2d(data_stream)
 
         data_stream = data_stream[:, :self.depth_size]
-        rnn_vdepth = build_rnn(units=200, name="rnn_vdepth")
+        rnn_vdepth = build_rnn(units=200, input_shape=data_stream.shape,
+                               batch_size=self.batch_size, name="rnn_vdepth")
         if freeze_to in ['vdepth']:
             rnn_vdepth.trainable = False
         data_stream = rnn_vdepth(data_stream)
@@ -225,46 +228,39 @@ class RCNN2D:
 
 
 def build_encoder(kernels, qties_filters, name="encoder"):
-    def encoder(data_stream):
-        with tf.name_scope(name):
-            for i, (kernel, qty_filters) in enumerate(zip(kernels,
-                                                          qties_filters)):
-                with tf.name_scope(f'CNN_{i}'):
-                    conv3d = Conv3D(qty_filters,
-                                    kernel,
-                                    padding='same')
-                    data_stream = conv3d(data_stream)
-                    data_stream = LeakyReLU()(data_stream)
-        return data_stream
+    encoder = Sequential(name=name)
+    for i, (kernel, qty_filters) in enumerate(zip(kernels, qties_filters)):
+        encoder.add(Conv3D(qty_filters, kernel, padding='same'))
+        encoder.add(LeakyReLU())
     return encoder
 
 
 def build_rcnn(reps, kernel, qty_filters, name="rcnn"):
-    def rcnn(data_stream):
-        with tf.name_scope(name):
-            for _ in range(reps):
-                conv3d = Conv3D(qty_filters,
-                                kernel,
-                                padding='same')
-                data_stream = conv3d(data_stream)
-                data_stream = LeakyReLU()(data_stream)
-        return data_stream
+    rcnn = Sequential(name=name)
+    conv_3d = Conv3D(qty_filters, kernel, padding='same')
+    activation = LeakyReLU()
+    for _ in range(reps):
+        rcnn.add(conv_3d)
+        rcnn.add(activation)
     return rcnn
 
 
-def build_rnn(units, name="rnn"):
-    def rnn(data_stream):
-        with tf.name_scope(name):
-            data_stream = Permute((2, 1, 3))(data_stream)
-            batches, shots, timesteps, filter_dim = data_stream.get_shape()
-            data_stream = reshape(data_stream,
-                                  [batches*shots, timesteps, filter_dim])
-            lstm = LSTM(units, return_sequences=True)
-            data_stream = lstm(data_stream)
-            data_stream = reshape(data_stream,
-                                  [batches, shots, timesteps, units])
-            data_stream = Permute((2, 1, 3))(data_stream)
-        return data_stream
+def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
+              name="rnn"):
+    input_shape = input_shape[1:]
+    input = Input(shape=input_shape, batch_size=batch_size,
+                  dtype=input_dtype)
+    data_stream = Permute((2, 1, 3))(input)
+    batches, shots, timesteps, filter_dim = data_stream.get_shape()
+    data_stream = reshape(data_stream,
+                          [batches*shots, timesteps, filter_dim])
+    lstm = LSTM(units, return_sequences=True)
+    data_stream = lstm(data_stream)
+    data_stream = reshape(data_stream,
+                          [batches, shots, timesteps, units])
+    data_stream = Permute((2, 1, 3))(data_stream)
+
+    rnn = Model(inputs=input, outputs=data_stream, name=name)
     return rnn
 
 
