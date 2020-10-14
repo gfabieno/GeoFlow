@@ -104,6 +104,8 @@ class RCNN2D:
         time_rcnn = build_rcnn(reps=7,
                                kernel=[15, 3, 1],
                                qty_filters=32,
+                               input_shape=data_stream.shape,
+                               batch_size=self.batch_size,
                                name="time_rcnn")
         if freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             time_rcnn.trainable = False
@@ -235,13 +237,19 @@ def build_encoder(kernels, qties_filters, name="encoder"):
     return encoder
 
 
-def build_rcnn(reps, kernel, qty_filters, name="rcnn"):
-    rcnn = Sequential(name=name)
+def build_rcnn(reps, kernel, qty_filters, input_shape, batch_size,
+               input_dtype=tf.float32, name="rcnn"):
+    input_shape = input_shape[1:]
+    input = Input(shape=input_shape, batch_size=batch_size,
+                  dtype=input_dtype)
+
+    data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, padding='same')
     activation = LeakyReLU()
     for _ in range(reps):
-        rcnn.add(conv_3d)
-        rcnn.add(activation)
+        data_stream = conv_3d(data_stream)
+        data_stream = activation(data_stream)
+    rcnn = Model(inputs=input, outputs=data_stream, name=name)
     return rcnn
 
 
