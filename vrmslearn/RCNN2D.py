@@ -221,6 +221,14 @@ class RCNN2D:
         model = tf.keras.models.load_model(filepath, compile=False)
         weights = self.get_weights()
         new_weights = model.get_weights()
+        layer_names = [l.name for l in model.layers]
+        # Backward compatibility with models prior to commit 6cdd52d.
+        if "rnn_vdepth" in layer_names:
+            del new_weights[16:19]
+            del new_weights[-2:]
+            new_weights.insert(-6, new_weights[-2])
+            new_weights.insert(-6, new_weights[-1])
+            del new_weights[-2:]
         for i, (layer, new_layer) in enumerate(zip(weights, new_weights)):
             if layer.shape != new_layer.shape:
                 assert_broadcastable(layer, new_layer,
