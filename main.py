@@ -42,7 +42,6 @@ def main(args):
                 batch_size=batch_size,
                 alpha=0.1,
                 beta=0.1,
-                use_peepholes=args.use_peepholes,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
                 freeze_to=args.freeze_to,
@@ -178,10 +177,6 @@ if __name__ == "__main__":
                         type=int,
                         default=0,
                         help="1: Add noise to the data")
-    parser.add_argument("--use_peepholes",
-                        type=int,
-                        default=0,
-                        help="1: Use peep hole in LSTM")
     parser.add_argument("--plot",
                         type=int,
                         default=1,

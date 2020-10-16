@@ -27,7 +27,6 @@ class RCNN2D:
                  batch_size: int = 1,
                  alpha: float = 0,
                  beta: float = 0,
-                 use_peepholes: bool = False,
                  restore_from: str = None,
                  freeze_to: str = None,
                  case: Case = None):
@@ -41,7 +40,6 @@ class RCNN2D:
         batch_size (int): Number of examples in a batch
         alpha (float): Fraction of the loss dedicated match the time derivative
         beta (float): Fraction of the loss dedicated minimize model derivative
-        use_peepholes (bool): If true, use peephole LSTM
         ndim (int): Number of dimensions (2 for layered models, 3 for dipping)
         restore_from (str): Checkpoint file from which to initialize parameters
         freeze_to (str): A label name. All layers before this label's decoder
@@ -58,7 +56,6 @@ class RCNN2D:
 
         self.input_size = input_size
         self.batch_size = batch_size
-        self.use_peepholes = use_peepholes
 
         if 'vdepth' in out_names and case is None:
             raise ValueError("Time-to-depth conversion requires `case`.")
