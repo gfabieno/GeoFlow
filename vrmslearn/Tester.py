@@ -246,26 +246,6 @@ class Tester(object):
                 ims.append(im2)
         plt.tight_layout()
 
-        def init():
-            for ii, im in enumerate(ims):
-                labeld = {la: labels[la][0] for la in labelnames}
-                predd = {la: preds[la][0] for la in labelnames}
-                label, pred = self.case.label.postprocess(labeld, predd)
-                if ii == 0:
-                    toplot = datas[0]
-                    im.set_array(toplot)
-                else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
-                    else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
-                    if image:
-                        im.set_array(toplot)
-                    else:
-                        y = np.arange(toplot.shape[0])
-                        im.set_data(toplot, y)
-            return ims
-
         def animate(t):
             labeld = {la: labels[la][t] for la in labelnames}
             predd = {la: preds[la][t] for la in labelnames}
@@ -286,6 +266,9 @@ class Tester(object):
                         y = np.arange(toplot.shape[0])
                         im.set_data(toplot, y)
             return ims
+
+        def init():
+            return animate(0)
 
         _ = animation.FuncAnimation(fig,
                                     animate,
