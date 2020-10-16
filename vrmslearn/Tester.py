@@ -192,7 +192,7 @@ class Tester(object):
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
         if image:
-            fig, axs = plt.subplots(2, 1 + len(labelnames), squeeze=False)
+            fig, axs = plt.subplots(3, 1 + len(labelnames), squeeze=False)
         else:
             fig, axs = plt.subplots(1, 1 + len(labelnames), squeeze=False)
 
@@ -231,6 +231,7 @@ class Tester(object):
             else:
                 vmin = self.case.model.vp_min
                 vmax = self.case.model.vp_max
+            y = np.arange(pred[labelname].shape[0])
             if image:
                 im1 = axs[0, 1 + ii].imshow(pred[labelname],
                                             vmin=vmin,
@@ -243,12 +244,19 @@ class Tester(object):
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
+                center_label = label[labelname][:, qty_shots//2]
+                center_pred = label[labelname][:, qty_shots//2]
+                im3, = axs[2, 1 + ii].plot(center_label, y)
+                im4, = axs[2, 1 + ii].plot(center_pred, y)
+                axs[2, 1 + ii].set_ylim(np.min(y), np.max(y))
+                axs[2, 1 + ii].set_xlim(vmin, vmax)
+                axs[2, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+                ims.append(im3)
+                ims.append(im4)
             else:
-                y = np.arange(pred[labelname].shape[0])
-
                 im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
                 im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
@@ -274,15 +282,21 @@ class Tester(object):
                     im.set_array(toplot[..., qty_shots//2])
                 else:
                     # Ignore the first column.
-                    if not image:
-                        ii -= 1
-                    else:
-                        ii -= 2
-                    if ii % 2 == 0:
-                        toplot = label[labelnames[ii//2]]
-                    else:
-                        toplot = pred[labelnames[ii//2]]
                     if image:
+                        label_idx = (ii-2) // 4
+                        item = (ii-2) % 4
+                    else:
+                        label_idx = (ii-1) // 4
+                        item = (ii-1) % 4
+                    if item == 0:
+                        toplot = label[labelnames[label_idx]]
+                    elif item == 1:
+                        toplot = pred[labelnames[label_idx]]
+                    elif item == 2:
+                        toplot = label[labelnames[label_idx]][:, qty_shots//2]
+                    elif item == 3:
+                        toplot = pred[labelnames[label_idx]][:, qty_shots//2]
+                    if image and item not in [2, 3]:
                         im.set_array(toplot)
                     else:
                         y = np.arange(toplot.shape[0])
