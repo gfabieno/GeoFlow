@@ -239,7 +239,7 @@ class Tester(object):
                 im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
                 im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
-                axs[0, 1 + ii].set_xlim(-vmin, vmax)
+                axs[0, 1 + ii].set_xlim(vmin, vmax)
                 axs[0, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
