@@ -207,6 +207,19 @@ class Tester(object):
                                cmap=plt.get_cmap('Greys'))
         axs[0, 0].set_title('data')
         ims = [im1]
+        if image:
+            src_pos, _ = self.case.acquire.set_rec_src()
+            qty_shots = src_pos.shape[1]
+            data = datas[0]
+            data = data.reshape([data.shape[0], -1, qty_shots])
+            im2 = axs[1, 0].imshow(data[..., qty_shots//2],
+                                   animated=True,
+                                   vmin=vmin,
+                                   vmax=vmax,
+                                   aspect='auto',
+                                   cmap=plt.get_cmap('Greys'))
+            axs[1, 0].set_title('center shot')
+            ims.append(im2)
 
         labeld = {la: labels[la][0] for la in labelnames}
         predd = {la: preds[la][0] for la in labelnames}
@@ -255,11 +268,20 @@ class Tester(object):
                 if ii == 0:
                     toplot = datas[t]
                     im.set_array(toplot)
+                elif ii == 1 and image:
+                    toplot = datas[t]
+                    toplot = toplot.reshape([toplot.shape[0], -1, qty_shots])
+                    im.set_array(toplot[..., qty_shots//2])
                 else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
+                    # Ignore the first column.
+                    if not image:
+                        ii -= 1
                     else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
+                        ii -= 2
+                    if ii % 2 == 0:
+                        toplot = label[labelnames[ii//2]]
+                    else:
+                        toplot = pred[labelnames[ii//2]]
                     if image:
                         im.set_array(toplot)
                     else:

@@ -236,24 +236,43 @@ class Case:
         toplots = self.get_example(phase=phase)
 
         toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+        is_2d = not self.acquire.singleshot
+        if is_2d:
+            src_pos, _ = self.acquire.set_rec_src()
+            qty_shots = src_pos.shape[1]
+            shot_gather = toplots[0]
+            shot_gather = shot_gather.reshape([shot_gather.shape[0], -1,
+                                               qty_shots])
+            shot_gather = shot_gather[..., qty_shots//2]
+            toplots.insert(1, shot_gather)
         clip = 0.01
         vmax = np.max(toplots[0]) * clip
         vmin = -vmax
 
-        # plt.imshow(toplots[1]/np.sum(toplots[1]**2, axis = 0), aspect = 'auto')
-        # plt.show()
-        # alskde
-
         fig, axs = plt.subplots(1, len(toplots), figsize=[16, 8])
-        im1 = axs[0].imshow(toplots[0], animated=True, vmin=vmin, vmax=vmax,
-                            aspect='auto', cmap=plt.get_cmap('Greys'))
-        ims = [im1] + [axs[ii].imshow(toplots[ii], animated=True, vmin=0,
-                                      vmax=1, aspect='auto', cmap='inferno')
-                       for ii in range(1, len(toplots))]
+        axs_iter, toplots_iter = iter(axs), iter(toplots)
+        ims = []
+        ax, toplot = next(axs_iter), next(toplots_iter)
+        im = ax.imshow(toplot, animated=True, vmin=vmin, vmax=vmax,
+                       aspect='auto', cmap='Greys')
+        ims.append(im)
+        if is_2d:
+            ax, toplot = next(axs_iter), next(toplots_iter)
+            im = ax.imshow(toplot, animated=True, vmin=vmin, vmax=vmax,
+                           aspect='auto', cmap='Greys')
+            ims.append(im)
+        for ax, toplot in zip(axs_iter, toplots_iter):
+            im = ax.imshow(toplot, animated=True, vmin=0, vmax=1,
+                           aspect='auto', cmap='inferno')
+            ims.append(im)
 
+        titles = iter(self.example_order)
         for ii, ax in enumerate(axs):
-            ax.set_title(self.example_order[ii])
-            plt.colorbar(ims[ii], ax=ax, orientation="horizontal", pad=0.05,
+            if not (ii == 1 and is_2d):
+                ax.set_title(next(titles))
+            else:
+                ax.set_title("center shot")
+            plt.colorbar(im, ax=ax, orientation="horizontal", pad=0.05,
                          fraction=0.2)
         plt.tight_layout()
 
@@ -265,6 +284,12 @@ class Case:
         def animate(t):
             toplots = self.get_example(phase=phase)
             toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+            if is_2d:
+                shot_gather = toplots[0]
+                shot_gather = shot_gather.reshape([shot_gather.shape[0], -1,
+                                                   qty_shots])
+                shot_gather = shot_gather[..., qty_shots//2]
+                toplots.insert(1, shot_gather)
             for im, toplot in zip(ims, toplots):
                 im.set_array(toplot)
             return ims
