@@ -39,14 +39,14 @@ def main(args):
     else:
         current_epoch = 0
     nn = RCNN2D(input_size=sizes[0],
-                depth_size=sizes[-1][0],
                 batch_size=batch_size,
                 alpha=0.1,
                 beta=0.1,
                 use_peepholes=args.use_peepholes,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
-                freeze_to=args.freeze_to)
+                freeze_to=args.freeze_to,
+                case=case)
 
     # Train the model.
     if args.training in [1, 2]:

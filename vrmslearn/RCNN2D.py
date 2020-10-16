@@ -9,9 +9,10 @@ from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape)
+                                      reshape, cumsum, arange, expand_dims)
 
 from vrmslearn.Sequence import OUTS
+from vrmslearn.Case import Case
 
 
 class RCNN2D:
@@ -22,14 +23,14 @@ class RCNN2D:
 
     def __init__(self,
                  input_size: list = (0, 0, 0),
-                 depth_size: int = 0,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
                  batch_size: int = 1,
                  alpha: float = 0,
                  beta: float = 0,
                  use_peepholes: bool = False,
                  restore_from: str = None,
-                 freeze_to: str = None):
+                 freeze_to: str = None,
+                 case: Case = None):
         """
         Build the neural net in tensorflow, along the cost function
 
@@ -45,6 +46,10 @@ class RCNN2D:
         restore_from (str): Checkpoint file from which to initialize parameters
         freeze_to (str): A label name. All layers before this label's decoder
                          will not be trainable.
+        case (Case): Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+                     `tdelay`, `nz`, `source_depth` and `receiver_depth` are
+                     used for time-to-depth conversion. Required if `'vdepth'`
+                     is in `out_names`.
         """
         for l in out_names:
             if l not in OUTS:
@@ -52,9 +57,12 @@ class RCNN2D:
         self.out_names = [out for out in OUTS if out in out_names]
 
         self.input_size = input_size
-        self.depth_size = depth_size
         self.batch_size = batch_size
         self.use_peepholes = use_peepholes
+
+        if 'vdepth' in out_names and case is None:
+            raise ValueError("Time-to-depth conversion requires `case`.")
+        self.case = case
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
@@ -149,21 +157,32 @@ class RCNN2D:
                 conv_2d = Conv2D(1, kernel, padding='same', name="vint")
                 outputs['vint'] = conv_2d(data_stream)
 
-        data_stream = data_stream[:, :self.depth_size]
-        rnn_vdepth = build_rnn(units=200, input_shape=data_stream.shape,
-                               batch_size=self.batch_size, name="rnn_vdepth")
-        if freeze_to in ['vdepth']:
-            rnn_vdepth.trainable = False
-        data_stream = rnn_vdepth(data_stream)
-
         if 'vdepth' in self.out_names:
             with tf.name_scope("decode_vdepth"):
-                if is_1d:
-                    kernel = [1, 1]
-                else:
-                    kernel = [1, 5]
-                conv_2d = Conv2D(1, kernel, padding='same', name="vdepth")
-                outputs['vdepth'] = conv_2d(data_stream)
+                vmax = self.case.model.vp_max
+                vmin = self.case.model.vp_min
+                dh = self.case.model.dh
+                dt = self.case.acquire.dt
+                resampling = self.case.acquire.resampling
+                tdelay = self.case.acquire.tdelay
+                # Convert to time steps.
+                tdelay = round(tdelay / (dt*resampling))
+                nz = self.case.model.NZ
+                source_depth = self.case.acquire.source_depth
+                # receiver_depth = self.case.acquire.receiver_depth
+                max_depth = nz - source_depth / dh
+                vint = outputs['vint']
+
+                actual_vint = vint*(vmax-vmin) + vmin
+                depth_intervals = actual_vint * dt * resampling / (dh*2)
+                depths = cumsum(depth_intervals, axis=1)
+                depth_delay = reduce_sum(depth_intervals[:, :tdelay], axis=1)
+                depth_delay = expand_dims(depth_delay, axis=1)
+                depths -= depth_delay
+                target_depths = arange(max_depth, dtype=tf.float32)
+                vdepth = interp_nearest(x=target_depths, x_ref=depths,
+                                        y_ref=vint, axis=1)
+                outputs['vdepth'] = vdepth
 
         return [outputs[out] for out in self.out_names]
 
