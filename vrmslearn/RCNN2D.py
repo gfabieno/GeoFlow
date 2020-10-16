@@ -279,3 +279,38 @@ def assert_broadcastable(arr1, arr2, message=None):
         if message is None:
             message = "Arrays are compatible for broadcasting."
         raise AssertionError(message)
+
+
+def interp_nearest(x, x_ref, y_ref, axis=0):
+    """TensorFlow implementation of 1D nearest neighbors interpolation.
+
+    :param x: Positions of the new sampled data points. Has one dimension.
+    :param x_ref: Reference data points. `x_ref` has a first dimension of
+        arbitrary length. Other dimensions are treated independently.
+    :param y_ref: Reference data points. `y_ref` has the same shape as `x_ref`.
+    :param axis: Dimension along which interpolation is executed.
+    """
+    new_dims = iter([axis, 0])
+    # Create a list where `axis` and `0` are interchanged.
+    permutation = [dim if dim not in [axis, 0] else next(new_dims)
+                   for dim in range(tf.rank(x_ref))]
+    x_ref = tf.transpose(x_ref, permutation)
+    y_ref = tf.transpose(y_ref, permutation)
+
+    x_ref = tf.expand_dims(x_ref, axis=0)
+    while tf.rank(x) != tf.rank(x_ref):
+        x = tf.expand_dims(x, axis=-1)
+    distances = tf.abs(x_ref-x)
+    nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
+
+    grid = tf.meshgrid(*[tf.range(dim) for dim in nearest_neighbor.shape],
+                       indexing="ij")
+    nearest_neighbor = tf.reshape(nearest_neighbor, [-1])
+    grid = [tf.reshape(t, [-1]) for t in grid[1:]]
+    idx = [nearest_neighbor, *grid]
+    idx = tf.transpose(idx, (1, 0))
+    y = tf.gather_nd(y_ref, idx)
+    y = tf.reshape(y, [-1, *y_ref.shape[1:]])
+
+    y = tf.transpose(y, permutation)
+    return y
