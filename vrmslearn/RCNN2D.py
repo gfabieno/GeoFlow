@@ -155,31 +155,12 @@ class RCNN2D:
                 outputs['vint'] = conv_2d(data_stream)
 
         if 'vdepth' in self.out_names:
-            with tf.name_scope("decode_vdepth"):
-                vmax = self.case.model.vp_max
-                vmin = self.case.model.vp_min
-                dh = self.case.model.dh
-                dt = self.case.acquire.dt
-                resampling = self.case.acquire.resampling
-                tdelay = self.case.acquire.tdelay
-                # Convert to time steps.
-                tdelay = round(tdelay / (dt*resampling))
-                nz = self.case.model.NZ
-                source_depth = self.case.acquire.source_depth
-                # receiver_depth = self.case.acquire.receiver_depth
-                max_depth = nz - source_depth / dh
-                vint = outputs['vint']
-
-                actual_vint = vint*(vmax-vmin) + vmin
-                depth_intervals = actual_vint * dt * resampling / (dh*2)
-                depths = cumsum(depth_intervals, axis=1)
-                depth_delay = reduce_sum(depth_intervals[:, :tdelay], axis=1)
-                depth_delay = expand_dims(depth_delay, axis=1)
-                depths -= depth_delay
-                target_depths = arange(max_depth, dtype=tf.float32)
-                vdepth = interp_nearest(x=target_depths, x_ref=depths,
-                                        y_ref=vint, axis=1)
-                outputs['vdepth'] = vdepth
+            vint = outputs['vint']
+            time_to_depth = build_time_to_depth_converter(self.case,
+                                                          vint.shape[1:],
+                                                          self.batch_size)
+            vdepth = time_to_depth(vint)
+            outputs['vdepth'] = vdepth
 
         return [outputs[out] for out in self.out_names]
 
@@ -303,6 +284,34 @@ def assert_broadcastable(arr1, arr2, message=None):
         if message is None:
             message = "Arrays are compatible for broadcasting."
         raise AssertionError(message)
+
+
+def build_time_to_depth_converter(case, input_shape, batch_size,
+                                  input_dtype=tf.float32,
+                                  name="time_to_depth_converter"):
+    vmax = case.model.vp_max
+    vmin = case.model.vp_min
+    dh = case.model.dh
+    dt = case.acquire.dt
+    resampling = case.acquire.resampling
+    tdelay = case.acquire.tdelay
+    tdelay = round(tdelay / (dt*resampling))  # Convert to time steps.
+    nz = case.model.NZ
+    source_depth = case.acquire.source_depth
+    max_depth = nz - source_depth / dh
+
+    vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
+    actual_vint = vint*(vmax-vmin) + vmin
+    depth_intervals = actual_vint * dt * resampling / (dh*2)
+    depths = cumsum(depth_intervals, axis=1)
+    depth_delay = reduce_sum(depth_intervals[:, :tdelay], axis=1)
+    depth_delay = expand_dims(depth_delay, axis=1)
+    depths -= depth_delay
+    target_depths = arange(max_depth, dtype=tf.float32)
+    vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
+
+    time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)
+    return time_to_depth_converter
 
 
 def interp_nearest(x, x_ref, y_ref, axis=0):
