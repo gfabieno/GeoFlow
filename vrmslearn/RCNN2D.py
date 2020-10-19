@@ -153,7 +153,8 @@ class RCNN2D:
             vint = outputs['vint']
             time_to_depth = build_time_to_depth_converter(self.case,
                                                           vint.shape[1:],
-                                                          self.batch_size)
+                                                          self.batch_size,
+                                                          name="vdepth")
             vdepth = time_to_depth(vint)
             outputs['vdepth'] = vdepth
 
