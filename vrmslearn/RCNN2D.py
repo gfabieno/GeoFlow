@@ -119,8 +119,7 @@ class RCNN2D:
 
         if 'ref' in self.out_names:
             conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
-            softmax = Softmax(axis=-1)
-            outputs['ref'] = softmax(conv_2d(data_stream))
+            outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=self.batch_size, name="rnn_vrms")
