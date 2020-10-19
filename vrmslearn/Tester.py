@@ -286,8 +286,8 @@ class Tester(object):
                         label_idx = (ii-2) // 4
                         item = (ii-2) % 4
                     else:
-                        label_idx = (ii-1) // 4
-                        item = (ii-1) % 4
+                        label_idx = (ii-1) // 2
+                        item = (ii-1) % 2
                     if item == 0:
                         toplot = label[labelnames[label_idx]]
                     elif item == 1:
