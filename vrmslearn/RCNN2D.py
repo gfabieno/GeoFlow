@@ -277,7 +277,7 @@ def assert_broadcastable(arr1, arr2, message=None):
         np.broadcast(arr1, arr2)
     except ValueError:
         if message is None:
-            message = "Arrays are compatible for broadcasting."
+            message = "Arrays are not compatible for broadcasting."
         raise AssertionError(message)
 
 
