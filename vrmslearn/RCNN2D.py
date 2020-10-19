@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
-                                     Input)
+                                     Input, Softmax)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
@@ -119,7 +119,8 @@ class RCNN2D:
 
         if 'ref' in self.out_names:
             conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
-            outputs['ref'] = conv_2d(data_stream)
+            softmax = Softmax(axis=-1)
+            outputs['ref'] = softmax(conv_2d(data_stream))
 
         rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=self.batch_size, name="rnn_vrms")
