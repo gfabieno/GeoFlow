@@ -196,5 +196,5 @@ if __name__ == "__main__":
                              "decoder will not be trainable.")
 
     # Parse the input for training parameters.
-    args, unparsed = parser.parse_known_args()
+    args = parser.parse_args()
     main(args)
