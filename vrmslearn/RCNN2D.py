@@ -162,17 +162,17 @@ class RCNN2D:
 
     def scale_inputs(self, inputs):
         """
-        Scale each trace to its RMS value, and each CMP to its RMS.
+        Scale each trace to its RMS value, and each shot to its RMS.
 
         @params:
 
         @returns:
         scaled (tf.tensor)  : The scaled input data
         """
-        trace_rms = tf.sqrt(reduce_sum(inputs**2, axis=[1], keepdims=True))
+        trace_rms = tf.sqrt(reduce_sum(inputs**2, axis=1, keepdims=True))
         scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
-        shot_max = tf.reduce_max(scaled, axis=[1, 2, 3], keepdims=True)
-        scaled = 1000 * scaled / shot_max
+        shot_max = tf.reduce_max(scaled, axis=[1, 2], keepdims=True)
+        scaled = scaled / shot_max
         return scaled
 
     def load_weights(self, filepath, by_name=False, skip_mismatch=False):
