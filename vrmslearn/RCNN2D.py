@@ -83,11 +83,9 @@ class RCNN2D:
                 self.load_weights(restore_from)
 
     def build_inputs(self):
-        with tf.name_scope('Inputs'):
-            inputs = Input(shape=self.input_size,
-                           batch_size=self.batch_size,
-                           dtype=tf.float32)
-
+        inputs = Input(shape=self.input_size,
+                       batch_size=self.batch_size,
+                       dtype=tf.float32)
         return inputs
 
     def build_network(self, freeze_to):
@@ -120,9 +118,8 @@ class RCNN2D:
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
         if 'ref' in self.out_names:
-            with tf.name_scope("decode_ref"):
-                conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
-                outputs['ref'] = conv_2d(data_stream)
+            conv_2d = Conv2D(2, [1, 1], padding='same', name="ref")
+            outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=self.batch_size, name="rnn_vrms")
@@ -131,13 +128,12 @@ class RCNN2D:
         data_stream = rnn_vrms(data_stream)
 
         if 'vrms' in self.out_names:
-            with tf.name_scope("decode_vrms"):
-                if is_1d:
-                    kernel = [1, 1]
-                else:
-                    kernel = [1, 5]
-                conv_2d = Conv2D(1, kernel, padding='same', name="vrms")
-                outputs['vrms'] = conv_2d(data_stream)
+            if is_1d:
+                kernel = [1, 1]
+            else:
+                kernel = [1, 5]
+            conv_2d = Conv2D(1, kernel, padding='same', name="vrms")
+            outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=self.batch_size, name="rnn_vint")
@@ -146,13 +142,12 @@ class RCNN2D:
         data_stream = rnn_vint(data_stream)
 
         if 'vint' in self.out_names:
-            with tf.name_scope("decode_vint"):
-                if is_1d:
-                    kernel = [1, 1]
-                else:
-                    kernel = [1, 5]
-                conv_2d = Conv2D(1, kernel, padding='same', name="vint")
-                outputs['vint'] = conv_2d(data_stream)
+            if is_1d:
+                kernel = [1, 1]
+            else:
+                kernel = [1, 5]
+            conv_2d = Conv2D(1, kernel, padding='same', name="vint")
+            outputs['vint'] = conv_2d(data_stream)
 
         if 'vdepth' in self.out_names:
             vint = outputs['vint']
