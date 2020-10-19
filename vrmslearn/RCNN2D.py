@@ -9,7 +9,7 @@ from tensorflow.keras import Model, Sequential
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange, expand_dims)
+                                      reshape, cumsum, arange)
 
 from vrmslearn.Sequence import OUTS
 from vrmslearn.Case import Case
