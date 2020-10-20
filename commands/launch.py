@@ -2,18 +2,23 @@
 """Launch custom training ."""
 
 import sys
+from copy import deepcopy
 from argparse import Namespace
 from itertools import product
 from importlib import import_module
 
 from archive import ArchiveRepository
-from ..vrmslearn.RCNN2D import *
+from ..vrmslearn.RCNN2D import Hyperparams
 from ..Cases_define import *
 
 
 def chain(main, **args):
     if "training" in args.keys():
         raise ValueError("Using `chain` implies training.")
+    hyperparams = args["params"]
+    if isinstance(hyperparams.freeze_to, tuple):
+        args["params"] = generate_variations(hyperparams,
+                                             freeze_to=hyperparams.freeze_to)
     parameters = {key: value
                   for key, value in args.items()
                   if isinstance(value, list)}
@@ -60,22 +65,56 @@ def optimize(**args):
             del main
 
 
-optimize(params=Hyperparameters(),
-         case=Case2Dtest_sourcedensity(),
-         epochs=[1],
-         steps=1,
-         lr=[.0002, .0008],
+def generate_variations(base_params, **variations):
+    hyperparams = []
+    keys = hyperparams.keys()
+    values = hyperparams.values()
+    for current_values in product(*values):
+        current_hyperparams = deepcopy(base_params)
+        for key, value in zip(keys, current_values):
+            setattr(current_hyperparams, key, value)
+        hyperparams.append(current_hyperparams)
+    return hyperparams
+
+
+hyperparams = generate_variations(Hyperparams(),
+                                  freeze_to=[None, (None, "ref", "vrms")],
+                                  encoder_kernels=[[[15, 1, 1],
+                                                    [1, 9, 1],
+                                                    [15, 1, 1],
+                                                    [1, 9, 1]],
+                                                   [[15, 1, 3],
+                                                    [1, 9, 3],
+                                                    [15, 1, 3],
+                                                    [1, 9, 3]]],
+                                  encoder_dilations=[[[1, 1, 1],
+                                                      [1, 1, 1],
+                                                      [1, 1, 1],
+                                                      [1, 1, 1]],
+                                                     [[1, 1, 2],
+                                                      [1, 1, 2],
+                                                      [1, 1, 2],
+                                                      [1, 1, 2]]],
+                                  rcnn_kernel=[[15, 3, 1], [15, 3, 3]],
+                                  rcnn_dilation=[[1, 1, 1], [1, 1, 2]],
+                                  decode_kernel=[[1, 1], [1, 5]])
+optimize(params=hyperparams,
+         case=Case2Dtest_complexity(),
+         epochs=(100, 100, 50),
+         steps=20,
+         lr=[.0002, .00008],
          beta_1=.9,
          beta_2=.98,
          eps=1e-5,
-         batchsize=2,
-         loss_ref=[.5],
-         loss_vrms=[.5],
-         loss_vint=[.0],
-         loss_vdepth=[.0],
+         batchsize=8,
+         loss_ref=(.5, .0, .0),
+         loss_vrms=(.5, .7, .0),
+         loss_vint=(.0, .3, 1.),
+         loss_vdepth=(.0, .0, .0),
          nmodel=1,
-         ngpu=1,
+         ngpu=2,
          noise=0,
          plot=0,
          no_weights=False,
-         restore_from=None)
+         restore_from=[None,
+                       "logs/optimize-2D-kernels/a775455/2/model/0140.ckpt"])
