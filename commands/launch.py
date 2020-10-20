@@ -7,6 +7,8 @@ from itertools import product
 from importlib import import_module
 
 from archive import ArchiveRepository
+from ..vrmslearn.RCNN2D import *
+from ..Cases_define import *
 
 
 def chain(main, **args):
@@ -58,7 +60,8 @@ def optimize(**args):
             del main
 
 
-optimize(case="Case2Dtest_sourcedensity",
+optimize(params=Hyperparameters(),
+         case=Case2Dtest_sourcedensity(),
          epochs=[1],
          steps=1,
          lr=[.0002, .0008],
@@ -75,5 +78,4 @@ optimize(case="Case2Dtest_sourcedensity",
          noise=0,
          plot=0,
          no_weights=False,
-         restore_from=None,
-         freeze_to=None)
+         restore_from=None)
