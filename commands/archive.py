@@ -18,6 +18,7 @@ class ArchiveRepository:
     def __enter__(self):
         self.archive_current_state()
         self.chdir()
+        return self
 
     def __exit__(self, exc_type, exc_value, tb):
         if exc_type is not None:
