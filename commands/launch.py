@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """Launch custom training ."""
 
+import sys
 from argparse import Namespace
 from itertools import product
 from importlib import import_module
@@ -53,6 +54,8 @@ def optimize(**args):
             archive.write(str(current_parameters))
             main = import_module("main").main
             chain(main, logdir=archive.model, **current_parameters)
+            del sys.modules["main"]
+            del main
 
 
 optimize(case="Case2Dtest_sourcedensity",
