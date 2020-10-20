@@ -32,11 +32,15 @@ def chain(main, **args):
     parameters.update(constants)
     keys = parameters.keys()
     values = parameters.values()
-    for current_values in zip(*values):
-        current_parameters = {key: value for key, value
-                              in zip(keys, current_values)}
-        args = Namespace(training=2, **current_parameters)
-        main(args)
+    try:
+        for current_values in zip(*values):
+            current_parameters = {key: value for key, value
+                                  in zip(keys, current_values)}
+            args = Namespace(training=2, **current_parameters)
+            main(args)
+    except Exception as exception:
+        print("Could not do or finish training:")
+        print(exception)
 
 
 def optimize(**args):
