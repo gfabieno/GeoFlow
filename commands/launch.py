@@ -14,7 +14,10 @@ def chain(main, **args):
     parameters = {key: value
                   for key, value in args.items()
                   if isinstance(value, list)}
-    qty_segments = max([len(sequence) for sequence in parameters.values])
+    if parameters:
+        qty_segments = max([len(sequence) for sequence in parameters.values()])
+    else:
+        qty_segments = 1
     constants = {key: [value]*qty_segments
                  for key, value in args.items()
                  if not isinstance(value, list)}
