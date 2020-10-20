@@ -91,7 +91,11 @@ class ArchiveRepository:
 
     def write(self, *lines):
         command_path = join(pardir, pardir, "command.sh")
-        with open(command_path, mode="w+") as command_file:
+        if exists(command_path):
+            mode = "a"
+        else:
+            mode = "w+"
+        with open(command_path, mode=mode) as command_file:
             for line in lines:
                 command_file.write(line)
                 command_file.write("\n")
