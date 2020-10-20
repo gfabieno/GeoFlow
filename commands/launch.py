@@ -9,6 +9,8 @@ from archive import ArchiveRepository
 
 
 def chain(main, **args):
+    if "training" in args.keys():
+        raise ValueError("Using `chain` implies training.")
     parameters = {key: value
                   for key, value in args.items()
                   if isinstance(value, list)}
@@ -22,7 +24,7 @@ def chain(main, **args):
     for current_values in zip(*values):
         current_parameters = {key: value for key, value
                               in zip(keys, current_values)}
-        args = Namespace(**current_parameters)
+        args = Namespace(training=2, **current_parameters)
         main(args)
 
 
@@ -30,6 +32,8 @@ def optimize(**args):
     if "log_dir" in args.keys():
         raise ValueError("`optimize` manages checkpoint directories by "
                          "itself.")
+    if "training" in args.keys():
+        raise ValueError("Using `optimize` implies training.")
     parameters = {key: value
                   for key, value in args.items()
                   if isinstance(value, list)}
@@ -49,7 +53,6 @@ def optimize(**args):
 
 
 args = dict(case="Case2Dtest_sourcedensity",
-            training=1,
             lr=.0002,
             loss_ref=[[.5, .1, .1]],
             loss_vrms=[[.5, .6, .4]],
