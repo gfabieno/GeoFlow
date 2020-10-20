@@ -230,22 +230,25 @@ class RCNN2D:
         self.set_weights(new_weights)
 
 
-def build_encoder(kernels, qties_filters, name="encoder"):
+def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
     encoder = Sequential(name=name)
-    for i, (kernel, qty_filters) in enumerate(zip(kernels, qties_filters)):
-        encoder.add(Conv3D(qty_filters, kernel, padding='same'))
+    for kernel, qty_filters, dilation_rate in zip(kernels, qties_filters,
+                                                  dilation_rates):
+        encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
+                           padding='same'))
         encoder.add(LeakyReLU())
     return encoder
 
 
-def build_rcnn(reps, kernel, qty_filters, input_shape, batch_size,
-               input_dtype=tf.float32, name="rcnn"):
+def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
+               batch_size, input_dtype=tf.float32, name="rcnn"):
     input_shape = input_shape[1:]
     input = Input(shape=input_shape, batch_size=batch_size,
                   dtype=input_dtype)
 
     data_stream = input
-    conv_3d = Conv3D(qty_filters, kernel, padding='same')
+    conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
+                     padding='same')
     activation = LeakyReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
