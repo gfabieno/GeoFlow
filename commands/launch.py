@@ -52,14 +52,22 @@ def optimize(**args):
             chain(main, logdir=archive.model, **current_parameters)
 
 
-args = dict(case="Case2Dtest_sourcedensity",
-            lr=.0002,
-            loss_ref=[[.5, .1, .1]],
-            loss_vrms=[[.5, .6, .4]],
-            loss_vint=[[.0, .3, .5]],
-            loss_vdepth=[[.0, .0, .0]],
-            epoch=[[100, 100, 50]],
-            steps=20,
-            batchsize=2,
-            plot=0)
-optimize(args)
+optimize(case="Case2Dtest_sourcedensity",
+         epoch=[1],
+         steps=1,
+         lr=[.0002, .0008],
+         beta_1=.9,
+         beta_2=.98,
+         eps=1e-5,
+         batchsize=2,
+         loss_ref=[.5],
+         loss_vrms=[.5],
+         loss_vint=[.0],
+         loss_vdepth=[.0],
+         nmodel=1,
+         ngpu=1,
+         noise=0,
+         plot=0,
+         no_weights=False,
+         restore_from=None,
+         freeze_to=None)
