@@ -71,8 +71,8 @@ def optimize(**args):
 
 def generate_variations(base_params, **variations):
     hyperparams = []
-    keys = hyperparams.keys()
-    values = hyperparams.values()
+    keys = variations.keys()
+    values = variations.values()
     for current_values in product(*values):
         current_hyperparams = deepcopy(base_params)
         for key, value in zip(keys, current_values):
