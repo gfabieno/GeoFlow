@@ -7,7 +7,7 @@ from os.path import join, realpath, exists, pardir
 from subprocess import run
 from copy import deepcopy
 
-LOGS_ROOT_DIRECTORY = "temp_logs"
+LOGS_ROOT_DIRECTORY = "logs"
 PROJECT_NAME = "Deep_2D_velocity"
 
 
