@@ -19,8 +19,12 @@ class ArchiveRepository:
         self.archive_current_state()
         self.chdir()
 
-    def __exit__(self):
-        self.recover_previous_state()
+    def __exit__(self, exc_type, exc_value, tb):
+        if exc_type is not None:
+            return False
+        else:
+            self.recover_previous_state()
+            return True
 
     def create_directory_tree(self):
         current_branch = run(["git", "branch", "--show-current"],
