@@ -3,7 +3,7 @@ import re
 import argparse
 
 from Cases_define import *
-from vrmslearn.RCNN2D import RCNN2D
+from vrmslearn.RCNN2D import Hyperparameters, RCNN2D
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
 from vrmslearn.Sequence import Sequence
@@ -29,6 +29,7 @@ def main(args):
                    'vdepth': args.loss_vdepth}
 
     sizes = case.get_dimensions()
+    hyperparameters = Hyperparameters()
     if args.restore_from is None:
         restore_from = find_latest_checkpoint(logdir)
     else:
@@ -40,11 +41,9 @@ def main(args):
         current_epoch = 0
     nn = RCNN2D(input_size=sizes[0],
                 batch_size=batch_size,
-                alpha=0.1,
-                beta=0.1,
+                params=hyperparameters,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
-                freeze_to=args.freeze_to,
                 case=case)
 
     # Train the model.
