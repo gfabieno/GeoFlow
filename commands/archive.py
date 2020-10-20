@@ -17,7 +17,6 @@ class ArchiveRepository:
     def __enter__(self):
         self.archive_current_state()
         self.chdir()
-        return self.logs, self.model, self.code
 
     def __exit__(self):
         self.recover_previous_state()
@@ -81,3 +80,8 @@ class ArchiveRepository:
         chdir(self._previous_dir)
         sys.path = self._previous_state
         del self._previous_dir, self._previous_state
+
+    def write(self, line):
+        with open("command.sh", mode="w+") as command_file:
+            command_file.write(line)
+            command_file.write("\n")
