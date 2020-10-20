@@ -36,6 +36,11 @@ class Hyperparameters:
         self.decode_ref_kernel = [1, 1]
         self.decode_kernel = [1, 1]
 
+        self.use_cnn = False
+        self.cnn_kernel = None
+        self.cnn_filters = None
+        self.cnn_dilation = None
+
 
 class RCNN2D:
     """
@@ -146,6 +151,15 @@ class RCNN2D:
             rnn_vrms.trainable = False
         data_stream = rnn_vrms(data_stream)
 
+        if params.use_cnn:
+            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
+                             dilation_rate=params.cnn_dilation,
+                             padding='same',
+                             name="cnn_vrms")
+            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
+                conv_2d.trainable = False
+            data_stream = conv_2d(data_stream)
+
         if 'vrms' in self.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
                              name="vrms")
@@ -156,6 +170,15 @@ class RCNN2D:
         if params.freeze_to in ['vint', 'vdepth']:
             rnn_vint.trainable = False
         data_stream = rnn_vint(data_stream)
+
+        if params.use_cnn:
+            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
+                             dilation_rate=params.cnn_dilation,
+                             padding='same',
+                             name="cnn_vint")
+            if params.freeze_to in ['vint', 'vdepth']:
+                conv_2d.trainable = False
+            data_stream = conv_2d(data_stream)
 
         if 'vint' in self.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
