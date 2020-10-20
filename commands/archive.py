@@ -88,6 +88,7 @@ class ArchiveRepository:
         del self._previous_dir, self._previous_state
 
     def write(self, line):
-        with open(join(pardir, "command.sh"), mode="w+") as command_file:
+        command_path = join(pardir, pardir, "command.sh")
+        with open(command_path, mode="w+") as command_file:
             command_file.write(line)
             command_file.write("\n")
