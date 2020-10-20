@@ -8,6 +8,7 @@ from subprocess import run
 from copy import deepcopy
 
 LOGS_ROOT_DIRECTORY = "temp_logs"
+PROJECT_NAME = "Deep_2D_velocity"
 
 
 class ArchiveRepository:
@@ -66,13 +67,13 @@ class ArchiveRepository:
         symlink(realpath("Datasets"), join(code_dir, "Datasets"),
                 target_is_directory=True)
 
-    def chdir(self, dir_, project_name="Deep_2D_velocity"):
+    def chdir(self):
         self._previous_dir = getcwd()
         self._previous_state = deepcopy(sys.path)
 
-        chdir(dir_)
-        sys.path = list(filter(lambda s: project_name not in s, sys.path))
-        subdirectories = [x[0] for x in walk(dir_)]
+        chdir(self.code)
+        sys.path = list(filter(lambda s: PROJECT_NAME not in s, sys.path))
+        subdirectories = [x[0] for x in walk(self.code)]
         subdirectories = list(set(subdirectories))
         sys.path.extend(subdirectories)
 
