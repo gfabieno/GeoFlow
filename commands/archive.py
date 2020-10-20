@@ -13,11 +13,13 @@ PROJECT_NAME = "Deep_2D_velocity"
 
 class ArchiveRepository:
     def __init__(self):
-        self.logs, self.model, self.code = self.create_directory_tree()
+        (self.logs, self.model,
+         self.code, self.prototype) = self.create_directory_tree()
 
     def __enter__(self):
         self.archive_current_state()
         self.chdir()
+        self.write(self.prototype)
         return self
 
     def __exit__(self, exc_type, exc_value, tb):
@@ -54,7 +56,7 @@ class ArchiveRepository:
         code_dir = join(logs_dir, "code")
         makedirs(code_dir)
 
-        return logs_dir, model_dir, code_dir
+        return logs_dir, model_dir, code_dir, current_prototype
 
     def archive_current_state(self):
         logs_dir, code_dir = self.logs, self.code
@@ -87,8 +89,9 @@ class ArchiveRepository:
         sys.path = self._previous_state
         del self._previous_dir, self._previous_state
 
-    def write(self, line):
+    def write(self, *lines):
         command_path = join(pardir, pardir, "command.sh")
         with open(command_path, mode="w+") as command_file:
-            command_file.write(line)
-            command_file.write("\n")
+            for line in lines:
+                command_file.write(line)
+                command_file.write("\n")
