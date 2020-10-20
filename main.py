@@ -2,9 +2,7 @@ import os
 import re
 import argparse
 
-from Cases_define import *
 from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.RCNN2D import *
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
 from vrmslearn.Sequence import Sequence
@@ -13,9 +11,7 @@ from vrmslearn.Sequence import Sequence
 def main(args):
     logdir = args.logdir
     batch_size = args.batchsize
-
-    # Define the parameters.
-    case = eval(args.case)()
+    case = args.case
 
     # Generate the dataset.
     if args.training in [0, 2]:
@@ -30,7 +26,6 @@ def main(args):
                    'vdepth': args.loss_vdepth}
 
     sizes = case.get_dimensions()
-    hyperparameters = eval(args.params)()
     if args.restore_from is None:
         restore_from = find_latest_checkpoint(logdir)
     else:
@@ -42,7 +37,7 @@ def main(args):
         current_epoch = 0
     nn = RCNN2D(input_size=sizes[0],
                 batch_size=batch_size,
-                params=hyperparameters,
+                params=args.params,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
                 case=case)
@@ -102,6 +97,8 @@ def find_latest_checkpoint(logdir):
 
 
 if __name__ == "__main__":
+    from Cases_define import *
+    from vrmslearn.RCNN2D import *
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()
@@ -196,4 +193,6 @@ if __name__ == "__main__":
 
     # Parse the input for training parameters.
     args = parser.parse_args()
+    args.case = eval(args.case)()
+    args.params = eval(args.params)()
     main(args)
