@@ -21,14 +21,14 @@ def chain(main, **args):
                                              freeze_to=hyperparams.freeze_to)
     parameters = {key: value
                   for key, value in args.items()
-                  if isinstance(value, list)}
+                  if isinstance(value, tuple)}
     if parameters:
         qty_segments = max([len(sequence) for sequence in parameters.values()])
     else:
         qty_segments = 1
     constants = {key: [value]*qty_segments
                  for key, value in args.items()
-                 if not isinstance(value, list)}
+                 if not isinstance(value, tuple)}
     parameters.update(constants)
     keys = parameters.keys()
     values = parameters.values()
