@@ -5,10 +5,7 @@ from argparse import Namespace
 from itertools import product
 from importlib import import_module
 
-from archive import chdir, archive_current_state
-
-log_dir, model_dir, code_dir = archive_current_state()
-chdir(code_dir)
+from archive import ArchiveRepository
 
 
 def chain(main, **args):
@@ -45,15 +42,13 @@ def optimize(**args):
     for current_values in product(*values):
         current_parameters = {key: value for key, value
                               in zip(keys, current_values)}
-        log_dir, _, code_dir = archive_current_state()
-        chdir(code_dir)
-        main = import_module("main").main
-        chain(main, **current_parameters)
-        chdir("../../../../..")
+        with ArchiveRepository() as archive:
+            archive.write(str(current_parameters))
+            main = import_module("main").main
+            chain(main, logdir=archive.model, **current_parameters)
 
 
-args = dict(logdir=model_dir,
-            case="Case2Dtest_sourcedensity",
+args = dict(case="Case2Dtest_sourcedensity",
             training=1,
             lr=.0002,
             loss_ref=[[.5, .1, .1]],
