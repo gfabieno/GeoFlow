@@ -8,8 +8,8 @@ from itertools import product
 from importlib import import_module
 
 from archive import ArchiveRepository
-from ..vrmslearn.RCNN2D import Hyperparams
-from ..Cases_define import *
+from vrmslearn.RCNN2D import Hyperparameters
+from Cases_define import *
 
 
 def chain(main, **args):
@@ -81,7 +81,7 @@ def generate_variations(base_params, **variations):
     return hyperparams
 
 
-hyperparams = generate_variations(Hyperparams(),
+hyperparams = generate_variations(Hyperparameters(),
                                   freeze_to=[None, (None, "ref", "vrms")],
                                   encoder_kernels=[[[15, 1, 1],
                                                     [1, 9, 1],
