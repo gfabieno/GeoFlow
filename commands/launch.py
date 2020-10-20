@@ -37,7 +37,7 @@ def chain(main, **args):
         for current_values in zip(*values):
             current_parameters = {key: value for key, value
                                   in zip(keys, current_values)}
-            args = Namespace(training=2, **current_parameters)
+            args = Namespace(training=1, **current_parameters)
             main(args)
     except Exception as exception:
         print("Could not do or finish training:")
@@ -127,9 +127,9 @@ optimize(params=hyperparams,
 
 hyperparams = Hyperparameters()
 hyperparams.use_cnn = True
-hyperparams.cnn_kernel = [1, 1, 3]
+hyperparams.cnn_kernel = [1, 3]
 hyperparams.cnn_filters = 32
-hyperparams.cnn_dilation = [1, 1, 2]
+hyperparams.cnn_dilation = [1, 2]
 hyperparams = generate_variations(hyperparams,
                                   freeze_to=[None, (None, "ref", "vrms")],
                                   encoder_kernels=[[[15, 1, 1],
