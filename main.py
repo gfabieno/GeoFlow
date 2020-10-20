@@ -3,7 +3,8 @@ import re
 import argparse
 
 from Cases_define import *
-from vrmslearn.RCNN2D import Hyperparameters, RCNN2D
+from vrmslearn.RCNN2D import RCNN2D
+from vrmslearn.RCNN2D import *
 from vrmslearn.Trainer import Trainer
 from vrmslearn.Tester import Tester
 from vrmslearn.Sequence import Sequence
@@ -29,7 +30,7 @@ def main(args):
                    'vdepth': args.loss_vdepth}
 
     sizes = case.get_dimensions()
-    hyperparameters = Hyperparameters()
+    hyperparameters = eval(args.params)()
     if args.restore_from is None:
         restore_from = find_latest_checkpoint(logdir)
     else:
@@ -106,10 +107,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Add arguments to parse for training
+    parser.add_argument("--params",
+                        type=str,
+                        default="Hyperparameters",
+                        help="Name of hyperparameters from `RCNN2D` to use")
     parser.add_argument("--case",
                         type=str,
                         default="Case1Dsmall",
-                        help="Name of the case from `Cases_define` to use")
+                        help="Name of case from `Cases_define` to use")
     parser.add_argument("--logdir",
                         type=str,
                         default="./logs",
@@ -188,11 +193,6 @@ if __name__ == "__main__":
                         default=None,
                         help="The weights file used for inference. Defaults "
                              "to the last checkpoint in `args.logdir`.")
-    parser.add_argument("--freeze_to",
-                        type=str,
-                        default=None,
-                        help="A label name. All layers before this label's "
-                             "decoder will not be trainable.")
 
     # Parse the input for training parameters.
     args = parser.parse_args()
