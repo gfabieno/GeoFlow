@@ -98,6 +98,7 @@ class RCNN2D:
             self.set_weights = self.model.set_weights
             self.get_weights = self.model.get_weights
             self.layers = self.model.layers
+            self.get_layer = self.model.get_layer
 
             if restore_from is not None:
                 self.load_weights(restore_from)
@@ -187,59 +188,65 @@ class RCNN2D:
         scaled = scaled / shot_max
         return scaled
 
-    def load_weights(self, filepath, by_name=False, skip_mismatch=False):
+    def load_weights(self, filepath, by_name=True, skip_mismatch=False):
         """
         Load weights into the model and broadcast 1D to 2D correctly.
 
         :param filepath: String, path to the weights file to load. For weight
                          files in TensorFlow format, this is the file prefix
                          (the same as was passed to save_weights).
-        :param by_name: Boolean, whether to load weights by name or by
-                        topological order. Only topological loading is
-                        supported for weight files in TensorFlow format. This
-                        is not implemented in this model subclassing.
-        :param skip_mismatch: Boolean, whether to skip loading of layers where
-                              there is a mismatch in the number of weights, or
-                              a mismatch in the shape of the weight (only valid
-                              when by_name=True). This is not implemented in
-                              this model subclassing.
+        :param by_name: The only implemented behavior in this model
+                        subclassing is `by_name=True`, because it is the only
+                        behavior that doesn't cause unexpected results when
+                        the model is modified.
+        :param skip_mismatch: This is not implemented in this model
+                              subclassing, because we broadcast mismatching
+                              layers.
         """
-        if by_name or skip_mismatch:
+        if skip_mismatch or not by_name:
             raise NotImplementedError
 
-        model = tf.keras.models.load_model(filepath, compile=False)
-        weights = self.get_weights()
-        new_weights = model.get_weights()
-        layer_names = [l.name for l in model.layers]
-        # Backward compatibility with models prior to commit 6cdd52d.
-        if "rnn_vdepth" in layer_names:
-            del new_weights[16:19]
-            del new_weights[-2:]
-            new_weights.insert(-6, new_weights[-2])
-            new_weights.insert(-6, new_weights[-1])
-            del new_weights[-2:]
-        for i, (layer, new_layer) in enumerate(zip(weights, new_weights)):
-            if layer.shape != new_layer.shape:
-                assert_broadcastable(layer, new_layer,
-                                     "Weights dimensions are not compatible.")
-                mismatches = np.not_equal(layer.shape, new_layer.shape)
-                mismatch_idx = np.nonzero(mismatches)[0]
-                if len(mismatch_idx) != 1:
-                    raise NotImplementedError("No loading strategy is "
-                                              "implemented for weights with "
-                                              "more than 1 mismatching "
-                                              "dimension.")
+        loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        current_layer_names = [l.name for l in self.layers]
+        for loaded_layer in loaded_model.layers:
+            name = loaded_layer.name
+            if name not in current_layer_names:
+                print(f"Loading layer {name} skipped.")
+                continue
+            current_layer = self.get_layer(name)
+            current_weights = current_layer.get_weights()
+            loaded_weights = loaded_layer.get_weights()
+            current_weights = broadcast_weights(loaded_weights,
+                                                current_weights)
+            current_layer.set_weights(current_weights)
 
-                # Extend `new_layer` in the missing dimension and rescale it
-                # to account for the addition of duplicated layers.
-                mismatch_idx = mismatch_idx[0]
-                repeats = layer.shape[mismatch_idx]
-                new_layer = np.repeat(new_layer, repeats, axis=mismatch_idx)
-                new_layer /= repeats
-                new_layer += np.random.uniform(0, np.amax(new_layer)*1E-2,
-                                               size=new_layer.shape)
-                new_weights[i] = new_layer
-        self.set_weights(new_weights)
+
+def broadcast_weights(loaded_weights, current_weights):
+    for i, (current, loaded) in enumerate(zip(current_weights,
+                                              loaded_weights)):
+        if current.shape != loaded.shape:
+            assert_broadcastable(current, loaded,
+                                 "Weights are not compatible.")
+            mismatches = np.not_equal(current.shape,
+                                      loaded.shape)
+            mismatch_idx = np.nonzero(mismatches)[0]
+            if len(mismatch_idx) != 1:
+                raise NotImplementedError("No loading strategy is "
+                                          "implemented for weights "
+                                          "with more than 1 "
+                                          "mismatching dimension.")
+            # Extend `loaded` in the missing dimension and rescale
+            # it to account for the addition of duplicated layers.
+            mismatch_idx = mismatch_idx[0]
+            repeats = current.shape[mismatch_idx]
+            loaded = np.repeat(loaded, repeats,
+                               axis=mismatch_idx)
+            loaded /= repeats
+            noise = np.random.uniform(0, np.amax(loaded)*1E-2,
+                                      size=loaded.shape)
+            loaded += noise
+        current_weights[i] = current
+    return current_weights
 
 
 def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
