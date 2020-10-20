@@ -17,7 +17,10 @@ from vrmslearn.Case import Case
 
 class Hyperparameters:
     def __init__(self):
+        """Build the default hyperparameters for `RCNN2D`."""
+        # A lable. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
+
         self.encoder_kernels = [[15, 1, 1],
                                 [1, 9, 1],
                                 [15, 1, 1],
