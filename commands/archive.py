@@ -3,7 +3,7 @@
 
 import sys
 from os import makedirs, listdir, remove, symlink, walk, chdir, getcwd
-from os.path import join, realpath, exists
+from os.path import join, realpath, exists, pardir
 from subprocess import run
 from copy import deepcopy
 
@@ -88,6 +88,6 @@ class ArchiveRepository:
         del self._previous_dir, self._previous_state
 
     def write(self, line):
-        with open("command.sh", mode="w+") as command_file:
+        with open(join(pardir, "command.sh"), mode="w+") as command_file:
             command_file.write(line)
             command_file.write("\n")
