@@ -2,6 +2,7 @@
 """Launch custom training ."""
 
 import sys
+from os.path import realpath
 from copy import deepcopy
 from argparse import Namespace
 from itertools import product
@@ -102,6 +103,8 @@ hyperparams = generate_variations(Hyperparameters(),
                                   rcnn_kernel=[[15, 3, 1], [15, 3, 3]],
                                   rcnn_dilation=[[1, 1, 1], [1, 1, 2]],
                                   decode_kernel=[[1, 1], [1, 5]])
+checkpoint_1d = "logs/optimize-2D-kernels/a775455/2/model/0140.ckpt"
+checkpoint_1d = realpath(checkpoint_1d)
 optimize(params=hyperparams,
          case=Case2Dtest_complexity(),
          epochs=(100, 100, 50),
@@ -120,5 +123,4 @@ optimize(params=hyperparams,
          noise=0,
          plot=0,
          no_weights=False,
-         restore_from=[None,
-                       "logs/optimize-2D-kernels/a775455/2/model/0140.ckpt"])
+         restore_from=[None, (checkpoint_1d, None, None)])
