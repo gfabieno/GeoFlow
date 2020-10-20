@@ -56,7 +56,7 @@ def optimize(**args):
 
 
 optimize(case="Case2Dtest_sourcedensity",
-         epoch=[1],
+         epochs=[1],
          steps=1,
          lr=[.0002, .0008],
          beta_1=.9,
