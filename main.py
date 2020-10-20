@@ -182,7 +182,7 @@ if __name__ == "__main__":
                         default=1,
                         help="1: Validate data by plotting.")
     parser.add_argument("--no_weights",
-                        action='store_false',
+                        action='store_true',
                         help="Discard weighting in losses when training.")
     parser.add_argument("--restore_from",
                         type=str,
