@@ -78,10 +78,11 @@ def main(args):
         tester.test_dataset(savepath=savepath)
 
         if args.plot:
+            is_2d = sizes[0][2] != 1
             tester.animated_predictions(labelnames=['ref', 'vrms',
                                                     'vint', 'vdepth'],
                                         savepath=savepath,
-                                        image="2D" in args.case)
+                                        image=is_2d)
 
 
 def find_latest_checkpoint(logdir):
