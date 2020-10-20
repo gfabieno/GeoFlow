@@ -245,7 +245,7 @@ def broadcast_weights(loaded_weights, current_weights):
             noise = np.random.uniform(0, np.amax(loaded)*1E-2,
                                       size=loaded.shape)
             loaded += noise
-        current_weights[i] = current
+        current_weights[i] = loaded
     return current_weights
 
 
