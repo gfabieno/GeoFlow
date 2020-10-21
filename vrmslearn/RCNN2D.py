@@ -41,6 +41,12 @@ class Hyperparameters:
         self.cnn_filters = None
         self.cnn_dilation = None
 
+    def __str__(self):
+        return str(self.__dict__)
+
+    def __repr__(self):
+        return str(self)
+
 
 class RCNN2D:
     """
