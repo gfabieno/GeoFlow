@@ -44,7 +44,9 @@ class ArchiveRepository:
         logs_dir = join(LOGS_ROOT_DIRECTORY, current_branch, current_commit)
         logs_dir = realpath(logs_dir)
         if exists(logs_dir):
-            current_prototype = len(listdir(logs_dir))
+            contents = listdir(logs_dir)
+            contents = [c for c in contents if c.isnumeric()]
+            current_prototype = len(contents)
         else:
             current_prototype = 0
         current_prototype = str(current_prototype)
