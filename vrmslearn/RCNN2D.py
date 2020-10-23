@@ -345,14 +345,16 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
     tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
     nz = case.model.NZ
     source_depth = case.acquire.source_depth
-    max_depth = nz - source_depth / dh
+    max_depth = nz - int(source_depth / dh)
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     actual_vint = vint*(vmax-vmin) + vmin
     # Convert to unitless quantity of grid cells.
     depth_intervals = actual_vint * dt * resampling / (dh*2)
+    paddings = [[0, 0], [1, 0], [0, 0], [0, 0]]
+    depth_intervals = tf.pad(depth_intervals, paddings, "CONSTANT")
     depths = cumsum(depth_intervals, axis=1)
-    depth_delay = reduce_sum(depth_intervals[:, :tdelay], axis=1,
+    depth_delay = reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
                              keepdims=True)
     depths -= depth_delay
     target_depths = arange(max_depth, dtype=tf.float32)
