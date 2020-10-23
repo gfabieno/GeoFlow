@@ -22,6 +22,7 @@ def chain(main, **args):
     if isinstance(hyperparams.freeze_to, tuple):
         args["params"] = generate_variations(hyperparams,
                                              freeze_to=hyperparams.freeze_to)
+        args["params"] = tuple(args["params"])
     parameters = {key: value
                   for key, value in args.items()
                   if isinstance(value, tuple)}
