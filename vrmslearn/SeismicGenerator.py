@@ -119,6 +119,108 @@ class Acquisition:
         return random_wavelet_generator(self.NT, self.dt, self.peak_freq,
                                         self.df, self.tdelay)
 
+class Aquisition_masw(Acquisition):
+
+    def set_rec_src(self):
+
+        dg = self.dg
+        ng = 24 #nombre de geophones
+
+        if dg == 'all':
+            spacing = [3, 1, 0.5]
+            src_pos = None
+            rec_pos= None
+
+            for s in spacing:
+                gmin = self.Npad + 20 * self.model.dh
+                gmax = self.gmin + (ng - 1) * s
+                if s == 3:
+                    sx = [self.gmin - 20, self.gmin - 5, self.gmax + 5, self.gmax + 20]
+                elif s == 1:
+                    sx = [self.gmin - 10, self.gmin - 3, self.gmax + 3, self.gmax + 10]
+                elif s == 0.5:
+                    sx = [self.gmin - 5, self.gmax + 5]
+
+                sz = np.full_like(sx, self.source_depth)
+                sid = np.arange(0, sx.shape[0])
+
+                Src_pos = np.stack([sx,
+                                    np.zeros_like(sx),
+                                    sz,
+                                    sid,
+                                    np.full_like(sx, self.sourcetype)], axis=0)
+
+                gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
+                gx = np.concatenate([gx0 for _ in sx], axis=0)
+                gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+                gz = np.full_like(gx, self.receiver_depth)
+                gid = np.arange(0, len(gx))
+
+                Rec_pos = np.stack([gx,
+                                    np.zeros_like(gx),
+                                    gz,
+                                    gsid,
+                                    gid,
+                                    np.full_like(gx, 2),
+                                    np.zeros_like(gx),
+                                    np.zeros_like(gx)], axis=0)
+
+                src_pos = np.concatenate(Src_pos, src_pos, axis = 1)
+                rec_pos = np.concatenate(Rec_pos, rec_pos, axis = 1)
+
+
+
+        else:
+            #Add receiver
+            if self.gmin:
+                gmin = self.gmin
+            else:
+                gmin = self.Npad + 20*self.model.dh
+            if self.gmax:
+                gmax = self.gmax
+            else:
+                gmax = self.gmin + (ng-1) * dg
+
+
+            #Add sources
+            if dg == 3:
+                sx = [self.gmin-20, self.gmin-5, self.gmax+5, self.gmax+20]
+            elif dg == 1:
+                sx = [self.gmin-10, self.gmin-3, self.gmax+3, self.gmax+10]
+            elif dg == 0.5:
+                sx = [self.gmin-5, self.gmax+5]
+            else:
+                error('Geophone spacing (dg) must be 3, 1 or 0.5 m')
+
+            # Set source
+            sz = np.full_like(sx, self.source_depth)
+            sid = np.arange(0, sx.shape[0])
+
+            src_pos = np.stack([sx,
+                                np.zeros_like(sx),
+                                sz,
+                                sid,
+                                np.full_like(sx, self.sourcetype)], axis=0)
+
+            # Set receivers
+            gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
+            gx = np.concatenate([gx0 for _ in sx], axis=0)
+            gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+            gz = np.full_like(gx, self.receiver_depth)
+            gid = np.arange(0, len(gx))
+
+            rec_pos = np.stack([gx,
+                                np.zeros_like(gx),
+                                gz,
+                                gsid,
+                                gid,
+                                np.full_like(gx, 2),
+                                np.zeros_like(gx),
+                                np.zeros_like(gx)], axis=0)
+
+
+        return src_pos, rec_pos
+
 
 class SeismicGenerator(SeisCL):
     """

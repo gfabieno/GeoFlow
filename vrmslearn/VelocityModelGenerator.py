@@ -214,6 +214,12 @@ class MaswModelGenerator(BaseModelGenerator):
     def generate_model(self, seed=None):
 
         props2D, layerids, layers = super().generate_model(seed=seed)
+        #Create a dictionary for props2D
+        props = []
+        for prop in self.layers[0].lithology.properties:
+            props.append(prop.name)
+        props2D = {props[i]: props2D[i] for i in range(len(props))}
+        # Add vs to dictionnary
         props2D["vs"] = props2D["vp"] / props2D["vpvs"]
 
         return props2D, layerids, layers

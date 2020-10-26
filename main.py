@@ -137,11 +137,14 @@ if __name__ == "__main__":
     batch_size = args.batchsize
 
     # Define the parameters.
-    case = eval(args.case)(trainsize=5, validatesize=0, testsize=0)
+    case = eval(args.case)(trainsize=1, validatesize=0, testsize=0)
 
     # Generate the dataset.
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
+
+    for files in case.files['train'][:4]:
+        case.plot_example(filename=files)
 
     if args.plot:
         case.animated_dataset()

@@ -5,27 +5,16 @@
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               BaseModelGenerator, MaswModelGenerator)
-from vrmslearn.SeismicGenerator import Acquisition
+from vrmslearn.SeismicGenerator import Acquisition_masw
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.LabelGenerator import LabelGenerator
 import argparse
+import numpy as np
 
 class Case_masw(Case):
 
     name = "Case_masw"
-
-    def __init__(self, trainsize=1, validatesize=0, testsize=0, noise=0):
-
-        if noise == 1:
-            self.name = self.name + "_noise"
-        super().__init__(trainsize=trainsize,
-                         validatesize=validatesize,
-                         testsize=testsize)
-        if noise == 1:
-            self.label.random_static = True
-            self.label.random_static_max = 1
-            self.label.random_noise = True
-            self.label.random_noise_max = 0.02
+    np.random.seed(3)
 
     def set_case(self):
 
@@ -46,15 +35,15 @@ class Case_masw(Case):
         model.layer_dh_min = 5
         model.layer_dh_max = 20
 
-        acquire = Acquisition(model=model)
+        acquire = Acquisition_masw(model=model)
         acquire.peak_freq = 26
-        acquire.sourcetype = 2
+        acquire.sourcetype = 2 #force in z (2)
+        acquire.ds = 5
         acquire.dt = dt = 0.0001
-        acquire.NT = int(2 / dt)
-        acquire.dg = dg = 3
-        acquire.gmin = int(100/ dh)
-        acquire.gmax = int(acquire.gmin*dg)
-        acquire.fs = True
+        acquire.NT = int(2 / dt) #2 s survey
+        acquire.tdelay = dt * 5
+        acquire.dg = 'all' #3 / dh # 3m spacing
+        acquire.fs = True # Free surface
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
@@ -64,6 +53,7 @@ class Case_masw(Case):
         label.train_on_shots = True
 
         return model, acquire, label
+
 
 class Case1Dsmall(Case):
 
