@@ -5,16 +5,15 @@
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               BaseModelGenerator, MaswModelGenerator)
-from vrmslearn.SeismicGenerator import Acquisition_masw
+from vrmslearn.SeismicGenerator import Aquisition_masw
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.LabelGenerator import LabelGenerator
+from vrmslearn.LabelGenerator import LabelGenerator, MaswLabelGenerator
 import argparse
 import numpy as np
 
 class Case_masw(Case):
 
     name = "Case_masw"
-    np.random.seed(3)
 
     def set_case(self):
 
@@ -35,7 +34,7 @@ class Case_masw(Case):
         model.layer_dh_min = 5
         model.layer_dh_max = 20
 
-        acquire = Acquisition_masw(model=model)
+        acquire = Aquisition_masw(model=model)
         acquire.peak_freq = 26
         acquire.sourcetype = 2 #force in z (2)
         acquire.ds = 5
@@ -48,6 +47,7 @@ class Case_masw(Case):
         acquire.receiver_depth = 0
         acquire.rectype = 1
 
+        # TODO: create a label generator
         label = LabelGenerator(model=model, acquire=acquire)
         label.identify_direct = False
         label.train_on_shots = True

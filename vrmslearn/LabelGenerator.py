@@ -222,4 +222,9 @@ class LabelGenerator:
 
         return labels, preds
 
+class MaswLabelGenerator(LabelGenerator):
+    ...
+
+
+
 
