@@ -233,19 +233,19 @@ class Tester(object):
                 vmax = self.case.model.vp_max
             y = np.arange(pred[labelname].shape[0])
             if image:
-                im1 = axs[0, 1 + ii].imshow(pred[labelname],
+                im1 = axs[0, 1 + ii].imshow(label[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno',
                                             aspect='auto')
-                im2 = axs[1, 1 + ii].imshow(label[labelname],
+                im2 = axs[1, 1 + ii].imshow(pred[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 center_label = label[labelname][:, qty_shots//2]
-                center_pred = label[labelname][:, qty_shots//2]
+                center_pred = pred[labelname][:, qty_shots//2]
                 im3, = axs[2, 1 + ii].plot(center_label, y)
                 im4, = axs[2, 1 + ii].plot(center_pred, y)
                 axs[2, 1 + ii].set_ylim(np.min(y), np.max(y))
@@ -265,6 +265,7 @@ class Tester(object):
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+        axs[2, 0].axis('off')
         plt.tight_layout()
 
         def animate(t):
