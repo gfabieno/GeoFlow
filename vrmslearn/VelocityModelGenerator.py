@@ -141,6 +141,120 @@ class MarineModelGenerator(BaseModelGenerator):
 
         return strati
 
+
+class PermafrostModelGenerator(BaseModelGenerator):
+    def __init__(self):
+        super().__init__()
+
+    def build_stratigraphy(self):
+        lithologies = {}
+
+        name = "Water"
+        vp = Property("vp", vmin=1430, vmax=1430)
+        vs = Property("vs", vmin=0, vmax=0)
+        rho = Property("rho", vmin=1000, vmax=1000)
+        q = Property("q", vmin=1000, vmax=1000)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Unfrozen sediments"  # Buckingham 1996, Fig 11
+        vp = Property("vp", vmin=1700, vmax=1700, texture=200)
+        vs = Property("vs", vmin=400, vmax=400, texture=150)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=50, vmax=50, texture=30)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Frozen Sands"  # Matsushima 2016, fig 13c @ 6C Dou 2016
+        vp = Property("vp", vmin=3700, vmax=3700, texture=200)
+        vs = Property("vs", vmin=1600, vmax=1600, texture=250)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=60, vmax=60, texture=30)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Partially Frozen Sands"  # Matsushima 2016, fig 13c @ 3C
+        vp = Property("vp", vmin=3700, vmax=3700, texture=200)
+        vs = Property("vs", vmin=1332, vmax=1332, texture=70)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=10, vmax=10, texture=3.5)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Frozen Silts"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        vp = Property("vp", vmin=3400, vmax=3400, texture=300)
+        vs = Property("vs", vmin=1888, vmax=1888, texture=170)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=45, vmax=45, texture=31.5)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Partially Frozen Silts"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        vp = Property("vp", vmin=2200, vmax=2200, texture=450)
+        vs = Property("vs", vmin=792, vmax=792, texture=160)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=20, vmax=20, texture=10)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Partially Frozen Silts2"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        vp = Property("vp", vmin=1950, vmax=1950, texture=550)
+        vs = Property("vs", vmin=650, vmax=650, texture=186)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=25, vmax=25, texture=5)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Frozen Shale"  # Bellefleur 2007, Figure 3 zone 2
+        vp = Property("vp", vmin=3000, vmax=3000, texture=950)  # IOE Taglu D-43
+        vs = Property("vs", vmin=1666, vmax=650, texture=527)
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        q = Property("q", vmin=100, vmax=100, texture=30)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Iperk"  # Bellefleur 2007, Figure 3 zone 2
+        vp = Property("vp", vmin=4000, vmax=4000, texture=1500)  # IOE Taglu D-43
+        vs = Property("vs", vmin=2222, vmax=2222, texture=52)
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        q = Property("q", vmin=100, vmax=100, texture=30)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Unfrozen Shale"  # Bellefleur 2007, Figure 3 zone 2
+        vp = Property("vp", vmin=2200, vmax=2200, texture=200)  # IOE Taglu D-43
+        vs = Property("vs", vmin=1222, vmax=1222, texture=111)
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        q = Property("q", vmin=70, vmax=100, texture=20)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Frozen Sands2"  # Modified from Matsushima 2016, fig 13c @ 6C Dou 2016
+        vp = Property("vp", vmin=2600, vmax=2600, texture=300)
+        vs = Property("vs", vmin=1000, vmax=1000, texture=150)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=25, vmax=25, texture=10)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        name = "Hydrates"  # Modified from Partially frozen Silts Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        vp = Property("vp", vmin=2200, vmax=2200, texture=450)
+        vs = Property("vs", vmin=792, vmax=792, texture=160)
+        rho = Property("rho", vmin=1900, vmax=1900, texture=150)
+        q = Property("q", vmin=20, vmax=20, texture=5)
+        lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
+
+        deform = Deformation(max_deform_freq=0.02,
+                             min_deform_freq=0.0001,
+                             amp_max=6,
+                             max_deform_nfreq=40,
+                             prob_deform_change=0.4)
+
+        sequence = Sequence(lithologies=[lithologies["Water"],
+                                         lithologies["Unfrozen sediments"],
+                                         lithologies["Partially Frozen Silts"],
+                                         lithologies["Frozen Sands2"],
+                                         lithologies["Partially Frozen Silts"],
+                                         lithologies["Unfrozen sediments"],
+                                         lithologies["Hydrates"],
+                                         lithologies["Unfrozen sediments"]
+                                         ],
+                            ordered=True, deform=deform)
+
+        strati = Stratigraphy(sequences=[sequence])
+
+        return strati
+
+
 class MaswModelGenerator(BaseModelGenerator):
 
     def __init__(self):

@@ -4,10 +4,69 @@
 
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
-                                              MaswModelGenerator)
+                                              MaswModelGenerator,
+                                              PermafrostModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
 import argparse
+
+class Case_Permafrost(Case):
+
+    name = "Case_Permafrost"
+
+    def __init__(self, noise=0):
+        if noise == 1:
+            self.name = self.name + "_noise"
+        super().__init__()
+        if noise == 1:
+            self.label.random_static = True
+            self.label.random_static_max = 1
+            self.label.random_noise = True
+            self.label.random_noise_max = 0.02
+
+    def set_case(self):
+        model = PermafrostModelGenerator()
+
+        # model.NX = 500
+        # model.NZ = 100
+        model.dh = dh = 2.5
+        Nshots = 1
+        dshots = 50
+        length = Nshots*dshots + 1682
+        z = 1000
+        model.NX = int(length/dh)
+        model.NZ = int(z/dh)
+
+        model.marine = False    #??
+        model.texture_xrange = 3
+        model.texture_zrange = 1.95 * model.NZ/2
+
+        model.dip_0 = True
+        model.dip_max = 5
+        model.ddip_max = 5
+
+        model.layer_num_min = 3
+        model.layer_dh_min = 20
+        # model.layer_dh_max = 20
+
+        acquire = Acquisition(model=model)
+        acquire.peak_freq = 40
+        # acquire.sourcetype = 2
+        acquire.dt = dt = 2e-4
+        acquire.NT = int(2/dt)
+        acquire.dg = dg = 5
+        # acquire.gmin = int(100 / dh)
+        # acquire.gmax = int(acquire.gmin*dg)
+        acquire.fs = True
+        acquire.source_depth = 12.5
+        acquire.receiver_depth = 12.5
+        # acquire.rectype = 1
+
+        label = LabelGenerator(model=model, acquire=acquire)
+        label.identify_direct = False
+        label.train_on_shots = True
+
+        return model, acquire, label
 
 
 class Case_masw(Case):
