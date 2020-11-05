@@ -2,15 +2,14 @@
 Classes and functions that combines a SeismicGenerator and a ModelGenerator
 to produce a dataset on multiple GPUs. Used by the Case class (Case.py).
 """
-import os
-from multiprocessing import Process, Queue
-
 import numpy as np
+import os
 import h5py as h5
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
 from multiprocessing import Process, Queue
+from vrmslearn.SeismicUtilities import dispersion_curve
 
 
 # TODO change seismic to forward with input a dict, making it agnotistic
@@ -166,6 +165,12 @@ class DatasetProcess(Process):
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
                 data, labels, weights = self.sample_generator.generate(seed)
+                if self.sample_generator.model.Dispersion:
+                    # TODO include dispersion transformation
+                    dt = self.sample_generator.seismic.csts['dt'] * self.sample_generator.seismic.resampling
+                    gx = self.sample_generator.seismic.rec_pos_all[0,:]
+                    sx = self.sample_generator.seismic.src_pos_all[0, 0]
+                    data,_,_ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
 
                 self.sample_generator.write(seed, self.savepath, data, labels,
                                             weights, filename=filename)

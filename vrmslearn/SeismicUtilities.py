@@ -2,10 +2,11 @@
 Functions to handle seismic data and velocity models.
 """
 
-import numpy as np
 from scipy.signal import convolve2d
+import numpy as np
+from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
-from scipy.interpolate import interp1d, CubicSpline
+from scipy.interpolate import CubicSpline
 
 
 def gaussian(f0, t, o, amp=1.0, order=2):
@@ -259,13 +260,13 @@ def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
                                tdelay, minoffset, identify_direct, tol=0.015,
                                window_width=0.45):
     """
-    Generate an array with 1 at time of primary reflections for the minimum
+    Generate an array with 1 at time of primary reflections for the minimum 
     offset trace of a gather. Valid for a flat layered model.
-
+    
     :param vp: A 1D array containing the Vp profile in depth
     :param source_depth: Depth of the source (in m)
     :param dh: Spatial grid size
-    :param nt: Number of time steps
+    :param nt: Number of time steps 
     :param dt: Sampling interval (in s)
     :param peak_freq: Peak frequency of the source
     :param tdelay: Delay of the source
@@ -273,8 +274,8 @@ def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
     :param identify_direct: Output an event of the direct arrival if True
     :param tol: The minimum relative velocity change to consider a reflection
     :param window_width: time window width in percentage of peak_freq
-
-    :return: A 2D array with nt elements with 1 at reflecion times
+    
+    :return: A 2D array with nt elements with 1 at reflecion times 
              +- window_width/peak_freq, 0 elsewhere
     """
 
@@ -663,3 +664,30 @@ def semblance(nmo_corrected, window=10):
     num = np.convolve(num, weights, mode='same')
     den = np.convolve(den, weights, mode='same')
     return num / den
+
+
+def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
+    """
+
+    :param data: time-offset gather
+    :param gx: geophones positions in m
+    :param dt: time step
+    :param sx: source position
+    :param minc: minimum phase velocity value to be evaluated
+    :param maxc: maximum phase velocity value to be evaluated
+    :return: A: the transformed dispersion data, freq: vector of frequencies, c: vector of evaluated velocities
+    """
+    data = np.pad(data, [(500, 500), (0, 0)])
+    freq = np.fft.fftfreq(np.size(data,0), dt)
+    c = np.linspace(minc,maxc,201)[:-1]
+    c = c[1:]
+    data_fft = np.fft.fft(data,axis = 0)
+    data_fft_norm = data_fft/np.abs(data_fft)
+    A = np.zeros((len(freq),len(c)),dtype=complex); A2 = np.zeros((len(freq),len(c)),dtype =complex)
+    freq = np.reshape(freq,[-1,1])
+    x = np.abs(gx-sx); x = x-np.min(x); x = np.reshape(x,[1,-1])
+    for i in range(len(c)):
+        delta = 2 * np.pi * freq * x / c[i]
+        A2[:, i] =      np.sum(np.exp(1j * delta) * data_fft_norm,axis = 1)
+    A = np.transpose(A2)
+    return A, freq, c
