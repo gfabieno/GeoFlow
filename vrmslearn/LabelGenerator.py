@@ -221,3 +221,101 @@ class LabelGenerator:
             preds['ref'] = np.argmax(preds['ref'], axis=2)
 
         return labels, preds
+
+
+class PermafrostLabelGenerator(LabelGenerator):
+    def __init__(self,model: BaseModelGenerator, acquire: Acquisition):
+        super().__init__(model,acquire)
+
+    def generate_labels(self, props):
+        """
+        Reduced labels to vp and vs only
+        Output the labels attached to modelling of a particular dataset. In
+        this case, we want to predict vp in depth from cmp gathers.
+
+        :param props: A dict with {name_of_prop: array of property}
+        :return: labels A list of labels
+                 weights A list of weights
+        """
+
+        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp = (vp - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
+        vs = (vs - vs.min())/(vs.max()-vs.min())
+
+        tweights = vp*0 + 1
+        dweights = vp*0 + 1
+        labels = [vp,vs]
+        weights = [tweights,dweights]
+
+        return labels, weights
+
+    def preprocess(self, data, labels, weights):
+        """
+        Removed resorted data to CMP
+        A function to preprocess the data and labels before feeding it to the
+        network.
+
+        @params:
+        data (numpy.array): Data array
+        labels  (list): A list of numpy.array containing the labels
+        weights (list): A list of weights to apply to the outputs
+
+        @returns:
+        data (numpy.array): The preprocessed data
+        labels (list):      The preprocessed label list
+        """
+        vp = labels[-1]
+
+        # Adding random noises to the data.
+        if self.random_time_scaling:
+            data = random_time_scaling(data,
+                                       self.acquire.dt * self.acquire.resampling)
+        if self.mute_dir:
+            wind_length = int(2 / self.acquire.peak_freq / self.acquire.dt
+                              / self.acquire.resampling)
+            s, r = self.acquire.set_rec_src()
+            offsets = [r[0, ii]-s[0, r[3, ii]] for ii in range(r.shape[1])]
+            data = top_mute(data, vp[0], wind_length, offsets,
+                            self.acquire.dt * self.acquire.resampling,
+                            self.acquire.tdelay)
+        if self.random_static:
+            data = random_static(data, self.random_static_max)
+        if self.random_noise:
+            data = random_noise(data, self.random_noise_max)
+        if self.mute_nearoffset:
+            data = mute_nearoffset(data, self.mute_nearoffset_max)
+
+        # # Resort the data according to CMP.
+        src_pos_all, rec_pos_all = self.acquire.set_rec_src()
+        data = np.reshape(data, [data.shape[0], src_pos_all.shape[1], -1])
+        data = data.swapaxes(1, 2)
+        datapos = src_pos_all[0, :]
+
+        # Smooth the velocity model.
+        if self.model_smooth_x != 0 or self.model_smooth_t != 0:
+            labels[-1] = smooth_velocity_wavelength(labels[-1], self.model.dh,
+                                                    self.model_smooth_t,
+                                                    self.model_smooth_x)
+
+        # Resample labels in x to correspond to data position.
+        x = np.arange(0, self.model.NX) * self.model.dh
+        ind1 = np.argmax(x >= datapos[0])
+        ind2 = -np.argmax(x[::-1] <= datapos[-1])
+
+        labels = [label[:, ind1:ind1+1:2] for label in labels]
+        weights = [w[:, ind1:ind1+1:2] for w in weights]
+
+        for label in labels:
+            if label.shape[-1] != data.shape[-1]:
+                raise ValueError("Number of x positions in label and number cmp"
+                                 " mismatch.")
+
+        # We can predict velocities under the source and receiver arrays only.
+        sz = int(self.acquire.source_depth / self.model.dh)
+
+        labels[-1] = labels[-1][sz:, :]
+        weights[-1] = weights[-1][sz:, :]
+
+        data = np.expand_dims(data, axis=-1)
+
+        return data, labels, weights
