@@ -265,18 +265,33 @@ class PermafrostModelGenerator(BaseModelGenerator):
                              max_deform_nfreq=40,
                              prob_deform_change=0.4)
 
-        sequence = Sequence(lithologies=[lithologies["Water"],
-                                         lithologies["Unfrozen sediments"],
-                                         lithologies["Partially Frozen Silts"],
-                                         lithologies["Frozen Sands2"],
-                                         lithologies["Partially Frozen Silts"],
-                                         lithologies["Unfrozen sediments"],
-                                         lithologies["Hydrates"],
-                                         lithologies["Unfrozen sediments"]
-                                         ],
-                            ordered=True, deform=deform)
+        water = Sequence(lithologies=[lithologies["Water"]],
+                         thick_min=50, thick_max=150)
+        unfrozen = Sequence(lithologies = [lithologies["Unfrozen sediments"]],
+                            deform=deform)
+        Permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
+                                           lithologies["Frozen Sands2"],
+                                           lithologies["Partially Frozen Silts"],
+                                           lithologies["Unfrozen sediments"],
+                                           lithologies["Hydrates"]
+                                           ],
+                              ordered=False, deform=deform)
 
-        strati = Stratigraphy(sequences=[sequence])
+        strati = Stratigraphy(sequences = [water,unfrozen,Permafrost,unfrozen])
+
+        # sequence = Sequence(lithologies=[lithologies["Water"],
+        #                                  lithologies["Unfrozen sediments"],
+        #                                  lithologies["Partially Frozen Silts"],
+        #                                  lithologies["Frozen Sands2"],
+        #                                  lithologies["Partially Frozen Silts"],
+        #                                  lithologies["Unfrozen sediments"],
+        #                                  lithologies["Hydrates"],
+        #                                  lithologies["Unfrozen sediments"]
+        #                                  ],
+        #                     ordered=True, deform=deform)
+        #
+        # strati = Stratigraphy(sequences=[sequence])
+
 
         return strati
 
