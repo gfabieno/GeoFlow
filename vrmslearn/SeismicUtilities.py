@@ -677,7 +677,7 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
     :param maxc: maximum phase velocity value to be evaluated
     :return: A: the transformed dispersion data, freq: vector of frequencies, c: vector of evaluated velocities
     """
-    data = np.pad(data, [(500, 500), (0, 0)])
+    # data = np.pad(data, [(500, 500), (0, 0)])
     freq = np.fft.fftfreq(np.size(data,0), dt)
     c = np.linspace(minc,maxc,201)[:-1]
     c = c[1:]

@@ -46,6 +46,17 @@ class SampleGenerator:
         data = self.seismic.compute_data(props)
         labels, weights = self.label.generate_labels(props)
 
+        if self.model.Dispersion:
+            # TODO include dispersion transformation
+            dt = self.seismic.csts['dt'] * self.seismic.resampling
+            gx = self.seismic.rec_pos_all[0, :]
+            sx = self.seismic.src_pos_all[0, 0]
+            data, fr, _ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
+
+            f = fr.reshape(fr.size)
+            data = data[:, f > 0];      f_f = f[f > 0];
+            data = data[:, f_f < 100];  f_f = f_f[f_f < 100]
+
         return data, labels, weights
 
     def read(self, filename):
@@ -165,12 +176,6 @@ class DatasetProcess(Process):
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
                 data, labels, weights = self.sample_generator.generate(seed)
-                if self.sample_generator.model.Dispersion:
-                    # TODO include dispersion transformation
-                    dt = self.sample_generator.seismic.csts['dt'] * self.sample_generator.seismic.resampling
-                    gx = self.sample_generator.seismic.rec_pos_all[0,:]
-                    sx = self.sample_generator.seismic.src_pos_all[0, 0]
-                    data,_,_ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
 
                 self.sample_generator.write(seed, self.savepath, data, labels,
                                             weights, filename=filename)
