@@ -264,6 +264,13 @@ class RCNN2D:
 
 
 def broadcast_weights(loaded_weights, current_weights):
+    """
+    Broadcast `loaded_weights` on `current_weights`.
+
+    Extend the loaded weights along one missing dimension and rescale the
+    weights to account for the duplication. This is equivalent to using an
+    average in the missing dimension.
+    """
     for i, (current, loaded) in enumerate(zip(current_weights,
                                               loaded_weights)):
         if current.shape != loaded.shape:
@@ -292,6 +299,16 @@ def broadcast_weights(loaded_weights, current_weights):
 
 
 def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
+    """
+    Build the encoder head, a series of CNNs.
+
+    :param kernels: Kernel shapes of each convolution.
+    :param qties_filters: Quantity of filters of each CNN.
+    :param diltation_rates: Dilation rate in each dimension of each CNN.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
     encoder = Sequential(name=name)
     for kernel, qty_filters, dilation_rate in zip(kernels, qties_filters,
                                                   dilation_rates):
@@ -303,6 +320,20 @@ def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
 
 def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
                batch_size, input_dtype=tf.float32, name="rcnn"):
+    """
+    Build a RCNN (recurrent convolution neural network).
+
+    :param reps: Quantity of times the CNN is applied.
+    :param kernel: Kernel shape of the convolution.
+    :param qty_filters: Quantity of filters in the LSTM.
+    :param diltation_rate: Dilation rate in each dimension.
+    :param input_shape: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
     input_shape = input_shape[1:]
     input = Input(shape=input_shape, batch_size=batch_size,
                   dtype=input_dtype)
@@ -320,6 +351,17 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
 
 def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
               name="rnn"):
+    """
+    Build a LSTM acting on dimension 1 (the time dimension).
+
+    :param units: Quantity of filters in the LSTM.
+    :param input_shape: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
     input_shape = input_shape[1:]
     input = Input(shape=input_shape, batch_size=batch_size,
                   dtype=input_dtype)
@@ -349,6 +391,19 @@ def assert_broadcastable(arr1, arr2, message=None):
 def build_time_to_depth_converter(case, input_shape, batch_size,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
+    """
+    Build a time to depth conversion model in Keras.
+
+    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+                 `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
+                 case are used.
+    :param input_size: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
     vmax = case.model.vp_max
     vmin = case.model.vp_min
     dh = case.model.dh
