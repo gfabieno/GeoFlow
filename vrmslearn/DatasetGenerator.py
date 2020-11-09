@@ -9,6 +9,7 @@ from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
 from multiprocessing import Process, Queue
+from vrmslearn.SeismicUtilities import dispersion_curve
 
 
 # TODO change seismic to forward with input a dict, making it agnotistic
@@ -47,10 +48,48 @@ class SampleGenerator:
 
         return data, labels, weights
 
+    def generate_dispersion(self, seed):
+        """
+        Generate one example
+        @params:
+        seed (int): Seed of the model to generate
+
+        """
+        props, _, _ = self.model.generate_model(seed=seed)
+        data = self.seismic.compute_data(props)
+        labels, weights = self.label.generate_labels(props)
+
+        if self.model.Dispersion:
+            # TODO include dispersion transformation
+            dt = self.seismic.csts['dt'] * self.seismic.resampling
+            gx = self.seismic.rec_pos_all[0, :]
+            sx = self.seismic.src_pos_all[0, 0]
+            data_dispersion, fr, _ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
+
+            f = fr.reshape(fr.size)
+            data_dispersion = data_dispersion[:, f > 0];      f_f = f[f > 0];
+            data_dispersion = data_dispersion[:, f_f < 100];  f_f = f_f[f_f < 100]
+
+        return data, data_dispersion, labels, weights
+
     def read(self, filename):
 
         file = h5.File(filename, "r")
         data = file["data"][:]
+        labels = []
+        for labelname in self.label.label_names:
+            labels.append(file[labelname][:])
+        weights = []
+        for wname in self.label.weight_names:
+            weights.append(file[wname][:])
+        file.close()
+
+        return data, labels, weights
+
+    def read_dispersion(self, filename):
+
+        file = h5.File(filename, "r")
+        data = file["data_dispersion"][:]
         labels = []
         for labelname in self.label.label_names:
             labels.append(file[labelname][:])
@@ -82,6 +121,36 @@ class SampleGenerator:
 
         file = h5.File(filename, "w")
         file["data"] = data
+        for ii, label in enumerate(labels):
+            file[self.label.label_names[ii]] = label
+        for ii, weight in enumerate(weights):
+            file[self.label.weight_names[ii]] = weight
+        file.close()
+
+    def write_dispersion(self, exampleid, savedir, data, data_dispersion, labels, weights, filename=None):
+        """
+        Modified to write both data and data_dispersion
+        This method writes one example in the hdf5 format
+
+        @params:
+        exampleid (int):        The example id number
+        savedir (str)   :       A string containing the directory in which to
+                                save the example
+        data (numpy.ndarray)  : Contains the modelled seismic data
+        data_dispersion (numpy.ndarray)  : Contains the modelled seismic data in the dispersion plot domain
+        labels (list)  :       List of numpy array containing the labels
+        filename (str):      If provided, save the example in filename.
+
+        @returns:
+        """
+        if filename is None:
+            filename = os.path.join(savedir, "example_%d" % exampleid)
+        else:
+            filename = os.path.join(savedir, filename)
+
+        file = h5.File(filename, "w")
+        file["data"] = data
+        file["data_dispersion"] = data_dispersion
         for ii, label in enumerate(labels):
             file[self.label.label_names[ii]] = label
         for ii, weight in enumerate(weights):
@@ -163,7 +232,12 @@ class DatasetProcess(Process):
                 break
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
-                data, labels, weights = self.sample_generator.generate(seed)
+                if self.sample_generator.model.Dispersion:
+                    data, data_dispersion, labels, weights = self.sample_generator.generate_dispersion(seed)
+                    self.sample_generator.write_dispersion(seed, self.savepath, data, data_dispersion, labels,
+                                                           weights, filename=None)
+                else:
+                    data, labels, weights = self.sample_generator.generate(seed)
 
-                self.sample_generator.write(seed, self.savepath, data, labels,
-                                            weights, filename=filename)
+                    self.sample_generator.write(seed, self.savepath, data, labels,
+                                                weights, filename=filename)

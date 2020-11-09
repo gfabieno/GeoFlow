@@ -12,6 +12,7 @@ import h5py as h5
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
+import tensorflow as tf
 
 from vrmslearn.RCNN2D import RCNN2D
 from vrmslearn.Case import Case
@@ -49,15 +50,12 @@ class Tester(object):
 
         @params:
         savepath (str) : The path in which the test examples are found
-        toeval (dict): Dict of name: tensors to predict
-        filename (str): The structure of the examples' filenames
-        batch_size (int): quantity of examples per batch
         restore_from (str): File containing the trained weights
-
-        @returns:
         """
         if restore_from is not None:
-            self.nn.load_weights(restore_from)
+            strategy = tf.distribute.MirroredStrategy()
+            with strategy.scope():
+                self.nn.load_weights(restore_from)
 
         self.sequence.reset_test_generator()
 
@@ -152,20 +150,16 @@ class Tester(object):
                 if image:
                     vmin = np.min(label[labelname])
                     vmax = np.max(label[labelname])
-                    axes[jj, 0].imshow(
-                        label[labelname],
-                        vmin=vmin,
-                        vmax=vmax,
-                        cmap='inferno',
-                        aspect='auto',
-                    )
-                    axes[jj, 1].imshow(
-                        pred[labelname],
-                        vmin=vmin,
-                        vmax=vmax,
-                        cmap='inferno',
-                        aspect='auto',
-                    )
+                    axes[jj, 0].imshow(label[labelname],
+                                       vmin=vmin,
+                                       vmax=vmax,
+                                       cmap='inferno',
+                                       aspect='auto')
+                    axes[jj, 1].imshow(pred[labelname],
+                                       vmin=vmin,
+                                       vmax=vmax,
+                                       cmap='inferno',
+                                       aspect='auto')
 
                 else:
                     y = np.arange(label[labelname].shape[0])
@@ -193,19 +187,13 @@ class Tester(object):
                         else plot 1D profiles.
         """
         if quantity is None:
-            examples = [
-                os.path.basename(f) for f in self.case.files["test"]
-                if os.path.basename(f) in os.listdir(savepath)
-            ]
+            examples = [os.path.basename(f) for f in self.case.files["test"]
+                        if os.path.basename(f) in os.listdir(savepath)]
         else:
-            examples = [
-                os.path.basename(self.case.files["test"][ii])
-                for ii in range(quantity)
-            ]
+            examples = [os.path.basename(self.case.files["test"][ii])
+                        for ii in range(quantity)]
 
-        labels, preds = self.get_preds(
-            labelnames, savepath, examples=examples,
-        )
+        labels, preds = self.get_preds(labelnames, savepath, examples=examples)
         datas = labels['input']
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
@@ -217,14 +205,12 @@ class Tester(object):
         clip = 0.01
         vmax = np.max(datas) * clip
         vmin = -vmax
-        im1 = axs[0, 0].imshow(
-            datas[0],
-            animated=True,
-            vmin=vmin,
-            vmax=vmax,
-            aspect='auto',
-            cmap=plt.get_cmap('Greys'),
-        )
+        im1 = axs[0, 0].imshow(datas[0],
+                               animated=True,
+                               vmin=vmin,
+                               vmax=vmax,
+                               aspect='auto',
+                               cmap=plt.get_cmap('Greys'))
         axs[0, 0].set_title('data')
         ims = [im1]
 
@@ -233,33 +219,24 @@ class Tester(object):
         label, pred = self.case.label.postprocess(labeld, predd)
 
         for ii, labelname in enumerate(labelnames):
+            if labelname == "ref":
+                vmin, vmax = 0, 1
+            else:
+                vmin = self.case.model.vp_min
+                vmax = self.case.model.vp_max
             if image:
-                im1 = axs[0, 1 + ii].imshow(
-                    pred[labelname],
-                    vmin=0,
-                    vmax=1,
-                    animated=True,
-                    cmap='inferno',
-                    aspect='auto',
-                )
-                im2 = axs[1, 1 + ii].imshow(label[labelname], vmin=0, vmax=1,
+                im1 = axs[0, 1 + ii].imshow(pred[labelname],
+                                            vmin=vmin,
+                                            vmax=vmax,
+                                            animated=True,
+                                            cmap='inferno',
+                                            aspect='auto')
+                im2 = axs[1, 1 + ii].imshow(label[labelname],
+                                            vmin=vmin,
+                                            vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
                 axs[0, 1 + ii].set_title(labelname)
-                plt.colorbar(
-                    im1,
-                    ax=axs[0, 1 + ii],
-                    orientation="horizontal",
-                    pad=0.15,
-                    fraction=0.1,
-                )
-                plt.colorbar(
-                    im2,
-                    ax=axs[1, 1 + ii],
-                    orientation="horizontal",
-                    pad=0.15,
-                    fraction=0.1,
-                )
                 ims.append(im1)
                 ims.append(im2)
             else:
@@ -268,7 +245,7 @@ class Tester(object):
                 im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
                 im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
-                axs[0, 1 + ii].set_xlim(-0.1, 1.1)
+                axs[0, 1 + ii].set_xlim(-vmin, vmax)
                 axs[0, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)

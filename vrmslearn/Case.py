@@ -51,9 +51,9 @@ class Case:
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
         self.datatest = os.path.join(self.basepath, self.name, "test")
 
-        self.trainsize = trainsize
-        self.validatesize = validatesize
-        self.testsize = testsize
+        # self.trainsize = trainsize
+        # self.validatesize = validatesize
+        # self.testsize = testsize
 
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
@@ -144,7 +144,10 @@ class Case:
 
             filename = random.choice(files)
 
-        data, labels, weights = self.sample.read(filename)
+        if self.model.Dispersion:
+            data, labels, weights = self.sample.read_dispersion(filename)
+        else:
+            data, labels, weights = self.sample.read(filename)
 
         data, labels, weights = self.label.preprocess(data, labels, weights)
 
@@ -242,6 +245,10 @@ class Case:
         vmax = np.max(toplots[0]) * clip
         vmin = -vmax
 
+        if self.model.Dispersion:
+            toplots[0] = np.abs(toplots[0])
+            vmax = np.max(toplots[0]); vmin = 0
+
         # plt.imshow(toplots[1]/np.sum(toplots[1]**2, axis = 0), aspect = 'auto')
         # plt.show()
         # alskde
@@ -267,6 +274,7 @@ class Case:
         def animate(t):
             toplots = self.get_example(phase=phase)
             toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+            if self.model.Dispersion: toplots[0] = np.abs(toplots[0])
             for im, toplot in zip(ims, toplots):
                 im.set_array(toplot)
             return ims

@@ -6,3 +6,4 @@ logs*
 Datasets
 workdir*
 out*
+*.out
