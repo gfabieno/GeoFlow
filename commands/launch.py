@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Launch custom training ."""
+"""Launch custom training."""
 
 import sys
 from os.path import realpath
