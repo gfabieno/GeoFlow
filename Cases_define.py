@@ -33,6 +33,7 @@ class Case_masw(Case):
         model.layer_num_min = 1
         model.layer_dh_min = 5
         model.layer_dh_max = 20
+        model.Dispersion = True
 
         acquire = Aquisition_masw(model=model)
         acquire.peak_freq = 26
@@ -46,6 +47,7 @@ class Case_masw(Case):
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
+        acquire.singleshot = False
 
         # TODO: create a label generator
         label = LabelGenerator(model=model, acquire=acquire)
@@ -53,6 +55,13 @@ class Case_masw(Case):
         label.train_on_shots = True
 
         return model, acquire, label
+
+    def get_example(self, filename=None, phase="train"):
+        #TODO: Faire get_example pour plusieur shot
+        ...
+    def animated_dataset(self, phase='train'):
+        #TODO: Faire animated_dataset pour plusieurs shot
+        ...
 
 
 class Case1Dsmall(Case):

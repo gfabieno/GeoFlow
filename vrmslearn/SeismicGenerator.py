@@ -10,7 +10,7 @@ import os
 import numpy as np
 from SeisCL.SeisCL import SeisCL
 from vrmslearn.SeismicUtilities import random_wavelet_generator
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
+from vrmslearn.VelocityModelGenerator import BaseModelGenerator, MaswModelGenerator
 
 
 class Acquisition:

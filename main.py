@@ -143,8 +143,8 @@ if __name__ == "__main__":
     if args.training in [0, 2]:
         case.generate_dataset(ngpu=args.ngpu)
 
-    for files in case.files['train'][:4]:
-        case.plot_example(filename=files)
+    # for files in case.files['train'][:4]:
+    #     case.plot_example(filename=files)
 
     if args.plot:
         case.animated_dataset()

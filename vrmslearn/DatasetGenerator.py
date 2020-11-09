@@ -61,14 +61,33 @@ class SampleGenerator:
 
         if self.model.Dispersion:
             # TODO include dispersion transformation
-            dt = self.seismic.csts['dt'] * self.seismic.resampling
-            gx = self.seismic.rec_pos_all[0, :]
-            sx = self.seismic.src_pos_all[0, 0]
-            data_dispersion, fr, _ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
+            if self.acquire.singleshot:
+                dt = self.seismic.csts['dt'] * self.seismic.resampling
+                gx = self.seismic.rec_pos_all[0, :]
+                sx = self.seismic.src_pos_all[0, 0]
+                data_dispersion, fr, _ = dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000)
 
-            f = fr.reshape(fr.size)
-            data_dispersion = data_dispersion[:, f > 0];      f_f = f[f > 0];
-            data_dispersion = data_dispersion[:, f_f < 100];  f_f = f_f[f_f < 100]
+                f = fr.reshape(fr.size)
+                data_dispersion = data_dispersion[:, f > 0];      f_f = f[f > 0]
+                data_dispersion = data_dispersion[:, f_f < 100];  f_f = f_f[f_f < 100]
+
+            else:
+                dt = self.seismic.csts['dt'] * self.seismic.resampling
+                data_dispersion = []
+                for i, src in enumerate(self.seismic.src_pos_all.T):
+                    ng = int(self.seismic.rec_pos_all.shape[1]/self.seismic.src_pos_all.shape[1])
+                    sx = src[0]
+                    gx = self.seismic.rec_pos_all[0, i:ng*(i+1)]
+                    shot = data[:, i:ng*(i+1)]
+
+                    dispersion, fr, c = dispersion_curve(shot, gx, dt, sx, minc=10, maxc=2000)
+                    f = fr.reshape(fr.size)
+                    dispersion = dispersion[:, f > 0 ]; f_f = f[ f > 0 ]
+                    dispersion = dispersion[:, f_f < 100]; f_f = f_f[f_f < 100]
+
+                    data_dispersion.append(dispersion)
+
+                data_dispersion = np.concatenate(data_dispersion, axis=1)
 
         return data, data_dispersion, labels, weights
 
@@ -99,6 +118,8 @@ class SampleGenerator:
         file.close()
 
         return data, labels, weights
+
+
 
     def write(self, exampleid, savedir, data, labels, weights, filename=None):
         """
@@ -156,6 +177,7 @@ class SampleGenerator:
         for ii, weight in enumerate(weights):
             file[self.label.weight_names[ii]] = weight
         file.close()
+
 
     def generate_dataset(self,
                          savepath: str,
