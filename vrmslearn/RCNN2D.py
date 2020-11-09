@@ -21,24 +21,37 @@ class Hyperparameters:
         # A label. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
 
+        # Convolution kernels of the encoder head.
         self.encoder_kernels = [[15, 1, 1],
                                 [1, 9, 1],
                                 [15, 1, 1],
                                 [1, 9, 1]]
+        # Quantity of filters per encoder kernel. Must have the same length as
+        # `self.encoder_kernels`.
         self.encoder_filters = [16, 16, 32, 32]
+        # Diltations of the convolutions in the encoder head.
         self.encoder_dilations = [[1, 1, 1],
                                   [1, 1, 1],
                                   [1, 1, 1],
                                   [1, 1, 1]]
+        # Convolution kernel of the RCNN.
         self.rcnn_kernel = [15, 3, 1]
+        # Quantity of filters in the RCNN.
         self.rcnn_filters = 32
+        # Dilation of the convolutions in the RCNN.
         self.rcnn_dilation = [1, 1, 1]
+        # Kernel of the convolution associated with the `ref` output.
         self.decode_ref_kernel = [1, 1]
+        # Kernel of the convolutions with outputs, except `ref`.
         self.decode_kernel = [1, 1]
 
+        # Whether to interleave CNNs in between RNNs or not.
         self.use_cnn = False
+        # Convolution kernel of the CNNs between RNNs, a list of length 3.
         self.cnn_kernel = None
+        # Quantity of filters of the CNNs between RNNs, a positive integer.
         self.cnn_filters = None
+        # Dilation of the CNNs between RNNs, a list of length 3.
         self.cnn_dilation = None
 
     def __str__(self):
