@@ -144,7 +144,10 @@ class Case:
 
             filename = random.choice(files)
 
-        data, labels, weights = self.sample.read(filename)
+        if self.model.Dispersion:
+            data, labels, weights = self.sample.read_dispersion(filename)
+        else:
+            data, labels, weights = self.sample.read(filename)
 
         data, labels, weights = self.label.preprocess(data, labels, weights)
 

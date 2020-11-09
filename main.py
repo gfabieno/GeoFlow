@@ -143,6 +143,7 @@ if __name__ == "__main__":
 
     # Generate the dataset.
     if args.training in [0, 2]:
+        # case.model.Dispersion = False   # If uncommented after dispersion data is created will read only the time-offset gathers
         case.generate_dataset(ngpu=args.ngpu)
 
     if args.plot:
