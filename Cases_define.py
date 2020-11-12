@@ -10,17 +10,33 @@ from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.LabelGenerator import LabelGenerator, MaswLabelGenerator
 import argparse
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 
 class Case_masw(Case):
 
     name = "Case_masw"
+
+    def __init__(self, trainsize=3, validatesize=0, testsize=0, noise=0):
+
+        if noise == 1:
+            self.name = self.name + "_noise"
+
+        super().__init__(trainsize=trainsize,
+                         validatesize=validatesize,
+                         testsize=testsize)
+        if noise == 1:
+            self.label.random_static = True
+            self.label.random_static_max = 1
+            self.label.random_noise = True
+            self.label.random_noise_max = 0.02
 
     def set_case(self):
 
         model = MaswModelGenerator()
         model.NX = 500
         model.NZ = 100
-        model.dh = dh = 1
+        model.dh = 1
 
         model.marine = False
         model.texture_xrange = 3
@@ -49,19 +65,71 @@ class Case_masw(Case):
         acquire.rectype = 1
         acquire.singleshot = False
 
-        # TODO: create a label generator
-        label = LabelGenerator(model=model, acquire=acquire)
+        label = MaswLabelGenerator(model=model, acquire=acquire)
         label.identify_direct = False
         label.train_on_shots = True
+        label.label_names = ['vs']
+        label.weight_names = ['weight']
 
         return model, acquire, label
 
-    def get_example(self, filename=None, phase="train"):
-        #TODO: Faire get_example pour plusieur shot
-        ...
     def animated_dataset(self, phase='train'):
-        #TODO: Faire animated_dataset pour plusieurs shot
-        ...
+        """
+        Produces an animation of a dataset, showing the input data, and the
+        different labels for each example.
+
+        @params:
+        phase (str): Which dataset: either train, test or validate
+        """
+
+        toplots = self.get_example(phase=phase)
+
+        toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+        prof = np.arange(0, toplots[1].shape[0], self.model.dh)
+
+
+        if self.model.Dispersion == True:
+            toplots[0] = np.abs(toplots[0])
+            vmax = np.max(toplots[0])
+            vmin = 0
+        else:
+            clip = 0.01
+            vmax = np.max(toplots[0]) * clip
+            vmin = -vmax
+
+
+        fig, axs = plt.subplots(1, 2, figsize=[20, 8], gridspec_kw={'width_ratios': [4, 1]})
+        im1 = axs[0].imshow(toplots[0], animated=True, vmin=vmin, vmax=vmax,
+                            aspect='auto', cmap="terrain_r")
+        axs[0].set_title(self.example_order[0])
+        plt.colorbar(im1, ax=axs[0], orientation="horizontal", pad=0.05, fraction=0.1)
+        im2 = axs[1].step(toplots[1].reshape(toplots[1].shape[0]), prof, linewidth = 2, animated = True)
+        axs[1].set_title(self.example_order[1])
+        axs[1].set_ylim([prof[-1], prof[0]])
+        plt.tight_layout()
+
+        im2 = im2[0]
+        def init():
+            im1.set_array(toplots[0])
+            im2.set_data(toplots[1].reshape(toplots[1].shape[0]), prof)
+            return [im1, im2]
+
+        def animate(t):
+            toplots = self.get_example(phase=phase)
+            toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
+            if self.model.Dispersion: toplots[0] = np.abs(toplots[0])
+            im1.set_array(toplots[0])
+            im2.set_data(toplots[1].reshape(toplots[1].shape[0]), prof)
+            return [im1, im2]
+
+        ani = animation.FuncAnimation(fig, animate, init_func=init,
+                                    frames=len(self.files[phase]),
+                                    interval=3000, blit=True, repeat=True)
+        Writer = animation.writers['ffmpeg']
+        writer = Writer(fps=5, metadata=dict(artist='Me'), bitrate=1800)
+        ani.save('/data/jdesgagne/dataset_animation.mp4', writer=writer)
+        plt.show()
+
 
 
 class Case1Dsmall(Case):

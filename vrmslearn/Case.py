@@ -51,9 +51,9 @@ class Case:
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
         self.datatest = os.path.join(self.basepath, self.name, "test")
 
-        # self.trainsize = trainsize
-        # self.validatesize = validatesize
-        # self.testsize = testsize
+        self.trainsize = trainsize
+        self.validatesize = validatesize
+        self.testsize = testsize
 
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
@@ -144,7 +144,7 @@ class Case:
 
             filename = random.choice(files)
 
-        if self.model.Dispersion:
+        if self.model.Dispersion == True:
             data, labels, weights = self.sample.read_dispersion(filename)
         else:
             data, labels, weights = self.sample.read(filename)

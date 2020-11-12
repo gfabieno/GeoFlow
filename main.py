@@ -137,7 +137,7 @@ if __name__ == "__main__":
     batch_size = args.batchsize
 
     # Define the parameters.
-    case = eval(args.case)(trainsize=4, validatesize=0, testsize=0)
+    case = eval(args.case)(trainsize=60, validatesize=20, testsize=20)
 
     # Generate the dataset.
     if args.training in [0, 2]:

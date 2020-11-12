@@ -223,7 +223,18 @@ class LabelGenerator:
         return labels, preds
 
 class MaswLabelGenerator(LabelGenerator):
-    ...
+
+    def generate_labels(self, props):
+
+        vs = props["vs"]
+        vs_1D = np.mean(vs, axis = 1)
+        weight = np.ones(vs_1D.shape)
+
+        return [vs_1D], [weight]
+
+    def preprocess(self, data, labels, weights):
+        return data, labels, weights
+
 
 
 

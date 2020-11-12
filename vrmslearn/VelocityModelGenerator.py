@@ -353,23 +353,23 @@ class MaswModelGenerator(BaseModelGenerator):
 
         deform = Deformation(max_deform_freq=0.02,
                              min_deform_freq=0.0001,
-                             amp_max=8,
-                             max_deform_nfreq=40,
+                             amp_max=5, #8
+                             max_deform_nfreq=10, #40
                              prob_deform_change=0.1)
 
         unsat_seq = Sequence(name="unsaturated",
                              lithologies=[unsaturated_sand],
-                             thick_max=25)
+                             thick_max=25, deform = deform)
         sat_seq = Sequence(name="saturated",
                            lithologies=[saturated_clay,
                                         saturated_sand],
-                           thick_max=100)
+                           thick_max=100, deform = deform)
         weathered_seq = Sequence(name="weathered",
                                  lithologies=[weathered_shale],
-                                 thick_max=50)
+                                 thick_max=50, deform = deform)
         roc_seq = Sequence(name="roc",
                            lithologies=[shale],
-                           thick_max=99999)
+                           thick_max=99999, deform = deform)
 
         strati = Stratigraphy(sequences=[unsat_seq,
                                          sat_seq,
