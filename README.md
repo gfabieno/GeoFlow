@@ -22,19 +22,31 @@ defined.
 *  A `Case` is implemented with the [Case](vrmslearn/Case.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*   The `Case` class contains the method `set_case`. A new case can be defined 
+*   The `Case` class contains the method `set_case`. A new case can be defined
 by defining a child class from the `Case` base class and overriding `set_case`.
 This method needs to return three objects based on three classes
     *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon
-    request. Different model generator can be defined from this case (see 
+    request. Different model generator can be defined from this case (see
     [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
-    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters 
-    for the creation of the seismic data by SeisCL. In particular, override the 
+    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters
+    for the creation of the seismic data by SeisCL. In particular, override the
     method `set_rec_src` to define a different acquisition setup.
     * [LabelGenerator](vrmslearn/LabelGenerator.py) is a class that generate the
-    labels from the model and acquires objects. 
+    labels from the model and acquires objects.
 
+
+#### Style guide
+
+Code style should follow PEP 8. Hanging indents should be at the same level as
+the opening parenthesis, bracket or brace, as in:
+```
+parser.add_argument("--case",
+                    type=str,
+                    default="Case1Dsmall",
+                    help="Name of the case from `Cases_define` to use")
+```
+Identifiers must be descriptive and short enough to maintain ease-of-use.
 
 ## Installation
 
