@@ -72,9 +72,10 @@ class DatasetMASW(Dataset):
 
         return model, acquire, inputs, outputs
 
-class Case_Permafrost(Dataset):
 
-    name = "Case_Permafrost"
+class DatasetPermafrost(Dataset):
+
+    name = "DatasetPermafrost"
 
     def __init__(self, noise=0):
 
@@ -142,6 +143,7 @@ class Case_Permafrost(Dataset):
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
 
         return model, acquire, inputs, outputs
+
 
 class Dataset1Dsmall(Dataset):
 
