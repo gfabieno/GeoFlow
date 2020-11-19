@@ -10,7 +10,6 @@ import h5py as h5
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
-from multiprocessing import Process, Queue
 
 
 # TODO change seismic to forward with input a dict, making it agnotistic
