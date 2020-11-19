@@ -1,5 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Create an archive of the project in a subdirectory."""
+"""
+Create an archive of the project in a subdirectory.
+
+Duplicate the current working directory into a subdirectory at `<PROJECT_NAME>/
+<current branch name>/<current commit hash and name>/<current revision>`,
+create a directory for models and set the current working directory as the
+duplicated repository. Uncommitted changes are preserved.
+"""
 
 import sys
 from os import makedirs, listdir, remove, symlink, walk, chdir, getcwd
@@ -19,6 +26,10 @@ class ArchiveRepository:
     `LOGS_ROOT_DIRECTORY` and a `model` directory is also created at the same
     path. The current working directory is set as the one containing the copied
     code. Upon exiting, the previous working directory is recovered.
+
+    Sample usage:
+        with ArchiveRepository() as archive:
+            ...
     """
 
     def __init__(self):

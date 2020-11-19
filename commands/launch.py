@@ -1,5 +1,17 @@
 # -*- coding: utf-8 -*-
-"""Launch custom training."""
+"""
+Launch hyperoptimization and chain training stages.
+
+This module allows chaining multiple calls to a `main` script such as
+`..main.main` through `chain` and lauching `chain` with different combinations
+of hyperparameters through `optimize`. To use different combinations of
+architecture hyperparameters (`vrmslearn.RCNN2D.Hyperparameters`) in launching
+a main script, the combinations must be placed in a list beforehand through
+`generate_variations`. `optimize` processes all combinations of items from
+arguments that are lists. This module leverages `commands.archive` to make sure
+modifications in the repository during training do not impact an ongoing
+training. `optimize` automatically fetches the archived main script.
+"""
 
 import sys
 from copy import deepcopy
@@ -17,11 +29,37 @@ from Cases_define import *
 def chain(main, **args):
     """Call `main` a succession of times as implied by `args`.
 
-    :param main: a callable that oversees training and testing (i.e.
+    :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
     :param args: Key-value pairs of argument names and values. `chain` will
                  fetch a different value at each iteration from values that are
                  tuples.
+
+    Sample usage:
+        from main import main
+        chain(main,
+              logdir="logs",
+              params=Hyperparameters(),
+              case=Case1Dsmall(),
+              epochs=(100, 100, 50),
+              steps=20,
+              lr=.0008,
+              beta_1=.9,
+              beta_2=.98,
+              eps=1e-5,
+              batchsize=4,
+              loss_ref=(.5, .0, .0),
+              loss_vrms=(.5, .7, .0),
+              loss_vint=(.0, .3, 1.),
+              loss_vdepth=(.0, .0, .0),
+              nmodel=1,
+              ngpu=2,
+              noise=0,
+              plot=0,
+              no_weights=False,
+              restore_from=None)
+    Output:
+        A 3-step training with different quantities of epochs and losses.
     """
     if "training" in args.keys():
         raise ValueError("Using `chain` implies training.")
@@ -59,6 +97,29 @@ def optimize(**args):
 
     :param args: Key-value pairs of argument names and values. Values
                  that are lists will be iterated upon.
+
+    Sample usage:
+        optimize(params=Hyperparameters(),
+                 case=Case1Dsmall(),
+                 epochs=(100, 100, 50),
+                 steps=20,
+                 lr=[.0008, .0002],
+                 beta_1=.9,
+                 beta_2=.98,
+                 eps=1e-5,
+                 batchsize=4,
+                 loss_ref=(.5, .0, .0),
+                 loss_vrms=(.5, .7, .0),
+                 loss_vint=(.0, .3, 1.),
+                 loss_vdepth=(.0, .0, .0),
+                 nmodel=1,
+                 ngpu=2,
+                 noise=0,
+                 plot=0,
+                 no_weights=False,
+                 restore_from=None)
+    Output:
+        Two calls to `chain` with different learning rates.
     """
     if "logdir" in args.keys():
         raise ValueError("`optimize` manages checkpoint directories by "
@@ -92,6 +153,14 @@ def generate_variations(base_params, **variations):
     :param variations: Values with which to overwrite the attributes of
                        `base_params` with. The keys are attribute names and the
                        values will be iterated upon using a cartesian product.
+
+    Sample usage:
+        hyperparams = Hyperparameters()
+        generate_variations(hyperparams, rcnn_kernel=[[15, 3, 1],
+                                                      [15, 3, 3]])
+    Output:
+        A list of two `Hyperparameters` objects with different `rcnn_kernel`
+        attributes.
     """
     hyperparams = []
     keys = variations.keys()
@@ -111,6 +180,14 @@ def drop_useless(hyperparams):
     length 1.
 
     :param hyperparams: A list of `Hyperparameters` objects.
+
+    Sample usage:
+        hyperparams = Hyperparameters()
+        hyperparams.rcnn_kernel = [15, 3, 1]
+        hyperparams.dilation = [1, 1, 2]
+        drop_useless([hyperparams])
+    Output:
+        An empty list.
     """
     to_keep = np.ones(len(hyperparams), dtype=bool)
     for i, p in enumerate(hyperparams):
