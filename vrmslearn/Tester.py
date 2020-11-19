@@ -42,8 +42,7 @@ class Tester(object):
         self.out_names = self.nn.out_names
 
     def test_dataset(self,
-                     savepath: str,
-                     restore_from: str = None):
+                     savepath: str):
         """
         This method evaluate predictions on all examples contained in savepath,
         and save the predictions in hdf5 files.
@@ -52,11 +51,6 @@ class Tester(object):
         savepath (str) : The path in which the test examples are found
         restore_from (str): File containing the trained weights
         """
-        if restore_from is not None:
-            strategy = tf.distribute.MirroredStrategy()
-            with strategy.scope():
-                self.nn.load_weights(restore_from)
-
         self.sequence.reset_test_generator()
 
         for data, filenames in self.sequence:
@@ -198,7 +192,7 @@ class Tester(object):
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
         if image:
-            fig, axs = plt.subplots(2, 1 + len(labelnames), squeeze=False)
+            fig, axs = plt.subplots(3, 1 + len(labelnames), squeeze=False)
         else:
             fig, axs = plt.subplots(1, 1 + len(labelnames), squeeze=False)
 
@@ -213,6 +207,19 @@ class Tester(object):
                                cmap=plt.get_cmap('Greys'))
         axs[0, 0].set_title('data')
         ims = [im1]
+        if image:
+            src_pos, _ = self.case.acquire.set_rec_src()
+            qty_shots = src_pos.shape[1]
+            data = datas[0]
+            data = data.reshape([data.shape[0], -1, qty_shots])
+            im2 = axs[1, 0].imshow(data[..., qty_shots//2],
+                                   animated=True,
+                                   vmin=vmin,
+                                   vmax=vmax,
+                                   aspect='auto',
+                                   cmap=plt.get_cmap('Greys'))
+            axs[1, 0].set_title('center shot')
+            ims.append(im2)
 
         labeld = {la: labels[la][0] for la in labelnames}
         predd = {la: preds[la][0] for la in labelnames}
@@ -224,53 +231,42 @@ class Tester(object):
             else:
                 vmin = self.case.model.vp_min
                 vmax = self.case.model.vp_max
+            y = np.arange(pred[labelname].shape[0])
             if image:
-                im1 = axs[0, 1 + ii].imshow(pred[labelname],
+                im1 = axs[0, 1 + ii].imshow(label[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno',
                                             aspect='auto')
-                im2 = axs[1, 1 + ii].imshow(label[labelname],
+                im2 = axs[1, 1 + ii].imshow(pred[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
+                center_label = label[labelname][:, qty_shots//2]
+                center_pred = pred[labelname][:, qty_shots//2]
+                im3, = axs[2, 1 + ii].plot(center_label, y)
+                im4, = axs[2, 1 + ii].plot(center_pred, y)
+                axs[2, 1 + ii].set_ylim(np.min(y), np.max(y))
+                axs[2, 1 + ii].set_xlim(vmin, vmax)
+                axs[2, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+                ims.append(im3)
+                ims.append(im4)
             else:
-                y = np.arange(pred[labelname].shape[0])
-
                 im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
                 im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
-                axs[0, 1 + ii].set_xlim(-vmin, vmax)
+                axs[0, 1 + ii].set_xlim(vmin, vmax)
                 axs[0, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+        axs[2, 0].axis('off')
         plt.tight_layout()
-
-        def init():
-            for ii, im in enumerate(ims):
-                labeld = {la: labels[la][0] for la in labelnames}
-                predd = {la: preds[la][0] for la in labelnames}
-                label, pred = self.case.label.postprocess(labeld, predd)
-                if ii == 0:
-                    toplot = datas[0]
-                    im.set_array(toplot)
-                else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
-                    else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
-                    if image:
-                        im.set_array(toplot)
-                    else:
-                        y = np.arange(toplot.shape[0])
-                        im.set_data(toplot, y)
-            return ims
 
         def animate(t):
             labeld = {la: labels[la][t] for la in labelnames}
@@ -281,17 +277,35 @@ class Tester(object):
                 if ii == 0:
                     toplot = datas[t]
                     im.set_array(toplot)
+                elif ii == 1 and image:
+                    toplot = datas[t]
+                    toplot = toplot.reshape([toplot.shape[0], -1, qty_shots])
+                    im.set_array(toplot[..., qty_shots//2])
                 else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
-                    else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
+                    # Ignore the first column.
                     if image:
+                        label_idx = (ii-2) // 4
+                        item = (ii-2) % 4
+                    else:
+                        label_idx = (ii-1) // 2
+                        item = (ii-1) % 2
+                    if item == 0:
+                        toplot = label[labelnames[label_idx]]
+                    elif item == 1:
+                        toplot = pred[labelnames[label_idx]]
+                    elif item == 2:
+                        toplot = label[labelnames[label_idx]][:, qty_shots//2]
+                    elif item == 3:
+                        toplot = pred[labelnames[label_idx]][:, qty_shots//2]
+                    if image and item not in [2, 3]:
                         im.set_array(toplot)
                     else:
                         y = np.arange(toplot.shape[0])
                         im.set_data(toplot, y)
             return ims
+
+        def init():
+            return animate(0)
 
         _ = animation.FuncAnimation(fig,
                                     animate,

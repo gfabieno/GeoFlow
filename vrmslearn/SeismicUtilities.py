@@ -257,7 +257,7 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
 
 def generate_reflections_ttime(vp, source_depth, dh, nt, dt, peak_freq,
                                tdelay, minoffset, identify_direct, tol=0.015,
-                               window_width=0.45):
+                               window_width=0.2):
     """
     Generate an array with 1 at time of primary reflections for the minimum
     offset trace of a gather. Valid for a flat layered model.

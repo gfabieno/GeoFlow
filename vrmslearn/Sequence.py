@@ -91,6 +91,7 @@ class Sequence(Sequence):
                 weight_idx = self.case.example_order.index(WEIGHT_MAPPING[lbl])
                 labels[j][i] = [data[label_idx][:n_t], data[weight_idx][:n_t]]
 
+        inputs = self.scale_inputs()
         if self.is_training:
             return inputs, labels
         else:
@@ -100,3 +101,18 @@ class Sequence(Sequence):
         self.test_filenames_generator = (
             f for f in self.case.files[self.phase]
         )  # This is a generator. Extract the next value with `next`.
+
+    def scale_inputs(self, inputs):
+        """
+        Scale each trace to its RMS value, and each shot to its RMS.
+
+        @params:
+
+        @returns:
+        scaled (tf.tensor)  : The scaled input data
+        """
+        trace_rms = np.sqrt(np.sum(inputs**2, axis=1, keepdims=True))
+        scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
+        shot_max = np.max(scaled, axis=[1, 2], keepdims=True)
+        scaled = scaled / shot_max
+        return scaled
