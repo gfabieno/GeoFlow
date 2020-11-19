@@ -1,18 +1,15 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    Class to generate seismic models
+Generate seismic models
 """
 
 import argparse
-from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy, Deformation,
-                            Property, Lithology)
+from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy,
+                            Deformation, Property, Lithology)
 
 
 class BaseModelGenerator(ModelGenerator):
-
     def __init__(self):
-
         super().__init__()
         # Number of grid cells in X direction.
         self.NX = 256
@@ -63,26 +60,23 @@ class BaseModelGenerator(ModelGenerator):
 
     def generate_model(self, seed=None):
         """
-        Output the media parameters required for seismic modelling, in this
-        case vp, vs and rho.
+        Output the media parameters required for seismic modelling
 
-        @params:
+        In this case, the parameters are v_p, v_s and rho.
 
-        @returns:
-        vp (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vp.
-        vs (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vs.
-        rho (numpy.ndarray) : numpy array (self.pars.NZ, self.pars.NX) for rho
-                              values.
+        :return:
+            vp: Array of shape `[self.pars.NZ, self.pars.NX]`.
+            vs: Array of shape `[self.pars.NZ, self.pars.NX]`.
+            rho: Array of shape `[self.pars.NZ, self.pars.NX]`.
         """
         if self.strati is None:
             self.strati = self.build_stratigraphy()
         props2D, layerids, layers = super().generate_model(self.strati,
-                                                                 seed=seed)
+                                                           seed=seed)
 
         return props2D, layerids, layers
 
     def build_stratigraphy(self):
-
         vp = Property(name="vp", vmin=self.vp_min, vmax=self.vp_max,
                       texture=self.max_texture, trend_min=self.vp_trend_min,
                       trend_max=self.vp_trend_max)
@@ -101,9 +95,7 @@ class BaseModelGenerator(ModelGenerator):
 
 
 class MarineModelGenerator(BaseModelGenerator):
-
     def __init__(self):
-
         super().__init__()
         # Minimum velocity of water.
         self.water_vmin = 1470
@@ -115,7 +107,6 @@ class MarineModelGenerator(BaseModelGenerator):
         self.water_dmax = 5000
 
     def build_stratigraphy(self):
-
         vp = Property(name="vp", vmin=self.water_vmin, vmax=self.water_vmax,
                       dzmax=0)
         vs = Property(name="vs", vmin=0, vmax=0)
@@ -141,14 +132,12 @@ class MarineModelGenerator(BaseModelGenerator):
 
         return strati
 
+
 class MaswModelGenerator(BaseModelGenerator):
-
     def __init__(self):
-
         super().__init__()
 
     def build_stratigraphy(self):
-
         name = "unsaturated_sand"
         vp = Property("vp", vmin=300, vmax=500, texture=100)
         vpvs = Property("vpvs", vmin=1.8, vmax=2.5, texture=0.2)
@@ -212,11 +201,11 @@ class MaswModelGenerator(BaseModelGenerator):
         return strati
 
     def generate_model(self, seed=None):
-
         props2D, layerids, layers = super().generate_model(seed=seed)
         props2D["vs"] = props2D["vp"] / props2D["vpvs"]
 
         return props2D, layerids, layers
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
