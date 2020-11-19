@@ -32,11 +32,11 @@ class Dataset:
 
     def __init__(self):
         """
-        Initiate a Dataset by setting the training, validation and test sets size.
+        Initiate a Dataset.
         """
-        self.trainsize = 5 #10000
+        self.trainsize = 10000
         self.validatesize = 0
-        self.testsize = 0 # 100
+        self.testsize = 100
         self.model, self.acquire, self.inputs, self.outputs = self.set_dataset()
         self.generator = DatasetGenerator(model=self.model,
                                           acquire=self.acquire,
@@ -66,9 +66,9 @@ class Dataset:
             outputs: A dict of objects derived from GraphOutput that defines
                      the output of the graph {GraphOutput.name: GraphOutput()}
         """
-        self.trainsize = 5 #10000
+        self.trainsize = 10000
         self.validatesize = 0
-        self.testsize = 0 # 100
+        self.testsize = 100
 
         model = BaseModelGenerator()
         model.texture_xrange = 3
