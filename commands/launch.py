@@ -2,7 +2,6 @@
 """Launch custom training."""
 
 import sys
-from os.path import realpath
 from copy import deepcopy
 from argparse import Namespace
 from itertools import product
@@ -137,41 +136,9 @@ def drop_useless(hyperparams):
 
 
 if __name__ == "__main__":
-    hyperparams = Hyperparameters()
-    hyperparams.freeze_to = (None, "ref", "vrms")
-    all_hparams = [hyperparams]
-    hyperparams = Hyperparameters()
-    hyperparams.freeze_to = (None, "ref", "vrms")
-    hyperparams.encoder_kernels = [[15, 1, 3],
-                                   [1, 9, 3],
-                                   [15, 1, 3],
-                                   [1, 9, 3]]
-    all_hparams.extend(generate_variations(hyperparams,
-                                           encoder_dilations=[[[1, 1, 1],
-                                                               [1, 1, 1],
-                                                               [1, 1, 1],
-                                                               [1, 1, 1]],
-                                                              [[1, 1, 2],
-                                                               [1, 1, 2],
-                                                               [1, 1, 2],
-                                                               [1, 1, 2]]],
-                                           rcnn_kernel=[[15, 3, 1],
-                                                        [15, 3, 3]],
-                                           rcnn_dilation=[[1, 1, 1],
-                                                          [1, 1, 2]]))
-
-    hyperparams.use_cnn = True
-    hyperparams.cnn_kernel = [1, 5]
-    hyperparams.cnn_filters = 32
-    hyperparams.cnn_dilation = [1, 2]
-    all_hparams.append(deepcopy(hyperparams))
-    all_hparams = drop_useless(all_hparams)
-
-    checkpoint_1d = "logs/optimize-2D-kernels/a775455/2/model/0140.ckpt"
-    checkpoint_1d = realpath(checkpoint_1d)
-    optimize(params=all_hparams,
-             case=Case2Dtest_complexity(),
-             epochs=(80, 80, 50),
+    optimize(params=Hyperparameters(),
+             case=Case1Dsmall(),
+             epochs=(100, 100, 50),
              steps=20,
              lr=.0002,
              beta_1=.9,
@@ -187,4 +154,4 @@ if __name__ == "__main__":
              noise=0,
              plot=0,
              no_weights=False,
-             restore_from=(checkpoint_1d, None, None))
+             restore_from=None)
