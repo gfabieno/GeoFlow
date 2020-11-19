@@ -11,10 +11,10 @@ import random
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-from vrmslearn.DatasetGenerator import SampleGenerator
+from vrmslearn.DatasetGenerator import DatasetGenerator
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.LabelGenerator import LabelGenerator
+from vrmslearn.IOGenerator import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
 class Case:
@@ -32,17 +32,15 @@ class Case:
     def __init__(self):
         """
         Initiate a Case by setting the training, validation and test sets size.
-
-        @returns:
         """
-        self.trainsize = 10000
+        self.trainsize = 5 #10000
         self.validatesize = 0
-        self.testsize = 100
-        self.model, self.acquire, self.label = self.set_case()
-        self.sample = SampleGenerator(model=self.model, acquire=self.acquire,
-                                      label=self.label)
-        self.example_order = ['input', *self.label.label_names,
-                              *self.label.weight_names]
+        self.testsize = 0 # 100
+        self.model, self.acquire, self.inputs, self.outputs = self.set_case()
+        self.generator = DatasetGenerator(model=self.model,
+                                          acquire=self.acquire,
+                                          inputs=self.inputs,
+                                          outputs=self.outputs)
 
         # Paths of the test, train and validation dataset.
         self.datatrain = os.path.join(self.basepath, self.name, "train")
@@ -51,7 +49,7 @@ class Case:
 
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
-        self._getfilelist()
+        self.shuffled = None
 
     def set_case(self):
         """
@@ -61,11 +59,14 @@ class Case:
         :return:
             model: A BaseModelGenerator object that generates models
             acquire: An Acquisition objects that set data creation
-            label: A LabelGenerator object that performs label generation
+            inputs: A dict of objects derived from GraphInput that defines the
+                    input of the graph {GraphInput.name: GraphInput()}
+            outputs: A dict of objects derived from GraphOutput that defines
+                     the output of the graph {GraphOutput.name: GraphOutput()}
         """
-        self.trainsize = 10000
+        self.trainsize = 5 #10000
         self.validatesize = 0
-        self.testsize = 100
+        self.testsize = 0 # 100
 
         model = BaseModelGenerator()
         model.texture_xrange = 3
@@ -74,101 +75,118 @@ class Case:
         acquire = Acquisition(model=model)
         acquire.source_depth = (acquire.Npad + 2) * model.dh
         acquire.receiver_depth = (acquire.Npad + 2) * model.dh
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
+                   Vrms.name: Vrms(model=model, acquire=acquire),
+                   Vint.name: Vint(model=model, acquire=acquire),
+                   Vdepth.name: Vdepth(model=model, acquire=acquire)}
 
-        label = LabelGenerator(model=model, acquire=acquire)
+        return model, acquire, inputs, outputs
 
-        return model, acquire, label
-
-    def _getfilelist(self):
+    def _getfilelist(self, phase=None):
         """
         Search for examples found in the dataset paths
         """
-        try:
-            files = fnmatch.filter(os.listdir(self.datatrain), 'example_*')
-            self.files["train"] = [os.path.join(self.datatrain, f)
-                                   for f in files]
-        except FileNotFoundError:
-            pass
-        try:
-            files = fnmatch.filter(os.listdir(self.datavalidate), 'example_*')
-            self.files["validate"] = [os.path.join(self.datavalidate, f)
-                                      for f in files]
-        except FileNotFoundError:
-            pass
-        try:
-            files = fnmatch.filter(os.listdir(self.datatest), 'example_*')
-            self.files["test"] = [os.path.join(self.datatest, f)
-                                  for f in files]
-        except FileNotFoundError:
-            pass
+        phases = {"train": self.datatrain,
+                  "validate": self.datavalidate,
+                  "test": self.datatest}
+        if phase is not None:
+            phases = {phase: phases[phase]}
+
+        for el in phases:
+            try:
+                files = fnmatch.filter(os.listdir(phases[el]), 'example_*')
+                self.files[el] = [os.path.join(phases[el], f) for f in files]
+            except FileNotFoundError:
+                pass
 
     def generate_dataset(self, ngpu=1):
         """
         Generate the training, testing and validation datasets with ngpus.
         """
         seed0 = self.seed0
-        self.sample.generate_dataset(self.datatrain, self.trainsize, ngpu=ngpu,
-                                     seed0=seed0)
+        self.generator.generate_dataset(self.datatrain, self.trainsize,
+                                        ngpu=ngpu, seed0=seed0)
 
         seed0 += self.trainsize
-        self.sample.generate_dataset(self.datavalidate, self.validatesize,
-                                     ngpu=ngpu, seed0=seed0)
+        self.generator.generate_dataset(self.datavalidate, self.validatesize,
+                                        ngpu=ngpu, seed0=seed0)
 
         seed0 += self.validatesize
-        self.sample.generate_dataset(self.datatest, self.testsize, ngpu=ngpu,
-                                     seed0=seed0)
+        self.generator.generate_dataset(self.datatest, self.testsize,
+                                        ngpu=ngpu, seed0=seed0)
 
-    def get_example(self, filename=None, phase="train"):
+    def get_example(self, filename=None, phase="train", shuffle=True,
+                    toinputs=None, tooutputs=None):
         """
-        Provide an example.
+        Read an example from a file and apply the preprocessing.
 
         @params:
         filename (str): If provided, get the example in filename. If None, get
-                        a random example.
+                        an example for a file list provided by phase.
         phase (str): Either "train", "test" or "validate". Get an example from
                      the "phase" dataset.
+        shuffle (bool): If True, draws randomly an example, else give examples
+                        in order.
+        toinputs (list):  List of the name(s) of the input to the network
+        tooutputs (list): List of the name(s) of the output of the network
 
         @returns:
-        (list): A list: First element is the data, the rest are labels.
+            inputspre (dict) The preprocessed input data {name1: input1}
+            labelspre (dict) The preprocessed labels {name1: label1}
+            weightspre (dict) The preprocessed weights {name1: weight1}
 
         """
+        if toinputs is None:
+            toinputs = [el for el in self.inputs]
+        if tooutputs is None:
+            tooutputs = [el for el in self.outputs]
+
         if filename is None:
-            files = self.files[phase]
-            if not files:
-                self._getfilelist()
-                files = self.files[phase]
-            if not files:
-                raise FileNotFoundError
+            if not self.files[phase] or self.shuffled != shuffle:
+                self._getfilelist(phase=phase)
+                if not self.files[phase]:
+                    raise FileNotFoundError
+                if shuffle:
+                    np.random.shuffle(self.files[phase])
+                self.shuffled = shuffle
+            filename = self.files[phase].pop()
 
-            filename = random.choice(files)
+        inputs, labels, weights = self.generator.read(filename)
+        inputspre = {key: self.inputs[key].preprocess(inputs[key], labels)
+                     for key in toinputs}
+        labelspre = {}
+        weightspre = {}
+        for key in tooutputs:
+            label, weight = self.outputs[key].preprocess(labels[key],
+                                                         weights[key])
+            labelspre[key] = label
+            weightspre[key] = weight
 
-        data, labels, weights = self.sample.read(filename)
+        return inputspre, labelspre, weightspre, filename
 
-        data, labels, weights = self.label.preprocess(data, labels, weights)
+    def get_batch(self):
 
-        return [data] + labels + weights
+        filenames = []
+        for i in range(self.batch_size):
+            (data,
+             labels,
+             weights,
+             fname) = self.case.get_example(phase=self.phase)
+            filenames.append(fname)
 
-    def get_dimensions(self):
-        """
-        Output the dimension of the data and the labels (first label)
-        """
-        example = self.get_example()
-        return [e.shape for e in example]
+            inputs[i] = data[self.in_names]
+            for j, lbl in enumerate(self.out_names):
+                # TODO remove n_t
+                labels[j][i] = [labels[lbl][:n_t], weights[lbl][:n_t]]
 
-    def ex2batch(self, examples):
-        """
-        Pack a list of examples into a dict with the entry name.
-        Transforms examples = [ex0, ex1, ex2, ...]
-                  -> batch = {names[0]: [ex0[0], ex1[0], ex2[0]],
-                              names[1]: [ex0[1], ex1[1], ex2[1]], ...}
-        """
-        batch = {
-            name: np.stack([el[ii] for el in examples])
-            for ii, name in enumerate(self.example_order)
-        }
-        return batch
+        if self.is_training:
+            return inputs, labels
+        else:
+            return inputs, filenames
 
-    def plot_example(self, filename=None):
+    def plot_example(self, filename=None, toinputs=None, tooutputs=None,
+                     ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -176,55 +194,39 @@ class Case:
         filename (str): If provided, get the example in filename. If None, get
                         a random example.
         """
-        examples = self.get_example(filename=filename)
-        data = examples[0]
-        labels = examples[1:]
 
-        fig, ax = plt.subplots(1, 1, figsize=[16, 8])
+        inputs, labels, weights, _ = self.get_example(filename=filename,
+                                                      toinputs=toinputs,
+                                                      tooutputs=tooutputs)
 
-        clip = 0.05
-        vmax = np.max(data) * clip
-        vmin = -vmax
-        data = np.reshape(data, [data.shape[0], -1])
-        ax.imshow(data,
-                  interpolation='bilinear',
-                  cmap=plt.get_cmap('Greys'),
-                  vmin=vmin, vmax=vmax,
-                  aspect='auto')
+        nplot = np.max([len(inputs), len(labels)])
+        if ims is None:
+            fig, axs = plt.subplots(3, nplot, figsize=[16, 8], squeeze=False)
+            ims = [None for _ in range(len(inputs)+len(labels)+len(weights))]
+        else:
+            fig = None
+            axs = np.zeros((3, nplot))
 
-        ax.set_xlabel("Receiver Index", fontsize=12, fontweight='normal')
-        ax.set_ylabel(f"Time Index, "
-                      f"dt = {self.acquire.dt * 1000 * self.acquire.resampling}"
-                      f" ms", fontsize=12, fontweight='normal')
-        ax.set_title("Shot Gather", fontsize=16, fontweight='bold')
+        n = 0
+        for ii, name in enumerate(inputs):
+            ims[n] = self.inputs[name].plot(inputs[name],
+                                            axs[0, ii],
+                                            im=ims[n])
+            n += 1
+        for ii, name in enumerate(labels):
+            ims[n] = self.outputs[name].plot(labels[name],
+                                             axs[1, ii],
+                                             im=ims[n])
+            n += 1
+        for ii, name in enumerate(weights):
+            ims[n] = self.outputs[name].plot(weights[name],
+                                             axs[2, ii],
+                                             im=ims[n])
+            n += 1
 
-        plt.show()
+        return fig, axs, ims
 
-        fig, ax = plt.subplots(1, len(labels), figsize=[12, 8])
-        ims = [[] for _ in range(len(labels))]
-        labels[0] = labels[0] * (self.model.vp_max
-                                 - self.model.vp_min) + self.model.vp_min
-        for ii, label in enumerate(labels):
-            ims[ii] = ax[ii].imshow(label, cmap=plt.get_cmap('hot'),
-                                    aspect='auto')
-            ax[ii].set_xlabel(
-                f"X Cell Index, dh = {self.model.dh} m",
-                fontsize=12,
-                fontweight='normal',
-            )
-            ax[ii].set_ylabel(
-                f"Z Cell Index, dh = {self.model.dh} m",
-                fontsize=12,
-                fontweight='normal',
-            )
-            ax[ii].set_title(f"Label {ii}", fontsize=16, fontweight='bold')
-            _ = ax[ii].get_position().get_points().flatten()
-            # axis_cbar = fig.add_axes([p[0], 0.03, p[2] - p[0], 0.02])
-            plt.colorbar(ims[ii], ax=ax[ii])
-
-        plt.show()
-
-    def animated_dataset(self, phase='train'):
+    def animated_dataset(self, phase='train', toinputs=None, tooutputs=None):
         """
         Produces an animation of a dataset, showing the input data, and the
         different labels for each example.
@@ -233,65 +235,16 @@ class Case:
         phase (str): Which dataset: either train, test or validate
         """
 
-        toplots = self.get_example(phase=phase)
-
-        toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
-        is_2d = not self.acquire.singleshot
-        if is_2d:
-            src_pos, _ = self.acquire.set_rec_src()
-            qty_shots = src_pos.shape[1]
-            shot_gather = toplots[0]
-            shot_gather = shot_gather.reshape([shot_gather.shape[0], -1,
-                                               qty_shots])
-            shot_gather = shot_gather[..., qty_shots//2]
-            toplots.insert(1, shot_gather)
-        clip = 0.01
-        vmax = np.max(toplots[0]) * clip
-        vmin = -vmax
-
-        fig, axs = plt.subplots(1, len(toplots), figsize=[16, 8])
-        axs_iter, toplots_iter = iter(axs), iter(toplots)
-        ims = []
-        ax, toplot = next(axs_iter), next(toplots_iter)
-        im = ax.imshow(toplot, animated=True, vmin=vmin, vmax=vmax,
-                       aspect='auto', cmap='Greys')
-        ims.append(im)
-        if is_2d:
-            ax, toplot = next(axs_iter), next(toplots_iter)
-            im = ax.imshow(toplot, animated=True, vmin=vmin, vmax=vmax,
-                           aspect='auto', cmap='Greys')
-            ims.append(im)
-        for ax, toplot in zip(axs_iter, toplots_iter):
-            im = ax.imshow(toplot, animated=True, vmin=0, vmax=1,
-                           aspect='auto', cmap='inferno')
-            ims.append(im)
-
-        titles = iter(self.example_order)
-        for ii, ax in enumerate(axs):
-            if not (ii == 1 and is_2d):
-                ax.set_title(next(titles))
-            else:
-                ax.set_title("center shot")
-            plt.colorbar(im, ax=ax, orientation="horizontal", pad=0.05,
-                         fraction=0.2)
+        fig, axs, ims = self.plot_example(toinputs=toinputs,
+                                          tooutputs=tooutputs)
         plt.tight_layout()
 
         def init():
-            for im, toplot in zip(ims, toplots):
-                im.set_array(toplot)
+            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
             return ims
 
         def animate(t):
-            toplots = self.get_example(phase=phase)
-            toplots = [np.reshape(el, [el.shape[0], -1]) for el in toplots]
-            if is_2d:
-                shot_gather = toplots[0]
-                shot_gather = shot_gather.reshape([shot_gather.shape[0], -1,
-                                                   qty_shots])
-                shot_gather = shot_gather[..., qty_shots//2]
-                toplots.insert(1, shot_gather)
-            for im, toplot in zip(ims, toplots):
-                im.set_array(toplot)
+            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,
@@ -301,25 +254,3 @@ class Case:
         gc.collect()
 
 
-class CaseCollection:
-    """
-    A class to build a case from multiples cases
-    TODO Test this Cases collection
-    """
-
-    def __init__(self, cases):
-
-        self.cases = cases
-        self.files = {"train": [], "validate": [], "test": []}
-        for case in cases:
-            self.files["train"].append(case.files["train"])
-            self.files["validate"].append(case.files["validate"])
-            self.files["test"].append(case.files["test"])
-
-    def generate_dataset(self, ngpu=1):
-        for case in self.cases:
-            case.generate_dataset(ngpu=ngpu)
-
-    def get_example(self, phase="train"):
-        case = random.choice(self.cases)
-        return case.get_example(phase=phase)

@@ -20,22 +20,26 @@ class Sequence(Sequence):
                 is_training,
                 case,
                 batch_size,
-                input_size,
-                depth_size,
                 out_names,
+                in_names
             ):
         self.is_training = is_training
         self.phase = PHASE_DICT[self.is_training]
         self.case = case
 
+        data, labels, weights, _ = case.get_example()
         self.batch_size = batch_size
-        self.input_size = input_size
-        self.depth_size = depth_size
+        self.input_size = data[in_names]
+        if 'vdepth' in labels:
+            self.depth_size = labels['vdepth'].shape[0]
+        else:
+            self.depth_size = -1
 
         for lbl in out_names:
-            if lbl not in OUTS:
-                raise ValueError(f"`out_names` should be from {OUTS}")
+            if lbl not in labels:
+                raise ValueError(f"`out_names` should be from {labels.keys()}")
         self.out_names = [name for name in OUTS if name in out_names]
+        self.in_names = in_names
 
         if not self.is_training:
             self.reset_test_generator()
@@ -51,6 +55,7 @@ class Sequence(Sequence):
         inputs = np.empty([self.batch_size, *self.input_size])
         labels = []
 
+        #TODO Too specific
         n_t = self.input_size[0]
         n_cmp = self.input_size[2]
         n_z = min([n_t, self.depth_size])
@@ -73,11 +78,11 @@ class Sequence(Sequence):
             filenames = []
         for i in range(self.batch_size):
             if self.is_training:
-                data = self.case.get_example(phase=self.phase)
+                data, labels, weights, _ = self.case.get_example(phase=self.phase)
             else:
                 try:
                     filename = next(self.test_filenames_generator)
-                    data = self.case.get_example(
+                    data, labels, weights, _ = self.case.get_example(
                         filename=filename,
                         phase=self.phase,
                     )
@@ -85,11 +90,10 @@ class Sequence(Sequence):
                 except StopIteration:
                     break
 
-            inputs[i] = data[0]
+            inputs[i] = data[self.in_names]
             for j, lbl in enumerate(self.out_names):
-                label_idx = self.case.example_order.index(lbl)
-                weight_idx = self.case.example_order.index(WEIGHT_MAPPING[lbl])
-                labels[j][i] = [data[label_idx][:n_t], data[weight_idx][:n_t]]
+                # TODO remove n_t
+                labels[j][i] = [labels[lbl][:n_t], weights[lbl][:n_t]]
 
         if self.is_training:
             return inputs, labels

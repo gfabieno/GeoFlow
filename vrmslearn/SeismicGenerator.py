@@ -14,6 +14,7 @@ from SeisCL.SeisCL import SeisCL
 from vrmslearn.SeismicUtilities import random_wavelet_generator
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 
+import matplotlib.pyplot as plt
 
 class Acquisition:
     """
@@ -157,20 +158,20 @@ class SeismicGenerator(SeisCL):
         self.workdir = workdir
 
         # Assign constants for modeling with SeisCL.
-        self.csts['N'] = np.array([model.NZ, model.NX])
-        self.csts['ND'] = 2
-        self.csts['dh'] = model.dh  # Grid spacing
-        self.csts['nab'] = acquire.Npad  # Set padding cells
-        self.csts['dt'] = acquire.dt  # Time step size
-        self.csts['NT'] = acquire.NT  # Nb of time steps
-        self.csts['f0'] = acquire.peak_freq  # Source frequency
-        self.csts['seisout'] = acquire.rectype  # Output pressure
-        self.csts['freesurf'] = int(acquire.fs)  # Free surface
+        self.N = np.array([model.NZ, model.NX])
+        self.ND = 2
+        self.dh = model.dh  # Grid spacing
+        self.nab = acquire.Npad  # Set padding cells
+        self.dt = acquire.dt  # Time step size
+        self.NT = acquire.NT  # Nb of time steps
+        self.f0 = acquire.peak_freq  # Source frequency
+        self.seisout = acquire.rectype  # Output pressure
+        self.freesurf = int(acquire.fs)  # Free surface
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
         nouse = nouse[nouse != gpu]
-        self.csts['no_use_GPUs'] = nouse
+        self.no_use_GPUs = nouse
 
         self.src_pos_all, self.rec_pos_all = acquire.set_rec_src()
         self.resampling = acquire.resampling
@@ -181,7 +182,7 @@ class SeismicGenerator(SeisCL):
         """
         This method generates compute the data a seismic properties in props.
 
-        :param props: A Dict containint {name_of_property: array_of_property}
+        :param props: A Dict containing {name_of_property: array_of_property}
 
         :return: An array containing the modeled seismic data
         """
@@ -193,3 +194,4 @@ class SeismicGenerator(SeisCL):
         data = data[0][::self.resampling, :]  # Resample data to reduce space.
 
         return data
+

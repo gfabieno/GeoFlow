@@ -6,11 +6,12 @@ from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               MaswModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
-from vrmslearn.LabelGenerator import LabelGenerator
 import argparse
+from vrmslearn.IOGenerator import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
+                                   ShotGather)
 
 
-class Case_masw(Case):
+class CaseMASW(Case):
 
     name = "Case_masw"
 
@@ -20,10 +21,11 @@ class Case_masw(Case):
             self.name = self.name + "_noise"
         super().__init__()
         if noise == 1:
-            self.label.random_static = True
-            self.label.random_static_max = 1
-            self.label.random_noise = True
-            self.label.random_noise_max = 0.02
+            for name in self.inputs:
+                self.inputs[name].random_static = True
+                self.inputs[name].random_static_max = 1
+                self.inputs[name].random_noise = True
+                self.inputs[name].random_noise_max = 0.02
 
     def set_case(self):
 
@@ -57,11 +59,14 @@ class Case_masw(Case):
         acquire.receiver_depth = 0
         acquire.rectype = 1
 
-        label = LabelGenerator(model=model, acquire=acquire)
-        label.identify_direct = False
-        label.train_on_shots = True
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
+        for name in inputs:
+            inputs[name].train_on_shots = True
+        for name in outputs:
+            outputs[name].train_on_shots = True
 
-        return model, acquire, label
+        return model, acquire, inputs, outputs
 
 
 class Case1Dsmall(Case):
@@ -69,10 +74,13 @@ class Case1Dsmall(Case):
     name = "Case1Dsmall"
 
     def set_case(self):
-        model, acquire, label = super().set_case()
-        label.train_on_shots = True
+        model, acquire, inputs, outputs = super().set_case()
+        for name in inputs:
+            inputs[name].train_on_shots = True
+        for name in outputs:
+            outputs[name].train_on_shots = True
 
-        return model, acquire, label
+        return model, acquire, inputs, outputs
 
 
 class Case1Darticle(Case):
@@ -109,11 +117,17 @@ class Case1Darticle(Case):
         acquire.source_depth = (acquire.Npad + 4) * dh
         acquire.receiver_depth = (acquire.Npad + 4) * dh
 
-        label = LabelGenerator(model=model, acquire=acquire)
-        label.identify_direct = False
-        label.train_on_shots = True
-
-        return model, acquire, label
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
+                   Vrms.name: Vrms(model=model, acquire=acquire),
+                   Vint.name: Vint(model=model, acquire=acquire),
+                   Vdepth.name: Vdepth(model=model, acquire=acquire)}
+        for name in inputs:
+            inputs[name].train_on_shots = True
+        for name in outputs:
+            outputs[name].train_on_shots = True
+            outputs[name].identify_direct = False
+        return model, acquire, inputs, outputs
 
     def __init__(self, noise=0):
 
@@ -121,10 +135,11 @@ class Case1Darticle(Case):
             self.name = self.name + "_noise"
         super().__init__()
         if noise == 1:
-            self.label.random_static = True
-            self.label.random_static_max = 1
-            self.label.random_noise = True
-            self.label.random_noise_max = 0.02
+            for name in self.inputs:
+                self.inputs[name].random_static = True
+                self.inputs[name].random_static_max = 1
+                self.inputs[name].random_noise = True
+                self.inputs[name].random_noise_max = 0.02
 
 
 class Case2Dtest(Case):
@@ -158,10 +173,18 @@ class Case2Dtest(Case):
         acquire.gmax = model.NX - acquire.gmin
         acquire.singleshot = False
 
-        label = LabelGenerator(model=model, acquire=acquire)
-        label.train_on_shots = True
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {Reftime.name: Reftime(model=model, acquire=acquire),
+                   Vrms.name: Vrms(model=model, acquire=acquire),
+                   Vint.name: Vint(model=model, acquire=acquire),
+                   Vdepth.name: Vdepth(model=model, acquire=acquire)}
+        for name in inputs:
+            inputs[name].train_on_shots = True
+        for name in outputs:
+            outputs[name].train_on_shots = True
+            outputs[name].identify_direct = False
 
-        return model, acquire, label
+        return model, acquire, inputs, outputs
 
     def __init__(self, noise=0):
 
@@ -170,10 +193,11 @@ class Case2Dtest(Case):
 
         super().__init__()
         if noise == 1:
-            self.label.random_static = True
-            self.label.random_static_max = 1
-            self.label.random_noise = True
-            self.label.random_noise_max = 0.02
+            for name in self.inputs:
+                self.inputs[name].random_static = True
+                self.inputs[name].random_static_max = 1
+                self.inputs[name].random_noise = True
+                self.inputs[name].random_noise_max = 0.02
 
 
 if __name__ == "__main__":

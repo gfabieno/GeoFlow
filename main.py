@@ -25,7 +25,6 @@ def main(args):
                    'vint': args.loss_vint,
                    'vdepth': args.loss_vdepth}
 
-    sizes = case.get_dimensions()
     if args.restore_from is None:
         restore_from = find_latest_checkpoint(logdir)
     else:
@@ -35,8 +34,7 @@ def main(args):
         current_epoch = int(filename[:4])
     else:
         current_epoch = 0
-    nn = RCNN2D(input_size=sizes[0],
-                batch_size=batch_size,
+    nn = RCNN2D(batch_size=batch_size,
                 params=args.params,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
@@ -47,8 +45,6 @@ def main(args):
         sequence = Sequence(is_training=True,
                             case=case,
                             batch_size=batch_size,
-                            input_size=sizes[0],
-                            depth_size=sizes[-1][0],
                             out_names=loss_scales.keys())
         trainer = Trainer(nn=nn,
                           sequence=sequence,
@@ -68,8 +64,6 @@ def main(args):
         sequence = Sequence(is_training=False,
                             case=case,
                             batch_size=batch_size,
-                            input_size=sizes[0],
-                            depth_size=sizes[-1][0],
                             out_names=loss_scales.keys())
         tester = Tester(nn=nn, sequence=sequence, case=case)
         savepath = os.path.join(case.datatest, "pred")
@@ -78,6 +72,7 @@ def main(args):
         tester.test_dataset(savepath=savepath)
 
         if args.plot:
+            #TODO fix that
             is_2d = sizes[0][2] != 1
             tester.animated_predictions(labelnames=['ref', 'vrms',
                                                     'vint', 'vdepth'],

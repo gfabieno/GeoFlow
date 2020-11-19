@@ -68,7 +68,6 @@ class RCNN2D:
     """
 
     def __init__(self,
-                 input_size: list,
                  batch_size: int = 1,
                  params: Hyperparameters = None,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
@@ -93,7 +92,8 @@ class RCNN2D:
             self.params = Hyperparameters()
         else:
             self.params = params
-        self.input_size = input_size
+        data, labels, weights, _ = case.get_example()
+        self.input_size = data[list(data.keys())[0]].shape
         self.batch_size = batch_size
 
         for l in out_names:

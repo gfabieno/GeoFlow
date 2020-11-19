@@ -32,7 +32,7 @@ This method needs to return three objects based on three classes
     *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters 
     for the creation of the seismic data by SeisCL. In particular, override the 
     method `set_rec_src` to define a different acquisition setup.
-    * [LabelGenerator](vrmslearn/LabelGenerator.py) is a class that generate the
+    * [OutputGenerator](vrmslearn/IOGenerator.py) is a class that generate the
     labels from the model and acquires objects. 
 
 

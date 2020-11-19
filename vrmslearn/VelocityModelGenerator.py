@@ -59,30 +59,38 @@ class BaseModelGenerator(ModelGenerator):
         # Range of the filter in z for texture creation.
         self.texture_zrange = 0
 
-        self.strati = None
+        self.strati, self.properties = self.build_stratigraphy()
+
 
     def generate_model(self, seed=None):
         """
-        Output the media parameters required for seismic modelling, in this
-        case vp, vs and rho.
+        Output the media parameters required for seismic modelling.
 
         @params:
 
         @returns:
-        vp (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vp.
-        vs (numpy.ndarray)  : numpy array (self.pars.NZ, self.pars.NX) for vs.
-        rho (numpy.ndarray) : numpy array (self.pars.NZ, self.pars.NX) for rho
-                              values.
+        props2d (dict)  : a dict of gridded properties {name: np.array}
+        layerids (numpy.ndarray)  : numpy array with the layer id of each cell
+        layers (list) : A list of layer objects
         """
         if self.strati is None:
             self.strati = self.build_stratigraphy()
-        props2D, layerids, layers = super().generate_model(self.strati,
-                                                                 seed=seed)
+        props2d, layerids, layers = super().generate_model(self.strati,
+                                                           seed=seed)
 
-        return props2D, layerids, layers
+        return props2d, layerids, layers
 
     def build_stratigraphy(self):
+        """
+        Build the stratigraphy object that controls model creation.
 
+        :returns:
+            strati: A Stratigraphy objects
+            properties: A dict of properties with {name: [vmin, vmax]} where
+                        vmin and vmax are the minimum and maximum values that
+                        can take a property. Each property returned by generate
+                        model should be found in this dict.
+        """
         vp = Property(name="vp", vmin=self.vp_min, vmax=self.vp_max,
                       texture=self.max_texture, trend_min=self.vp_trend_min,
                       trend_max=self.vp_trend_max)
@@ -96,23 +104,25 @@ class BaseModelGenerator(ModelGenerator):
                              prob_deform_change=self.prob_deform_change)
         sequence = Sequence(lithologies=[lith], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[sequence])
+        properties = strati.properties()
 
-        return strati
+        return strati, properties
 
 
 class MarineModelGenerator(BaseModelGenerator):
 
     def __init__(self):
 
-        super().__init__()
         # Minimum velocity of water.
-        self.water_vmin = 1470
+        self.water_vmin = 1470.0
         # Maximum velocity of water.
-        self.water_vmax = 1530
+        self.water_vmax = 1530.0
         # Mean water depth (m).
-        self.water_dmin = 1000
+        self.water_dmin = 1000.0
         # Maximum amplitude of water depth variations.
-        self.water_dmax = 5000
+        self.water_dmax = 5000.0
+        super().__init__()
+
 
     def build_stratigraphy(self):
 
@@ -138,14 +148,12 @@ class MarineModelGenerator(BaseModelGenerator):
                             thick_max=int(self.water_dmax/self.dh))
         rocseq = Sequence(lithologies=[roc], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[waterseq, rocseq])
+        properties = strati.properties()
 
-        return strati
+        return strati, properties
+
 
 class MaswModelGenerator(BaseModelGenerator):
-
-    def __init__(self):
-
-        super().__init__()
 
     def build_stratigraphy(self):
 
@@ -204,12 +212,56 @@ class MaswModelGenerator(BaseModelGenerator):
                            lithologies=[shale],
                            thick_max=99999)
 
-        strati = Stratigraphy(sequences=[unsat_seq,
-                                         sat_seq,
-                                         weathered_seq,
-                                         roc_seq])
+        sequences = [unsat_seq,
+                     sat_seq,
+                     weathered_seq,
+                     roc_seq]
+        strati = Stratigraphy(sequences=sequences)
 
-        return strati
+        properties = strati.properties()
+        vmin = 99999
+        vmax = 0
+        for seq in sequences:
+            for lith in seq:
+                if vmin > lith.vp.min / lith.vpvs.max:
+                    vmin = lith.vp.min / lith.vpvs.max
+                if vmax < lith.vp.max / lith.vpvs.min:
+                    vmax = lith.vp.max / lith.vpvs.min
+        properties["vs"] = [vmin, vmax]
+        # vmin = 99999
+        # vmax = 0
+        # for seq in sequences:
+        #     for lith in seq:
+        #         if vmin > lith.vp.min:
+        #             vmin = lith.vp.min
+        #         if vmax < lith.vp.max:
+        #             vmax = lith.vp.max
+        # properties["vp"] = [vmin, vmax]
+        # vmin = 99999
+        # vmax = 0
+        # for seq in sequences:
+        #     for lith in seq:
+        #         if vmin > lith.rho.min:
+        #             vmin = lith.rho.min
+        #         if vmax < lith.rho.max:
+        #             vmax = lith.rho.max
+        # properties["rho"] = [vmin, vmax]
+        # for seq in sequences:
+        #     for lith in seq:
+        #         if vmin > lith.q.min:
+        #             vmin = lith.q.min
+        #         if vmax < lith.q.max:
+        #             vmax = lith.q.max
+        # properties["q"] = [vmin, vmax]
+        # for seq in sequences:
+        #     for lith in seq:
+        #         if vmin > lith.vpvs.min:
+        #             vmin = lith.vpvs.min
+        #         if vmax < lith.vpvs.max:
+        #             vmax = lith.vpvs.max
+        # properties["vpvs"] = [vmin, vmax]
+
+        return strati, properties
 
     def generate_model(self, seed=None):
 

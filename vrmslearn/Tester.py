@@ -108,9 +108,11 @@ class Tester(object):
                     preds[predname].append(file[predname][:])
             file.close()
             labelfile = os.path.join(self.case.datatest, example)
-            labels.append(self.case.get_example(labelfile))
+            data, labels, weights, _ = self.case.get_example(labelfile)
+            labels.append({labels[k] for k in prednames})
 
-        labels = self.case.ex2batch(labels)
+        labels = {name: np.stack([el[name] for el in labels])
+                  for name in prednames}
 
         return labels, preds
 
@@ -120,7 +122,7 @@ class Tester(object):
                          quantity: int = 1,
                          image=True):
         """
-        This method plots the labels and the predictions for each test sample.
+        This method plots the labels and the predictions for each test generator.
 
         @params:
         labelnames (list) : List of names of the labels in the example file

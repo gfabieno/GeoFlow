@@ -9,34 +9,38 @@ import numpy as np
 import h5py as h5
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
-from vrmslearn.LabelGenerator import LabelGenerator
+from vrmslearn.IOGenerator import GraphOutput, GraphInput
 from multiprocessing import Process, Queue
+from typing import Dict
 
-
-# TODO change seismic to forward with input a dict, making it agnotistic
-class SampleGenerator:
+class DatasetGenerator:
     """
-    Class to create one example: 1- generate models 2-simulate the data
+    Class to generate a complete dataset for geophysics learning.
     """
 
     def __init__(self, model: BaseModelGenerator, acquire: Acquisition,
-                 label: LabelGenerator, gpu: int = 0):
+                 outputs: Dict[str, GraphOutput], inputs: Dict[str, GraphInput],
+                 gpu: int = 0):
         """
-        Create the ModelGenerator and SeismicGenerator objects from pars.
-        @params:
-        pars (ModelParameters): Parameters for data and model creation
-        gpu  (int): The GPU id to use for data computations
+        To generate a Dataset, we need several elements:
 
+        :param model: A BaseModelGenerator that can create the earth properties
+        :param acquire: An Acquisition object controlling the data creation
+        :param outputs: A dict of GraphOutput that generate the labels of the
+                        network from the generated data and earth properties
+        :param inputs: A dict of GraphInput that generate the inputs of the
+                       netowrk from the generated data.
+        :param gpu:    The gpu id to use for generating the data.
         """
 
         self.model = model
-        self.label = label
+        self.outputs = outputs
+        self.inputs = inputs
         self.acquire = acquire
         self.seismic = SeismicGenerator(acquire, model, gpu=gpu,
                                         workdir="workdir%d" % gpu)
-        self.files_list = {}
 
-    def generate(self, seed):
+    def new_example(self, seed):
         """
         Generate one example
         @params:
@@ -45,25 +49,36 @@ class SampleGenerator:
         """
         props, _, _ = self.model.generate_model(seed=seed)
         data = self.seismic.compute_data(props)
-        labels, weights = self.label.generate_labels(props)
+        inputs = {key: self.inputs[key].generate(data) for key in self.inputs}
+        labels = {}
+        weights = {}
+        for name in self.outputs:
+            label, weight = self.outputs[name].generate(props)
+            labels[name] = label
+            weights[name] = weight
 
-        return data, labels, weights
+        return inputs, labels, weights
 
-    def read(self, filename):
+    def read(self, filename: str):
+        """
+        Read one example from hdf5 file.
 
+        :param filename: Name of the file.
+
+        :returns:
+                inputs: A dict {name: input_data}
+                labels: A dict {name: label}
+                weights: A dict {name: weight}
+        """
         file = h5.File(filename, "r")
-        data = file["data"][:]
-        labels = []
-        for labelname in self.label.label_names:
-            labels.append(file[labelname][:])
-        weights = []
-        for wname in self.label.weight_names:
-            weights.append(file[wname][:])
+        inputs = {key: file[key][:] for key in self.inputs}
+        labels = {key: file[key][:] for key in self.outputs}
+        weights = {key: file[key+"_w"][:] for key in self.outputs}
         file.close()
 
-        return data, labels, weights
+        return inputs, labels, weights
 
-    def write(self, exampleid, savedir, data, labels, weights, filename=None):
+    def write(self, exampleid, savedir, inputs, labels, weights, filename=None):
         """
         This method writes one example in the hdf5 format
 
@@ -71,8 +86,9 @@ class SampleGenerator:
         exampleid (int):        The example id number
         savedir (str)   :       A string containing the directory in which to
                                 save the example
-        data (numpy.ndarray)  : Contains the modelled seismic data
-        labels (list)  :       List of numpy array containing the labels
+        inputs (dict)  :       Contains the graph inputs {name: input}
+        labels (dict)  :       Contains the graph labels {name: label}
+        weights (dict)  :      Contains the label weights {name: weight}
         filename (str):      If provided, save the example in filename.
 
         @returns:
@@ -83,11 +99,12 @@ class SampleGenerator:
             filename = os.path.join(savedir, filename)
 
         file = h5.File(filename, "w")
-        file["data"] = data
-        for ii, label in enumerate(labels):
-            file[self.label.label_names[ii]] = label
-        for ii, weight in enumerate(weights):
-            file[self.label.weight_names[ii]] = weight
+        for name in inputs:
+            file[name] = inputs[name]
+        for name in labels:
+            file[name] = labels[name]
+        for name in weights:
+            file[name+"_w"] = weights[name]
         file.close()
 
     def generate_dataset(self,
@@ -99,8 +116,6 @@ class SampleGenerator:
         This function creates a dataset on multiple GPUs.
 
         @params:
-        pars (ModelParameter): A ModelParameter object containg the parameters
-                               for creating examples.
         savepath (str)   :     Path in which to create the dataset
         nexamples (int):       Number of examples to generate
         seed0 (int):           First seed of the first example in the dataset.
@@ -118,8 +133,10 @@ class SampleGenerator:
         generators = []
         for jj in range(ngpu):
             sg = self.__class__(model=self.model,
-                                label=self.label,
-                                acquire=self.acquire, gpu=jj)
+                                acquire=self.acquire,
+                                inputs=self.inputs,
+                                outputs=self.outputs,
+                                gpu=jj)
             thisgen = DatasetProcess(savepath, sg, exampleids)
             thisgen.start()
             generators.append(thisgen)
@@ -134,21 +151,21 @@ class DatasetProcess(Process):
 
     def __init__(self,
                  savepath: str,
-                 sample_generator: SampleGenerator,
+                 data_generator: DatasetGenerator,
                  seeds: Queue):
         """
         Initialize the DatasetGenerator
 
         @params:
         savepath (str)   :     Path in which to create the dataset
-        sample_generator (SampleGenerator): A SampleGenerator object to create
+        data_generator (DatasetGenerator): A DatasetGenerator object to create
                                             examples
         seeds (Queue):   A Queue containing the seeds of models to create
         """
         super().__init__()
 
         self.savepath = savepath
-        self.sample_generator = sample_generator
+        self.data_generator = data_generator
         self.seeds = seeds
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
@@ -165,7 +182,6 @@ class DatasetProcess(Process):
                 break
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
-                data, labels, weights = self.sample_generator.generate(seed)
-
-                self.sample_generator.write(seed, self.savepath, data, labels,
-                                            weights, filename=filename)
+                data, labels, weights = self.data_generator.new_example(seed)
+                self.data_generator.write(seed, self.savepath, data, labels,
+                                          weights, filename=filename)

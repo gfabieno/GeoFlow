@@ -170,7 +170,7 @@ def top_mute(data, vp0, wind_length, offsets, dt, tdelay):
 def random_static(data, max_static):
     """
     Apply a random time shift (static) to each trace of data.
-    Shifts can only be an integer of sample interval (for efficiency reason).
+    Shifts can only be an integer of generator interval (for efficiency reason).
 
     @params:
     data  (numpy.array): The data array
@@ -240,7 +240,7 @@ def random_time_scaling(data, dt, emin=-2.0, emax=2.0, scalmax=None):
 
     @params:
     data  (numpy.array): The data array
-    dt (float):          Time sample interval
+    dt (float):          Time generator interval
     emin (float):        Minimum exponent of the t gain t**emin
     emax (float):        Maximum exponent of the t gain t**emax
 
@@ -433,7 +433,7 @@ def calculate_vrms(vp, dh, npad, nt, dt, tdelay, source_depth):
         t[i] = total_time
 
     # The last time must be 'dt' * 'nt', so adjust the lists 'rdepth_vel_pairs'
-    # and 't' by cropping and adjusting the last sample accordingly.
+    # and 't' by cropping and adjusting the last generator accordingly.
     rdepth_vel_pairs = [
         (rdepth_vel_pairs[i][0], rdepth_vel_pairs[i][1])
         for i, time in enumerate(t)
@@ -546,18 +546,22 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
 
     ind = np.lexsort((offsets, cmps))
     cmps = cmps[ind]
-    data_cmp = data[:, ind]
+    if data is not None:
+        data_cmp = data[:, ind]
+    else:
+        data_cmp = None
 
     unique_cmps, counts = np.unique(cmps, return_counts=True)
     maxfold = np.max(counts)
     firstcmp = unique_cmps[np.argmax(counts == maxfold)]
     lastcmp = unique_cmps[-np.argmax(counts[::-1] == maxfold)-1]
     unique_cmps = unique_cmps[counts == maxfold]
-    ind1 = np.argmax(cmps == firstcmp)
-    ind2 = np.argmax(cmps > lastcmp)
-    data_cmp = data_cmp[:, ind1:ind2]
-    ncmps = unique_cmps.shape[0]
-    data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
+    if data is not None:
+        ind1 = np.argmax(cmps == firstcmp)
+        ind2 = np.argmax(cmps > lastcmp)
+        data_cmp = data_cmp[:, ind1:ind2]
+        ncmps = unique_cmps.shape[0]
+        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
 
     return data_cmp, unique_cmps
 
