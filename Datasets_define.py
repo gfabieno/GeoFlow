@@ -4,8 +4,9 @@
 
 from vrmslearn.Dataset import Dataset
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
-                                              MaswModelGenerator)
-from vrmslearn.SeismicGenerator import Acquisition
+                                              MaswModelGenerator,
+                                              PermafrostModelGenerator)
+from vrmslearn.SeismicGenerator import Acquisition, AcquisitionPermafrost
 import argparse
 from vrmslearn.GraphIO import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
                                ShotGather)
@@ -68,6 +69,76 @@ class DatasetMASW(Dataset):
 
         return model, acquire, inputs, outputs
 
+class Case_Permafrost(Dataset):
+
+    name = "Case_Permafrost"
+
+    def __init__(self, noise=0):
+
+        if noise == 1:
+            self.name = self.name + "_noise"
+        super().__init__()
+        if noise == 1:
+            for name in self.inputs:
+                self.inputs[name].random_static = True
+                self.inputs[name].random_static_max = 1
+                self.inputs[name].random_noise = True
+                self.inputs[name].random_noise_max = 0.02
+
+    def set_dataset(self):
+        self.trainsize = 5
+        self.validatesize = 0
+        self.testsize = 0
+
+        model = PermafrostModelGenerator()
+
+        model.dh = dh = 2.5
+        Nshots = 1
+        dshots = 50
+        length = Nshots*dshots + 1682
+        z = 1000
+        model.NX = int(length/dh)
+        model.NZ = int(z/dh)
+
+        model.marine = False    #??
+        model.texture_xrange = 3
+        model.texture_zrange = 1.95 * model.NZ/2
+
+        model.dip_0 = True
+        model.dip_max = 0
+        model.ddip_max = 0
+
+        model.layer_num_min = 3
+        model.layer_dh_min = 20
+        # model.layer_dh_max = 20
+
+        #TODO that won't work anymore
+        model.Dispersion = True
+
+        acquire = AcquisitionPermafrost(model=model)
+        acquire.peak_freq = 40
+        # acquire.sourcetype = 2
+        acquire.dt = dt = 2e-4
+        acquire.NT = int(2/dt)
+        acquire.dg = dg = 5             # 5*dh = 12.5 m
+        # acquire.gmin = int(100 / dh)
+        # acquire.gmax = int(acquire.gmin*dg)
+        acquire.fs = True
+        acquire.source_depth = 12.5
+        acquire.receiver_depth = 12.5
+        # acquire.rectype = 1
+
+        # label = LabelGenerator(model=model, acquire=acquire)
+        #TODO write GraphInput and GraphOutput for dispersion
+        # label = PermafrostLabelGenerator(model=model, acquire=acquire)
+        # label.identify_direct = False
+        # label.train_on_shots = True
+        # label.label_names = ('vp','vs')
+        # label.weight_names = ['tweight', 'dweight']
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
+
+        return model, acquire, inputs, outputs
 
 class Dataset1Dsmall(Dataset):
 
