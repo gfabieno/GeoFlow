@@ -16,13 +16,12 @@ from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 from typing import List
-from tensorflow.keras.utils import Sequence
 
 
 class Dataset:
     """
-    Base class of a Dataset. Build a specific Dataset by creating a new class from
-    this class and changing the model parameters.
+    Base class of a Dataset. Build a specific Dataset by creating a new class
+    from this class and changing the model parameters.
     """
     name = "BaseDataset"
     basepath = "Datasets"
@@ -179,7 +178,7 @@ class Dataset:
 
         :param batch_size: The batch size
         :param toinput: The name of the input variable
-        :param phase: The name of the phase, either "train", "test" or "validate"
+        :param phase: The name of the phase either "train", "test" or "validate"
         :param tooutputs: A list of names of the output variables
 
         :returns:
