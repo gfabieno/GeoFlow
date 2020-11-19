@@ -6,7 +6,9 @@ from vrmslearn.Dataset import Dataset
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               MaswModelGenerator,
                                               PermafrostModelGenerator)
-from vrmslearn.SeismicGenerator import Acquisition, AcquisitionPermafrost
+from vrmslearn.SeismicGenerator import (Acquisition,
+                                        AcquisitionPermafrost,
+                                        Aquisition_masw)
 import argparse
 from vrmslearn.GraphIO import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
                                ShotGather)
@@ -47,18 +49,19 @@ class DatasetMASW(Dataset):
         model.layer_dh_min = 5
         model.layer_dh_max = 20
 
-        acquire = Acquisition(model=model)
+        acquire = Aquisition_masw(model=model)
         acquire.peak_freq = 26
-        acquire.sourcetype = 2
+        acquire.sourcetype = 2 #force in z (2)
+        acquire.ds = 5
         acquire.dt = dt = 0.0001
-        acquire.NT = int(2 / dt)
-        acquire.dg = dg = 3
-        acquire.gmin = int(100 / dh)
-        acquire.gmax = int(acquire.gmin*dg)
-        acquire.fs = True
+        acquire.NT = int(2 / dt) #2 s survey
+        acquire.tdelay = dt * 5
+        acquire.dg = 'all' #3 / dh # 3m spacing
+        acquire.fs = True # Free surface
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
+        acquire.singleshot = False
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
@@ -258,12 +261,14 @@ class Dataset2Dtest(Dataset):
 
         return model, acquire, inputs, outputs
 
-    def __init__(self, noise=0):
+    def __init__(self, trainsize=1005, validatesize=0, testsize=0, noise=0):
 
         if noise == 1:
             self.name = self.name + "_noise"
 
-        super().__init__()
+        super().__init__(trainsize=trainsize,
+                         validatesize=validatesize,
+                         testsize=testsize)
         if noise == 1:
             for name in self.inputs:
                 self.inputs[name].random_static = True

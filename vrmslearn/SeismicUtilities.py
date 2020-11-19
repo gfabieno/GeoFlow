@@ -625,7 +625,6 @@ def semblance(nmo_corrected, window=10):
     den = np.convolve(den, weights, mode='same')
     return num / den
 
-
 def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
     """
 
