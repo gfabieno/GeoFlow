@@ -27,14 +27,26 @@ by defining a child class from the `Dataset` base class and overriding `set_data
 This method needs to return three objects based on three classes
     *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon
-    request. Different model generator can be defined from this Dataset (see 
+    request. Different model generator can be defined from this case (see
     [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
-    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters 
-    for the creation of the seismic data by SeisCL. In particular, override the 
+    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters
+    for the creation of the seismic data by SeisCL. In particular, override the
     method `set_rec_src` to define a different acquisition setup.
     * [OutputGenerator](vrmslearn/GraphIO.py) is a class that generate the
     labels from the model and acquires objects. 
 
+
+#### Style guide
+
+Code style should follow PEP 8. Hanging indents should be at the same level as
+the opening parenthesis, bracket or brace, as in:
+```
+parser.add_argument("--case",
+                    type=str,
+                    default="Case1Dsmall",
+                    help="Name of the case from `Cases_define` to use")
+```
+Identifiers must be descriptive and short enough to maintain ease-of-use.
 
 ## Installation
 

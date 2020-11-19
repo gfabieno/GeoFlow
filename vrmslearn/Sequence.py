@@ -57,3 +57,19 @@ class Sequence(Sequence):
             return inputs, labels
         else:
             return inputs, files
+
+    # TODO this should be moved to GraphInput preprocessing method
+    def scale_inputs(self, inputs):
+        """
+        Scale each trace to its RMS value, and each shot to its RMS.
+
+        @params:
+
+        @returns:
+        scaled (tf.tensor)  : The scaled input data
+        """
+        trace_rms = np.sqrt(np.sum(inputs**2, axis=1, keepdims=True))
+        scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
+        shot_max = np.max(scaled, axis=[1, 2], keepdims=True)
+        scaled = scaled / shot_max
+        return scaled

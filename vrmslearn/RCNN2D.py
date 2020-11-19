@@ -206,7 +206,7 @@ class RCNN2D:
 
         if 'vdepth' in self.out_names:
             vint = outputs['vint']
-            time_to_depth = build_time_to_depth_converter(self.dataset,
+            time_to_depth = build_time_to_depth_converter(self.case,
                                                           vint.shape[1:],
                                                           self.batch_size,
                                                           name="vdepth")
@@ -214,21 +214,6 @@ class RCNN2D:
             outputs['vdepth'] = vdepth
 
         return [outputs[out] for out in self.out_names]
-
-    def scale_inputs(self, inputs):
-        """
-        Scale each trace to its RMS value, and each shot to its RMS.
-
-        @params:
-
-        @returns:
-        scaled (tf.tensor)  : The scaled input data
-        """
-        trace_rms = tf.sqrt(reduce_sum(inputs**2, axis=1, keepdims=True))
-        scaled = inputs / (trace_rms+np.finfo(np.float32).eps)
-        shot_max = tf.reduce_max(scaled, axis=[1, 2], keepdims=True)
-        scaled = scaled / shot_max
-        return scaled
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
         """
@@ -388,15 +373,15 @@ def assert_broadcastable(arr1, arr2, message=None):
         raise AssertionError(message)
 
 
-def build_time_to_depth_converter(dataset, input_shape, batch_size,
+def build_time_to_depth_converter(case, input_shape, batch_size,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
     """
     Build a time to depth conversion model in Keras.
 
-    :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                  `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
-                 dataset are used.
+                 case are used.
     :param input_size: The shape of the expected input.
     :param batch_size: Quantity of examples in a batch.
     :param input_dtype: Data type of the input.
@@ -404,15 +389,15 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
 
     :return: A Keras model.
     """
-    vmax = dataset.model.vp_max
-    vmin = dataset.model.vp_min
-    dh = dataset.model.dh
-    dt = dataset.acquire.dt
-    resampling = dataset.acquire.resampling
-    tdelay = dataset.acquire.tdelay
+    vmax = case.model.vp_max
+    vmin = case.model.vp_min
+    dh = case.model.dh
+    dt = case.acquire.dt
+    resampling = case.acquire.resampling
+    tdelay = case.acquire.tdelay
     tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
-    nz = dataset.model.NZ
-    source_depth = dataset.acquire.source_depth
+    nz = case.model.NZ
+    source_depth = case.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
