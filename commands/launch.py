@@ -60,7 +60,7 @@ def optimize(**args):
     :param args: Key-value pairs of argument names and values. Values
                  that are lists will be iterated upon.
     """
-    if "log_dir" in args.keys():
+    if "logdir" in args.keys():
         raise ValueError("`optimize` manages checkpoint directories by "
                          "itself.")
     if "training" in args.keys():
