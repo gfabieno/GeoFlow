@@ -141,7 +141,8 @@ class Case1Darticle(Case):
                 self.inputs[name].random_noise = True
                 self.inputs[name].random_noise_max = 0.02
 
-
+# TODO This 2D case does not generate data, because some models do not contain
+#  reflexions.
 class Case2Dtest(Case):
 
     name = "Case2Dtest"

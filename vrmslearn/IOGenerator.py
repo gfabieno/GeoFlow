@@ -336,6 +336,7 @@ class Vsdepth(Reftime):
         return label * (vmax - vmin) + vmin
 
 
+# TODO Fix the plotting as it was before for multiple shot case (2D)
 class GraphInput:
 
     name = "BaseInput"

@@ -15,6 +15,8 @@ from vrmslearn.DatasetGenerator import DatasetGenerator
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.IOGenerator import Reftime, Vrms, Vint, Vdepth, ShotGather
+from typing import List
+from tensorflow.keras.utils import Sequence
 
 
 class Case:
@@ -50,6 +52,7 @@ class Case:
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
         self.shuffled = None
+        self._shapes = None
 
     def set_case(self):
         """
@@ -165,25 +168,54 @@ class Case:
 
         return inputspre, labelspre, weightspre, filename
 
-    def get_batch(self):
+    def get_batch(self,
+                  batch_size: int,
+                  phase: str,
+                  toinput: str = None,
+                  tooutputs: List[str] = None):
+        """
+        Get a batch of data and ouputs in a format compatible with
+        tf.Keras.Sequence
+
+        :param batch_size: The batch size
+        :param toinput: The name of the input variable
+        :param phase: The name of the phase, either "train", "test" or "validate"
+        :param tooutputs: A list of names of the output variables
+
+        :returns:
+            inputs: The inputs, an array of size [batch_size, input_size]
+            outputs: The labels, an array of size [batch_size, 2, output_size]
+                     The second dimension, first element is the label, and
+                     second is the weight
+            filenames: A corresponding filenames for each example in the batch
+        """
+        if toinput is None:
+            toinput = list(self.inputs.keys())[0]
+        elif type(toinput) is list:
+            raise TypeError("get_batch only supports single inputs for now")
+
+        if tooutputs is None:
+            tooutputs = [el for el in self.outputs]
 
         filenames = []
-        for i in range(self.batch_size):
-            (data,
-             labels,
-             weights,
-             fname) = self.case.get_example(phase=self.phase)
+        inputs = None
+        outputs = [None for _ in tooutputs]
+        for i in range(batch_size):
+            data, labels, weights, fname = self.get_example(phase=phase,
+                                                            toinputs=[toinput],
+                                                            tooutputs=tooutputs)
             filenames.append(fname)
+            if inputs is None:
+                input_size = data[toinput].shape
+                inputs = np.empty([batch_size, *input_size])
+            inputs[i] = data[toinput]
+            for j, name in enumerate(tooutputs):
+                if outputs[j] is None:
+                    out_shape = labels[name].shape
+                    outputs[j] = np.empty([batch_size, 2, *out_shape])
+                outputs[j][i] = [labels[name], weights[name]]
 
-            inputs[i] = data[self.in_names]
-            for j, lbl in enumerate(self.out_names):
-                # TODO remove n_t
-                labels[j][i] = [labels[lbl][:n_t], weights[lbl][:n_t]]
-
-        if self.is_training:
-            return inputs, labels
-        else:
-            return inputs, filenames
+        return inputs, outputs, filenames
 
     def plot_example(self, filename=None, toinputs=None, tooutputs=None,
                      ims=None):
@@ -252,5 +284,8 @@ class Case:
                                     interval=3000, blit=True, repeat=True)
         plt.show()
         gc.collect()
+
+
+
 
 
