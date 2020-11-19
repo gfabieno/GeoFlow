@@ -4,7 +4,7 @@
 """Keras data input sequence."""
 
 from tensorflow.keras.utils import Sequence
-from vrmslearn.Case import Case
+from vrmslearn.Dataset import Dataset
 from typing import List
 
 OUTS = ('ref', 'vrms', 'vint', 'vdepth')
@@ -13,15 +13,15 @@ OUTS = ('ref', 'vrms', 'vint', 'vdepth')
 class Sequence(Sequence):
     def __init__(self,
                  is_training: bool,
-                 case: Case,
+                 dataset: Dataset,
                  batch_size: int,
                  tooutputs: List[str],
                  toinput: str):
         """
-        Create a tf.keras.Sequence from a Case object
+        Create a tf.keras.Sequence from a Dataset object
 
         :param is_training: If true, use thes training set, else uses the test
-        :param case:        A Case object for generating examples
+        :param dataset:        A Dataset object for generating examples
         :param batch_size:  The batch size
         :param tooutputs:   The list of the name of the desired outputs
         :param toinput:     The name of the input
@@ -32,12 +32,12 @@ class Sequence(Sequence):
             self.phase = "train"
         else:
             self.phase = "test"
-        self.case = case
+        self.dataset = dataset
         self.batch_size = batch_size
         self.toinput = toinput
         self.tooutputs = tooutputs
-        self.case._getfilelist(phase=self.phase)
-        self.len = int(len(self.case.files[self.phase])/self.batch_size)
+        self.dataset._getfilelist(phase=self.phase)
+        self.len = int(len(self.dataset.files[self.phase])/self.batch_size)
 
     def __len__(self):
         return self.len
@@ -48,7 +48,7 @@ class Sequence(Sequence):
             yield self[i]
 
     def __getitem__(self, _):
-        inputs, labels, files = self.case.get_batch(self.batch_size,
+        inputs, labels, files = self.dataset.get_batch(self.batch_size,
                                                     phase=self.phase,
                                                     toinputs=self.toinput,
                                                     tooutputs=self.tooutputs)

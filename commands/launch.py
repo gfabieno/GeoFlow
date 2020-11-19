@@ -12,7 +12,7 @@ import numpy as np
 
 from archive import ArchiveRepository
 from vrmslearn.RCNN2D import Hyperparameters
-from Cases_define import *
+from Datasets_define import *
 
 
 def chain(main, **args):
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     checkpoint_1d = "logs/optimize-2D-kernels/a775455/2/model/0140.ckpt"
     checkpoint_1d = realpath(checkpoint_1d)
     optimize(params=all_hparams,
-             case=Case2Dtest_complexity(),
+             dataset=Case2Dtest_complexity(),
              epochs=(80, 80, 50),
              steps=20,
              lr=.0002,

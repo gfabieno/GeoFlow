@@ -11,14 +11,14 @@ from vrmslearn.Sequence import Sequence
 def main(args):
     logdir = args.logdir
     batch_size = args.batchsize
-    case = args.case
+    dataset = args.dataset
 
     # Generate the dataset.
     if args.training in [0, 2]:
-        case.generate_dataset(ngpu=args.ngpu)
+        dataset.generate_dataset(ngpu=args.ngpu)
 
     if args.plot:
-        case.animated_dataset()
+        dataset.animate()
 
     loss_scales = {'ref': args.loss_ref,
                    'vrms': args.loss_vrms,
@@ -38,12 +38,12 @@ def main(args):
                 params=args.params,
                 out_names=loss_scales.keys(),
                 restore_from=restore_from,
-                case=case)
+                dataset=dataset)
 
     # Train the model.
     if args.training in [1, 2]:
         sequence = Sequence(is_training=True,
-                            case=case,
+                            dataset=dataset,
                             batch_size=batch_size,
                             out_names=loss_scales.keys())
         trainer = Trainer(nn=nn,
@@ -62,11 +62,11 @@ def main(args):
     # Test model.
     if args.training == 3:
         sequence = Sequence(is_training=False,
-                            case=case,
+                            dataset=dataset,
                             batch_size=batch_size,
                             out_names=loss_scales.keys())
-        tester = Tester(nn=nn, sequence=sequence, case=case)
-        savepath = os.path.join(case.datatest, "pred")
+        tester = Tester(nn=nn, sequence=sequence, dataset=dataset)
+        savepath = os.path.join(dataset.datatest, "pred")
         if not os.path.isdir(savepath):
             os.mkdir(savepath)
         tester.test_dataset(savepath=savepath)
@@ -93,7 +93,7 @@ def find_latest_checkpoint(logdir):
 
 
 if __name__ == "__main__":
-    from Cases_define import *
+    from Datasets_define import *
     from vrmslearn.RCNN2D import *
 
     # Initialize argument parser
@@ -104,10 +104,10 @@ if __name__ == "__main__":
                         type=str,
                         default="Hyperparameters",
                         help="Name of hyperparameters from `RCNN2D` to use")
-    parser.add_argument("--case",
+    parser.add_argument("--dataset",
                         type=str,
-                        default="Case1Dsmall",
-                        help="Name of case from `Cases_define` to use")
+                        default="Dataset1Dsmall",
+                        help="Name of dataset from `Datasets_define` to use")
     parser.add_argument("--logdir",
                         type=str,
                         default="./logs",
@@ -189,6 +189,6 @@ if __name__ == "__main__":
 
     # Parse the input for training parameters.
     args = parser.parse_args()
-    args.case = eval(args.case)()
+    args.dataset = eval(args.dataset)()
     args.params = eval(args.params)()
     main(args)

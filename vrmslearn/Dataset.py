@@ -1,7 +1,7 @@
 """
-The case class define the basic class to build a case containing parameters
+The Dataset class define the basic class to build a Dataset containing parameters
 for creating the dataset and training the neural network.
-See Case2Dtest for usage example.
+See Dataset2Dtest for usage example.
 """
 
 import os
@@ -14,17 +14,17 @@ import numpy as np
 from vrmslearn.DatasetGenerator import DatasetGenerator
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.IOGenerator import Reftime, Vrms, Vint, Vdepth, ShotGather
+from vrmslearn.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 from typing import List
 from tensorflow.keras.utils import Sequence
 
 
-class Case:
+class Dataset:
     """
-    Base class of a Case. Build a specific case by creating a new class from
+    Base class of a Dataset. Build a specific Dataset by creating a new class from
     this class and changing the model parameters.
     """
-    name = "BaseCase"
+    name = "BaseDataset"
     basepath = "Datasets"
 
     # Seed of the 1st model generated. Seeds fo subsequent models are
@@ -33,12 +33,12 @@ class Case:
 
     def __init__(self):
         """
-        Initiate a Case by setting the training, validation and test sets size.
+        Initiate a Dataset by setting the training, validation and test sets size.
         """
         self.trainsize = 5 #10000
         self.validatesize = 0
         self.testsize = 0 # 100
-        self.model, self.acquire, self.inputs, self.outputs = self.set_case()
+        self.model, self.acquire, self.inputs, self.outputs = self.set_dataset()
         self.generator = DatasetGenerator(model=self.model,
                                           acquire=self.acquire,
                                           inputs=self.inputs,
@@ -54,10 +54,10 @@ class Case:
         self.shuffled = None
         self._shapes = None
 
-    def set_case(self):
+    def set_dataset(self):
         """
-        A method that defines the parameters of a case.
-        Override to set the parameters of a case.
+        A method that defines the parameters of a Dataset.
+        Override to set the parameters of a Dataset.
 
         :return:
             model: A BaseModelGenerator object that generates models
@@ -258,7 +258,7 @@ class Case:
 
         return fig, axs, ims
 
-    def animated_dataset(self, phase='train', toinputs=None, tooutputs=None):
+    def animate(self, phase='train', toinputs=None, tooutputs=None):
         """
         Produces an animation of a dataset, showing the input data, and the
         different labels for each example.

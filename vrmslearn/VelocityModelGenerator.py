@@ -276,9 +276,9 @@ if __name__ == "__main__":
         "--modgen",
         type=str,
         default="BaseModelGenerator",
-        help="Name of the case to use"
+        help="Name of the dataset to use"
     )
     args, unparsed = parser.parse_known_args()
 
     modgen = eval(args.modgen)()
-    modgen.animated_dataset()
+    modgen.animate()

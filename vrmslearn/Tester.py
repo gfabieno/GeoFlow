@@ -15,7 +15,7 @@ import numpy as np
 import tensorflow as tf
 
 from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Case import Case
+from vrmslearn.Dataset import Dataset
 from vrmslearn.Sequence import Sequence
 
 
@@ -27,7 +27,7 @@ class Tester(object):
     def __init__(self,
                  nn: RCNN2D,
                  sequence: Sequence,
-                 case: Case):
+                 dataset: Dataset):
         """
         Initialize the tester
 
@@ -37,7 +37,7 @@ class Tester(object):
         """
         self.nn = nn
         self.sequence = sequence
-        self.case = case
+        self.dataset = dataset
 
         self.out_names = self.nn.out_names
 
@@ -107,8 +107,8 @@ class Tester(object):
                 if predname in file.keys():
                     preds[predname].append(file[predname][:])
             file.close()
-            labelfile = os.path.join(self.case.datatest, example)
-            data, labels, weights, _ = self.case.get_example(labelfile)
+            labelfile = os.path.join(self.dataset.datatest, example)
+            data, labels, weights, _ = self.dataset.get_example(labelfile)
             labels.append({labels[k] for k in prednames})
 
         labels = {name: np.stack([el[name] for el in labels])
@@ -129,7 +129,7 @@ class Tester(object):
         savepath (str) : The path in which the test examples are found
         """
 
-        examples = [os.path.basename(self.case.files["test"][ii])
+        examples = [os.path.basename(self.dataset.files["test"][ii])
                     for ii in range(quantity)]
 
         labels, preds = self.get_preds(labelnames, savepath, examples=examples)
@@ -141,7 +141,7 @@ class Tester(object):
 
             labeld = {la: labels[la][ii] for la in labelnames}
             predd = {la: preds[la][ii] for la in labelnames}
-            label, pred = self.case.label.postprocess(labeld, predd)
+            label, pred = self.dataset.label.postprocess(labeld, predd)
             for jj, labelname in enumerate(labelnames):
                 if image:
                     vmin = np.min(label[labelname])
@@ -183,10 +183,10 @@ class Tester(object):
                         else plot 1D profiles.
         """
         if quantity is None:
-            examples = [os.path.basename(f) for f in self.case.files["test"]
+            examples = [os.path.basename(f) for f in self.dataset.files["test"]
                         if os.path.basename(f) in os.listdir(savepath)]
         else:
-            examples = [os.path.basename(self.case.files["test"][ii])
+            examples = [os.path.basename(self.dataset.files["test"][ii])
                         for ii in range(quantity)]
 
         labels, preds = self.get_preds(labelnames, savepath, examples=examples)
@@ -210,7 +210,7 @@ class Tester(object):
         axs[0, 0].set_title('data')
         ims = [im1]
         if image:
-            src_pos, _ = self.case.acquire.set_rec_src()
+            src_pos, _ = self.dataset.acquire.set_rec_src()
             qty_shots = src_pos.shape[1]
             data = datas[0]
             data = data.reshape([data.shape[0], -1, qty_shots])
@@ -225,14 +225,14 @@ class Tester(object):
 
         labeld = {la: labels[la][0] for la in labelnames}
         predd = {la: preds[la][0] for la in labelnames}
-        label, pred = self.case.label.postprocess(labeld, predd)
+        label, pred = self.dataset.label.postprocess(labeld, predd)
 
         for ii, labelname in enumerate(labelnames):
             if labelname == "ref":
                 vmin, vmax = 0, 1
             else:
-                vmin = self.case.model.vp_min
-                vmax = self.case.model.vp_max
+                vmin = self.dataset.model.vp_min
+                vmax = self.dataset.model.vp_max
             y = np.arange(pred[labelname].shape[0])
             if image:
                 im1 = axs[0, 1 + ii].imshow(label[labelname],
@@ -273,7 +273,7 @@ class Tester(object):
         def animate(t):
             labeld = {la: labels[la][t] for la in labelnames}
             predd = {la: preds[la][t] for la in labelnames}
-            label, pred = self.case.label.postprocess(labeld, predd)
+            label, pred = self.dataset.label.postprocess(labeld, predd)
 
             for ii, im in enumerate(ims):
                 if ii == 0:

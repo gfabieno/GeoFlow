@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Define parameters for different cases"""
+"""Define parameters for different Datasets"""
 
-from vrmslearn.Case import Case
+from vrmslearn.Dataset import Dataset
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               MaswModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
 import argparse
-from vrmslearn.IOGenerator import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
-                                   ShotGather)
+from vrmslearn.GraphIO import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
+                               ShotGather)
 
 
-class CaseMASW(Case):
+class DatasetMASW(Dataset):
 
-    name = "Case_masw"
+    name = "Dataset_masw"
 
     def __init__(self, noise=0):
 
@@ -27,7 +27,7 @@ class CaseMASW(Case):
                 self.inputs[name].random_noise = True
                 self.inputs[name].random_noise_max = 0.02
 
-    def set_case(self):
+    def set_dataset(self):
 
         model = MaswModelGenerator()
         model.NX = 500
@@ -69,12 +69,12 @@ class CaseMASW(Case):
         return model, acquire, inputs, outputs
 
 
-class Case1Dsmall(Case):
+class Dataset1Dsmall(Dataset):
 
-    name = "Case1Dsmall"
+    name = "Dataset1Dsmall"
 
-    def set_case(self):
-        model, acquire, inputs, outputs = super().set_case()
+    def set_dataset(self):
+        model, acquire, inputs, outputs = super().set_dataset()
         for name in inputs:
             inputs[name].train_on_shots = True
         for name in outputs:
@@ -83,11 +83,11 @@ class Case1Dsmall(Case):
         return model, acquire, inputs, outputs
 
 
-class Case1Darticle(Case):
+class Dataset1Darticle(Dataset):
 
-    name = "Case1Darticle"
+    name = "Dataset1Darticle"
 
-    def set_case(self):
+    def set_dataset(self):
 
         model = MarineModelGenerator()
         model.layer_dh_min = 5
@@ -141,13 +141,13 @@ class Case1Darticle(Case):
                 self.inputs[name].random_noise = True
                 self.inputs[name].random_noise_max = 0.02
 
-# TODO This 2D case does not generate data, because some models do not contain
+# TODO This 2D Dataset does not generate data, because some models do not contain
 #  reflexions.
-class Case2Dtest(Case):
+class Dataset2Dtest(Dataset):
 
-    name = "Case2Dtest"
+    name = "Dataset2Dtest"
 
-    def set_case(self):
+    def set_dataset(self):
 
         model = MarineModelGenerator()
         model.NX = 150
@@ -204,12 +204,12 @@ class Case2Dtest(Case):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--case",
+        "--dataset",
         type=str,
-        default="Case1Dsmall",
-        help="Name of the case to use"
+        default="Dataset1Dsmall",
+        help="Name of the Dataset to use"
     )
     args, unparsed = parser.parse_known_args()
 
-    case = eval(args.case)()
-    case.model.animated_dataset()
+    dataset = eval(args.dataset)()
+    dataset.model.animate()

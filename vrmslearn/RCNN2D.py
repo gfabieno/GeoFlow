@@ -12,7 +12,7 @@ from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
 from vrmslearn.Sequence import OUTS
-from vrmslearn.Case import Case
+from vrmslearn.Dataset import Dataset
 
 
 class Hyperparameters:
@@ -72,7 +72,7 @@ class RCNN2D:
                  params: Hyperparameters = None,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
                  restore_from: str = None,
-                 case: Case = None):
+                 dataset: Dataset = None):
         """
         Build the neural net in tensorflow, along the cost function
 
@@ -83,7 +83,7 @@ class RCNN2D:
         out_names (list): List of the label names to predict from
                           ['ref', 'vrms', 'vint', 'vdepth']
         restore_from (str): Checkpoint file from which to initialize parameters
-        case (Case): Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+        dataset (Dataset): Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                      `tdelay`, `nz`, `source_depth` and `receiver_depth` are
                      used for time-to-depth conversion. Required if `'vdepth'`
                      is in `out_names`.
@@ -92,7 +92,7 @@ class RCNN2D:
             self.params = Hyperparameters()
         else:
             self.params = params
-        data, labels, weights, _ = case.get_example()
+        data, labels, weights, _ = dataset.get_example()
         self.input_size = data[list(data.keys())[0]].shape
         self.batch_size = batch_size
 
@@ -101,9 +101,9 @@ class RCNN2D:
                 raise ValueError(f"`out_names` should be from {OUTS}")
         self.out_names = [out for out in OUTS if out in out_names]
 
-        if 'vdepth' in out_names and case is None:
-            raise ValueError("Time-to-depth conversion requires `case`.")
-        self.case = case
+        if 'vdepth' in out_names and dataset is None:
+            raise ValueError("Time-to-depth conversion requires `dataset`.")
+        self.dataset = dataset
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
@@ -206,7 +206,7 @@ class RCNN2D:
 
         if 'vdepth' in self.out_names:
             vint = outputs['vint']
-            time_to_depth = build_time_to_depth_converter(self.case,
+            time_to_depth = build_time_to_depth_converter(self.dataset,
                                                           vint.shape[1:],
                                                           self.batch_size,
                                                           name="vdepth")
@@ -388,15 +388,15 @@ def assert_broadcastable(arr1, arr2, message=None):
         raise AssertionError(message)
 
 
-def build_time_to_depth_converter(case, input_shape, batch_size,
+def build_time_to_depth_converter(dataset, input_shape, batch_size,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
     """
     Build a time to depth conversion model in Keras.
 
-    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+    :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                  `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
-                 case are used.
+                 dataset are used.
     :param input_size: The shape of the expected input.
     :param batch_size: Quantity of examples in a batch.
     :param input_dtype: Data type of the input.
@@ -404,15 +404,15 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
 
     :return: A Keras model.
     """
-    vmax = case.model.vp_max
-    vmin = case.model.vp_min
-    dh = case.model.dh
-    dt = case.acquire.dt
-    resampling = case.acquire.resampling
-    tdelay = case.acquire.tdelay
+    vmax = dataset.model.vp_max
+    vmin = dataset.model.vp_min
+    dh = dataset.model.dh
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
     tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
-    nz = case.model.NZ
-    source_depth = case.acquire.source_depth
+    nz = dataset.model.NZ
+    source_depth = dataset.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
