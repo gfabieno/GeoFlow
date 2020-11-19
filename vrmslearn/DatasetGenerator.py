@@ -4,10 +4,8 @@ Produce a dataset on multiple GPUs.
 Used by the `vrmslearn.Dataset.Dataset` class.
 """
 
-import os
-from multiprocessing import Process, Queue
-
 import numpy as np
+import os
 import h5py as h5
 
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
@@ -15,6 +13,7 @@ from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.GraphIO import GraphOutput, GraphInput
 from multiprocessing import Process, Queue
 from typing import Dict
+from vrmslearn.SeismicUtilities import dispersion_curve
 
 class DatasetGenerator:
     """
