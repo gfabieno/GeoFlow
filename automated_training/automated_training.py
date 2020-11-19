@@ -8,9 +8,9 @@ of hyperparameters through `optimize`. To use different combinations of
 architecture hyperparameters (`vrmslearn.RCNN2D.Hyperparameters`) in launching
 a main script, the combinations must be placed in a list beforehand through
 `generate_variations`. `optimize` processes all combinations of items from
-arguments that are lists. This module leverages `commands.archive` to make sure
-modifications in the repository during training do not impact an ongoing
-training. `optimize` automatically fetches the archived main script.
+arguments that are lists. This module leverages `automated_training.archive`
+to make sure modifications in the repository during training do not impact an
+ongoing training. `optimize` automatically fetches the archived main script.
 """
 
 import sys
