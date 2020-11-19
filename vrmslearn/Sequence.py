@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+"""
+Interface with Keras's `Sequence`.
+"""
 
-"""Keras data input sequence."""
-
+import numpy as np
 from tensorflow.keras.utils import Sequence
 from vrmslearn.Dataset import Dataset
 from typing import List
@@ -63,10 +64,9 @@ class Sequence(Sequence):
         """
         Scale each trace to its RMS value, and each shot to its RMS.
 
-        @params:
+        :param inputs: An array of traces.
 
-        @returns:
-        scaled (tf.tensor)  : The scaled input data
+        :return: The scaled input data.
         """
         trace_rms = np.sqrt(np.sum(inputs**2, axis=1, keepdims=True))
         scaled = inputs / (trace_rms+np.finfo(np.float32).eps)

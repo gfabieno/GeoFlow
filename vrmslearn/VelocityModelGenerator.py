@@ -1,18 +1,15 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-    Class to generate seismic models
+Generate seismic models
 """
 
 import argparse
-from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy, Deformation,
-                            Property, Lithology)
+from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy,
+                            Deformation, Property, Lithology)
 
 
 class BaseModelGenerator(ModelGenerator):
-
     def __init__(self):
-
         super().__init__()
         # Number of grid cells in X direction.
         self.NX = 256
@@ -69,9 +66,9 @@ class BaseModelGenerator(ModelGenerator):
         @params:
 
         @returns:
-        props2d (dict)  : a dict of gridded properties {name: np.array}
-        layerids (numpy.ndarray)  : numpy array with the layer id of each cell
-        layers (list) : A list of layer objects
+            props2d: a dict of gridded properties {name: np.array}
+            layerids: numpy array with the layer id of each cell
+            layers: A list of layer objects
         """
         if self.strati is None:
             self.strati = self.build_stratigraphy()
@@ -110,7 +107,6 @@ class BaseModelGenerator(ModelGenerator):
 
 
 class MarineModelGenerator(BaseModelGenerator):
-
     def __init__(self):
 
         # Minimum velocity of water.
@@ -125,7 +121,6 @@ class MarineModelGenerator(BaseModelGenerator):
 
 
     def build_stratigraphy(self):
-
         vp = Property(name="vp", vmin=self.water_vmin, vmax=self.water_vmax,
                       dzmax=0)
         vs = Property(name="vs", vmin=0, vmax=0)
@@ -153,10 +148,10 @@ class MarineModelGenerator(BaseModelGenerator):
         return strati, properties
 
 
+
 class MaswModelGenerator(BaseModelGenerator):
 
     def build_stratigraphy(self):
-
         name = "unsaturated_sand"
         vp = Property("vp", vmin=300, vmax=500, texture=100)
         vpvs = Property("vpvs", vmin=1.8, vmax=2.5, texture=0.2)
@@ -228,47 +223,15 @@ class MaswModelGenerator(BaseModelGenerator):
                 if vmax < lith.vp.max / lith.vpvs.min:
                     vmax = lith.vp.max / lith.vpvs.min
         properties["vs"] = [vmin, vmax]
-        # vmin = 99999
-        # vmax = 0
-        # for seq in sequences:
-        #     for lith in seq:
-        #         if vmin > lith.vp.min:
-        #             vmin = lith.vp.min
-        #         if vmax < lith.vp.max:
-        #             vmax = lith.vp.max
-        # properties["vp"] = [vmin, vmax]
-        # vmin = 99999
-        # vmax = 0
-        # for seq in sequences:
-        #     for lith in seq:
-        #         if vmin > lith.rho.min:
-        #             vmin = lith.rho.min
-        #         if vmax < lith.rho.max:
-        #             vmax = lith.rho.max
-        # properties["rho"] = [vmin, vmax]
-        # for seq in sequences:
-        #     for lith in seq:
-        #         if vmin > lith.q.min:
-        #             vmin = lith.q.min
-        #         if vmax < lith.q.max:
-        #             vmax = lith.q.max
-        # properties["q"] = [vmin, vmax]
-        # for seq in sequences:
-        #     for lith in seq:
-        #         if vmin > lith.vpvs.min:
-        #             vmin = lith.vpvs.min
-        #         if vmax < lith.vpvs.max:
-        #             vmax = lith.vpvs.max
-        # properties["vpvs"] = [vmin, vmax]
 
         return strati, properties
 
     def generate_model(self, seed=None):
-
         props2D, layerids, layers = super().generate_model(seed=seed)
         props2D["vs"] = props2D["vp"] / props2D["vpvs"]
 
         return props2D, layerids, layers
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

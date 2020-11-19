@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Class to build the neural network for 2D prediction vp in depth
+Build the neural network for predicting v_p in 2D and in depth.
 """
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
@@ -17,7 +17,9 @@ from vrmslearn.Dataset import Dataset
 
 class Hyperparameters:
     def __init__(self):
-        """Build the default hyperparameters for `RCNN2D`."""
+        """
+        Build the default hyperparameters for `RCNN2D`.
+        """
         # A label. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
 
@@ -63,27 +65,28 @@ class Hyperparameters:
 
 class RCNN2D:
     """
-    This class build a NN based on recursive CNN and LSTM that can predict
-    2D vp velocity
+    Combine a recursive CNN and LSTMs to predict 2D v_p velocity.
     """
 
     def __init__(self,
+                 input_size: list,
                  batch_size: int = 1,
                  params: Hyperparameters = None,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
                  restore_from: str = None,
                  dataset: Dataset = None):
         """
-        Build the neural net in tensorflow, along the cost function
+        Build and restore the network.
 
-        @params:
-        params (Hyperparameters): A grouping of hyperparameters.
-        input_size (list): The shape of the shot gather [nt, nx, nshots]
-        batch_size (int): Number of examples in a batch
-        out_names (list): List of the label names to predict from
-                          ['ref', 'vrms', 'vint', 'vdepth']
-        restore_from (str): Checkpoint file from which to initialize parameters
-        dataset (Dataset): Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+        :param input_size: The shape of the shot gather, `[nt, nx, nshots]`.
+        :parama batch_size: Quantity of examples in a batch.
+        :param params: A grouping of hyperparameters.
+        :type : Hyperparameters
+        :param out_names: List of the label names to predict among
+                          `'ref'`, `'vrms'`, `'vint'` and `'vdepth'`.
+        :param restore_from: Checkpoint directory from which to restore the
+                             model.
+        :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                      `tdelay`, `nz`, `source_depth` and `receiver_depth` are
                      used for time-to-depth conversion. Required if `'vdepth'`
                      is in `out_names`.
@@ -92,8 +95,7 @@ class RCNN2D:
             self.params = Hyperparameters()
         else:
             self.params = params
-        data, labels, weights, _ = dataset.get_example()
-        self.input_size = data[list(data.keys())[0]].shape
+        self.input_size = input_size
         self.batch_size = batch_size
 
         for l in out_names:
@@ -422,7 +424,7 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
     :param x: Positions of the new sampled data points. Has one dimension.
     :param x_ref: Reference data points. `x_ref` has a first dimension of
-        arbitrary length. Other dimensions are treated independently.
+                  arbitrary length. Other dimensions are treated independently.
     :param y_ref: Reference data points. `y_ref` has the same shape as `x_ref`.
     :param axis: Dimension along which interpolation is executed.
     """

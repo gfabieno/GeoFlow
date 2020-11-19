@@ -1,12 +1,15 @@
 """
-Classes and functions that combines a SeismicGenerator and a ModelGenerator
-to produce a dataset on multiple GPUs. Used by the Dataset class (Dataset.py).
+Produce a dataset on multiple GPUs.
+
+Used by the `vrmslearn.Dataset.Dataset` class.
 """
+
 import os
 from multiprocessing import Process, Queue
 
 import numpy as np
 import h5py as h5
+
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.GraphIO import GraphOutput, GraphInput
@@ -22,17 +25,16 @@ class DatasetGenerator:
                  outputs: Dict[str, GraphOutput], inputs: Dict[str, GraphInput],
                  gpu: int = 0):
         """
-        To generate a Dataset, we need several elements:
+        To generate a `Dataset`, we need several elements:
 
-        :param model: A BaseModelGenerator that can create the earth properties
+        :param model: A `BaseModelGenerator` that can create the earth properties
         :param acquire: An Acquisition object controlling the data creation
         :param outputs: A dict of GraphOutput that generate the labels of the
                         network from the generated data and earth properties
         :param inputs: A dict of GraphInput that generate the inputs of the
                        netowrk from the generated data.
-        :param gpu:    The gpu id to use for generating the data.
+        :param gpu:    The GPU id to use for generating the data.
         """
-
         self.model = model
         self.outputs = outputs
         self.inputs = inputs
@@ -43,9 +45,8 @@ class DatasetGenerator:
     def new_example(self, seed):
         """
         Generate one example
-        @params:
-        seed (int): Seed of the model to generate
 
+        :param seed: Seed of the model to generate.
         """
         props, _, _ = self.model.generate_model(seed=seed)
         data = self.seismic.compute_data(props)
@@ -80,18 +81,15 @@ class DatasetGenerator:
 
     def write(self, exampleid, savedir, inputs, labels, weights, filename=None):
         """
-        This method writes one example in the hdf5 format
+        Write one example in hdf5 format.
 
         @params:
-        exampleid (int):        The example id number
-        savedir (str)   :       A string containing the directory in which to
-                                save the example
-        inputs (dict)  :       Contains the graph inputs {name: input}
-        labels (dict)  :       Contains the graph labels {name: label}
-        weights (dict)  :      Contains the label weights {name: weight}
-        filename (str):      If provided, save the example in filename.
-
-        @returns:
+        :param exampleid: The example id number
+        :param savedir The directory in which to save the example.
+        :param inputs: Contains the graph inputs {name: input}
+        :param labels: Contains the graph labels {name: label}
+        :param weights: Contains the label weights {name: weight}
+        :param filename: If provided, save the example in filename.
         """
         if filename is None:
             filename = os.path.join(savedir, "example_%d" % exampleid)
@@ -113,17 +111,15 @@ class DatasetGenerator:
                          seed0: int = None,
                          ngpu: int = 3):
         """
-        This function creates a dataset on multiple GPUs.
+        Create a dataset on multiple GPUs.
 
-        @params:
-        savepath (str)   :     Path in which to create the dataset
-        nexamples (int):       Number of examples to generate
-        seed0 (int):           First seed of the first example in the dataset.
-                               Seeds are incremented by 1 at each example.
-        ngpu (int):            Number of available gpus for data creation
+        :param savepath: Root path of the dataset.
+        :param nexamples: Quantity of examples to generate.
+        :param seed0: First seed of the first example in the dataset. Seeds are
+                      incremented by 1 at each example.
+        :param ngpu: Quantity of available GPUs for data creation.
 
         """
-
         if not os.path.isdir(savepath):
             os.makedirs(savepath)
 
@@ -146,7 +142,7 @@ class DatasetGenerator:
 
 class DatasetProcess(Process):
     """
-    This class creates a new process to generate seismic data.
+    Create a new process to generate seismic data.
     """
 
     def __init__(self,
@@ -154,13 +150,11 @@ class DatasetProcess(Process):
                  data_generator: DatasetGenerator,
                  seeds: Queue):
         """
-        Initialize the DatasetGenerator
+        Initialize a `DatasetGenerator` object.
 
-        @params:
-        savepath (str)   :     Path in which to create the dataset
-        data_generator (DatasetGenerator): A DatasetGenerator object to create
-                                            examples
-        seeds (Queue):   A Queue containing the seeds of models to create
+        :param savepath: Path at which to create the dataset.
+        :param data_generator: A `DatasetGenerator` object to create examples.
+        :param seeds: A `Queue` containing the seeds of models to generate.
         """
         super().__init__()
 
@@ -172,9 +166,8 @@ class DatasetProcess(Process):
 
     def run(self):
         """
-        Start the process to generate data
+        Start the process to generate data.
         """
-
         while not self.seeds.empty():
             try:
                 seed = self.seeds.get(timeout=1)
