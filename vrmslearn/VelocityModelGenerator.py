@@ -57,7 +57,20 @@ class BaseModelGenerator(ModelGenerator):
         # Range of the filter in z for texture creation.
         self.texture_zrange = 0
 
-        self.strati, self.properties = self.build_stratigraphy()
+        self._properties = None
+        self._strati = None
+
+    @property
+    def properties(self):
+        if self._properties is None:
+            self._strati, self._properties = self.build_stratigraphy()
+        return self._properties
+
+    @property
+    def strati(self):
+        if self._strati is None:
+            self._strati, self._properties = self.build_stratigraphy()
+        return self._strati
 
     def generate_model(self, seed=None):
         """
