@@ -108,18 +108,20 @@ class BaseModelGenerator(ModelGenerator):
 
 class MarineModelGenerator(BaseModelGenerator):
     def __init__(self):
-
-        # Minimum velocity of water.
-        self.water_vmin = 1470.0
-        # Maximum velocity of water.
-        self.water_vmax = 1530.0
-        # Mean water depth (m).
-        self.water_dmin = 1000.0
-        # Maximum amplitude of water depth variations.
-        self.water_dmax = 5000.0
         super().__init__()
+        # Minimum velocity of water.
+        self.water_vmin = 1470
+        # Maximum velocity of water.
+        self.water_vmax = 1530
+        # Minimum water depth (m).
+        self.water_dmin = 1000
+        # Maximum water depth (m).
+        self.water_dmax = 5000
 
     def build_stratigraphy(self):
+        self.thick0min = int(self.water_dmin/self.dh)
+        self.thick0max = int(self.water_dmax/self.dh)
+
         vp = Property(name="vp", vmin=self.water_vmin, vmax=self.water_vmax,
                       dzmax=0)
         vs = Property(name="vs", vmin=0, vmax=0)
@@ -137,9 +139,9 @@ class MarineModelGenerator(BaseModelGenerator):
                                  prob_deform_change=self.prob_deform_change)
         else:
             deform = None
-        waterseq = Sequence(lithologies=[water], ordered=False,
-                            thick_min=int(self.water_dmin/self.dh),
-                            thick_max=int(self.water_dmax/self.dh))
+        waterseq = Sequence(lithologies=[water], ordered=False, nmax=1,
+                            thick_min=self.thick0min,
+                            thick_max=self.thick0max)
         rocseq = Sequence(lithologies=[roc], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[waterseq, rocseq])
         properties = strati.properties()
