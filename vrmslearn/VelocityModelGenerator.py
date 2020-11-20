@@ -4,6 +4,7 @@ Generate seismic models
 """
 
 import argparse
+
 from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy,
                             Deformation, Property, Lithology)
 
@@ -63,12 +64,10 @@ class BaseModelGenerator(ModelGenerator):
         """
         Output the media parameters required for seismic modelling.
 
-        @params:
-
-        @returns:
-            props2d: a dict of gridded properties {name: np.array}
-            layerids: numpy array with the layer id of each cell
-            layers: A list of layer objects
+        :return:
+            props2d: A dictionary of gridded properties' name-values pairs.
+            layerids: An array with the layer ID of each cell.
+            layers: A list of `Layer` objects.
         """
         if self.strati is None:
             self.strati = self.build_stratigraphy()
@@ -82,11 +81,12 @@ class BaseModelGenerator(ModelGenerator):
         Build the stratigraphy object that controls model creation.
 
         :returns:
-            strati: A Stratigraphy objects
-            properties: A dict of properties with {name: [vmin, vmax]} where
-                        vmin and vmax are the minimum and maximum values that
-                        can take a property. Each property returned by generate
-                        model should be found in this dict.
+            strati: A `Stratigraphy` object.
+            properties: A dict of properties with key-values pairs `name:
+                        [vmin, vmax]` where `vmin` and `vmax` are the minimum
+                        and maximum values that can take a property. Each
+                        property returned by generate model should be found in
+                        this dictionary.
         """
         vp = Property(name="vp", vmin=self.vp_min, vmax=self.vp_max,
                       texture=self.max_texture, trend_min=self.vp_trend_min,

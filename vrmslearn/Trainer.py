@@ -80,7 +80,7 @@ class Trainer:
                     initial_epoch: int = 0,
                     steps_per_epoch: int = 100):
         """
-        Train the model
+        Train the model.
 
         The training is restarted automatically if any checkpoints are found
         in `self.checkpoint_dir`.
@@ -105,7 +105,9 @@ class Trainer:
 
 
 def ref_loss(use_weights=True):
-    """Get the loss function for the reflection prediction."""
+    """
+    Get the loss function for the reflection prediction.
+    """
     def loss(label, output):
         label, weights = label[:, 0], label[:, 1]
         #  Logistic regression of zero offset time of reflections
@@ -125,10 +127,11 @@ def ref_loss(use_weights=True):
 
 
 def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
-    """Get the three-part loss function for velocity.
+    """
+    Get the three-part loss function for velocity.
 
     :param alpha: Proportion of loss associated with minimizing the error
-                  between derivatives
+                  between derivatives.
     :param beta: Proportion of loss associated with minimizing the gradient
                  (blocky inversion).
 

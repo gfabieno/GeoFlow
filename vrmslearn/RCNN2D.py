@@ -420,7 +420,7 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
 
 
 def interp_nearest(x, x_ref, y_ref, axis=0):
-    """TensorFlow implementation of 1D nearest neighbors interpolation.
+    """Perform 1D nearest neighbors interpolation in TensorFlow.
 
     :param x: Positions of the new sampled data points. Has one dimension.
     :param x_ref: Reference data points. `x_ref` has a first dimension of

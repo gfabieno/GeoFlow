@@ -625,16 +625,22 @@ def semblance(nmo_corrected, window=10):
     den = np.convolve(den, weights, mode='same')
     return num / den
 
+
 def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
     """
+    Compute the dispersion curve of `data`.
 
-    :param data: time-offset gather
-    :param gx: geophones positions in m
-    :param dt: time step
-    :param sx: source position
-    :param minc: minimum phase velocity value to be evaluated
-    :param maxc: maximum phase velocity value to be evaluated
-    :return: A: the transformed dispersion data, freq: vector of frequencies, c: vector of evaluated velocities
+    :param data: Time-offset gather.
+    :param gx: Geophones positions in m.
+    :param dt: Time step.
+    :param sx: Source position.
+    :param minc: Minimum phase velocity value to be evaluated.
+    :param maxc: Maximum phase velocity value to be evaluated.
+
+    :return:
+        A: The transformed dispersion data.
+        freq: Vector of frequencies.
+        c: Vector of evaluated velocities.
     """
     # data = np.pad(data, [(500, 500), (0, 0)])
     freq = np.fft.fftfreq(np.size(data, 0), dt)

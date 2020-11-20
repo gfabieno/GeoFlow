@@ -2,6 +2,8 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different Datasets"""
 
+import argparse
+
 from vrmslearn.Dataset import Dataset
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               MaswModelGenerator,
@@ -9,13 +11,11 @@ from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
 from vrmslearn.SeismicGenerator import (Acquisition,
                                         AcquisitionPermafrost,
                                         Aquisition_masw)
-import argparse
 from vrmslearn.GraphIO import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
                                ShotGather)
 
 
 class DatasetMASW(Dataset):
-
     name = "Dataset_masw"
 
     def __init__(self, noise=0):
@@ -31,7 +31,6 @@ class DatasetMASW(Dataset):
                 self.inputs[name].random_noise_max = 0.02
 
     def set_dataset(self):
-
         model = MaswModelGenerator()
         model.NX = 500
         model.NZ = 100
@@ -51,13 +50,13 @@ class DatasetMASW(Dataset):
 
         acquire = Aquisition_masw(model=model)
         acquire.peak_freq = 26
-        acquire.sourcetype = 2 #force in z (2)
+        acquire.sourcetype = 2  # Force in z (2).
         acquire.ds = 5
         acquire.dt = dt = 0.0001
-        acquire.NT = int(2 / dt) #2 s survey
+        acquire.NT = int(2 / dt)  # 2 s survey.
         acquire.tdelay = dt * 5
-        acquire.dg = 'all' #3 / dh # 3m spacing
-        acquire.fs = True # Free surface
+        acquire.dg = 'all'  # 3 / dh # 3m spacing
+        acquire.fs = True  # Free surface
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
@@ -74,7 +73,6 @@ class DatasetMASW(Dataset):
 
 
 class DatasetPermafrost(Dataset):
-
     name = "DatasetPermafrost"
 
     def __init__(self, noise=0):
@@ -104,7 +102,7 @@ class DatasetPermafrost(Dataset):
         model.NX = int(length/dh)
         model.NZ = int(z/dh)
 
-        model.marine = False    #??
+        model.marine = False  # ??
         model.texture_xrange = 3
         model.texture_zrange = 1.95 * model.NZ/2
 
@@ -116,7 +114,7 @@ class DatasetPermafrost(Dataset):
         model.layer_dh_min = 20
         # model.layer_dh_max = 20
 
-        #TODO that won't work anymore
+        #TODO That won't work anymore.
         model.Dispersion = True
 
         acquire = AcquisitionPermafrost(model=model)
@@ -124,7 +122,7 @@ class DatasetPermafrost(Dataset):
         # acquire.sourcetype = 2
         acquire.dt = dt = 2e-4
         acquire.NT = int(2/dt)
-        acquire.dg = dg = 5             # 5*dh = 12.5 m
+        acquire.dg = dg = 5  # 5*dh = 12.5 m
         # acquire.gmin = int(100 / dh)
         # acquire.gmax = int(acquire.gmin*dg)
         acquire.fs = True
@@ -133,7 +131,7 @@ class DatasetPermafrost(Dataset):
         # acquire.rectype = 1
 
         # label = LabelGenerator(model=model, acquire=acquire)
-        #TODO write GraphInput and GraphOutput for dispersion
+        # TODO write GraphInput and GraphOutput for dispersion.
         # label = PermafrostLabelGenerator(model=model, acquire=acquire)
         # label.identify_direct = False
         # label.train_on_shots = True
@@ -146,7 +144,6 @@ class DatasetPermafrost(Dataset):
 
 
 class Dataset1Dsmall(Dataset):
-
     name = "Dataset1Dsmall"
 
     def set_dataset(self):
@@ -160,7 +157,6 @@ class Dataset1Dsmall(Dataset):
 
 
 class Dataset1Darticle(Dataset):
-
     name = "Dataset1Darticle"
 
     def set_dataset(self):
@@ -217,10 +213,10 @@ class Dataset1Darticle(Dataset):
                 self.inputs[name].random_noise = True
                 self.inputs[name].random_noise_max = 0.02
 
-# TODO This 2D Dataset does not generate data, because some models do not contain
-#  reflexions.
-class Dataset2Dtest(Dataset):
 
+# TODO This 2D Dataset does not generate data, because some models do not
+# contain reflections.
+class Dataset2Dtest(Dataset):
     name = "Dataset2Dtest"
 
     def set_dataset(self):

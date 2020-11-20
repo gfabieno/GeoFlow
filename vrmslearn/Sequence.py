@@ -3,10 +3,12 @@
 Interface with Keras's `Sequence`.
 """
 
+from typing import List
+
 import numpy as np
 from tensorflow.keras.utils import Sequence
+
 from vrmslearn.Dataset import Dataset
-from typing import List
 
 OUTS = ('ref', 'vrms', 'vint', 'vdepth')
 
@@ -19,15 +21,14 @@ class Sequence(Sequence):
                  tooutputs: List[str],
                  toinput: str):
         """
-        Create a tf.keras.Sequence from a Dataset object
+        Create a `tf.keras.Sequence` from a `Dataset` object.
 
-        :param is_training: If true, use thes training set, else uses the test
-        :param dataset:        A Dataset object for generating examples
-        :param batch_size:  The batch size
-        :param tooutputs:   The list of the name of the desired outputs
-        :param toinput:     The name of the input
+        :param is_training: If true, use the training set, else use the test.
+        :param dataset: A `Dataset` object for generating examples.
+        :param batch_size: The batch size.
+        :param tooutputs: The list of the name of the desired outputs.
+        :param toinput: The name of the input.
         """
-
         self.is_training = is_training
         if is_training:
             self.phase = "train"
@@ -49,10 +50,10 @@ class Sequence(Sequence):
             yield self[i]
 
     def __getitem__(self, _):
-        inputs, labels, files = self.dataset.get_batch(self.batch_size,
-                                                    phase=self.phase,
-                                                    toinputs=self.toinput,
-                                                    tooutputs=self.tooutputs)
+        (inputs, labels, files) = self.dataset.get_batch(self.batch_size,
+                                                         phase=self.phase,
+                                                         toinputs=self.toinput,
+                                                         tooutputs=self.tooutputs)
         # TODO Is a different signature necessary here ?
         if self.is_training:
             return inputs, labels

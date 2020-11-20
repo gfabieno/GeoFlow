@@ -7,12 +7,13 @@ Requires the SeisCL python interface.
 
 import os
 import shutil
-import matplotlib.pyplot as plt
+
 import numpy as np
+
 from SeisCL.SeisCL import SeisCL
 from vrmslearn.SeismicUtilities import random_wavelet_generator
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator, MaswModelGenerator
-
+from vrmslearn.VelocityModelGenerator import (BaseModelGenerator,
+                                              MaswModelGenerator)
 
 
 class Acquisition:
@@ -121,20 +122,20 @@ class Acquisition:
         return random_wavelet_generator(self.NT, self.dt, self.peak_freq,
                                         self.df, self.tdelay)
 
-class Aquisition_masw(Acquisition):
 
+class Aquisition_masw(Acquisition):
     def set_rec_src(self):
 
         dg = self.dg
-        ng = 24 #nombre de geophones
+        ng = 24  # Quantity of geophones.
 
         if dg == 'all':
             spacing = [3, 1, 0.5]
             src_pos = []
-            rec_pos= []
+            rec_pos = []
 
             for s in spacing:
-                gmin = self.Npad + 20 * self.model.dh
+                gmin = self.Npad + 20*self.model.dh
                 gmax = gmin + ng * s
                 if s == 3:
                     sx = [gmin - 20, gmin - 5, gmax + 5, gmax + 20]
@@ -151,11 +152,13 @@ class Aquisition_masw(Acquisition):
                                     np.zeros_like(sx),
                                     sz,
                                     sid,
-                                    np.full_like(sx, self.sourcetype)], axis=0)
+                                    np.full_like(sx, self.sourcetype)],
+                                   axis=0)
 
                 gx0 = np.arange(gmin, gmax, s) * self.model.dh
                 gx = np.concatenate([gx0 for _ in sx], axis=0)
-                gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+                gsid = np.concatenate([np.full_like(gx0, s) for s in sid],
+                                      axis=0)
                 gz = np.full_like(gx, self.receiver_depth)
                 gid = np.arange(0, len(gx))
 
@@ -170,13 +173,11 @@ class Aquisition_masw(Acquisition):
 
                 src_pos.append(Src_pos)
                 rec_pos.append(Rec_pos)
-            src_pos = np.concatenate(src_pos, axis = 1)
+            src_pos = np.concatenate(src_pos, axis=1)
             rec_pos = np.concatenate(rec_pos, axis=1)
 
-
-
         else:
-            #Add receiver
+            # Add receiver.
             if self.gmin:
                 gmin = self.gmin
             else:
@@ -186,8 +187,7 @@ class Aquisition_masw(Acquisition):
             else:
                 gmax = gmin + ng * dg
 
-
-            #Add sources
+            # Add sources.
             if dg == 3:
                 sx = [gmin-20, gmin-5, gmax+5, gmax+20]
             elif dg == 1:
@@ -195,9 +195,9 @@ class Aquisition_masw(Acquisition):
             elif dg == 0.5:
                 sx = [gmin-5, gmax+5]
             else:
-                error('Geophone spacing (dg) must be 3, 1 or 0.5 m')
+                raise ValueError("Geophone spacing (dg) must be 3, 1 or 0.5 m")
 
-            # Set source
+            # Set source.
             sz = np.full_like(sx, self.source_depth)
             sid = np.arange(0, len(sx))
 
@@ -223,27 +223,21 @@ class Aquisition_masw(Acquisition):
                                 np.zeros_like(gx),
                                 np.zeros_like(gx)], axis=0)
 
-
         return src_pos, rec_pos
 
 
 class AcquisitionPermafrost(Acquisition):
-    def set_rec_src(self):
-        """
-        ***** Modified to fix the survey geometry for the ARAC05 survey on the Beauford Sea
-        This methods outputs the src_pos and rec_pos arrays providing the
-        sources and receiver positions for SeisCL. Override to change which data
-        is modelled if needed.
+    """
+    Fix the survey geometry for the ARAC05 survey on the Beaufort Sea.
+    """
 
-        :return:
-        src_pos, rec_pos (np.Array) Provides the source et receiver arrays
-        """
+    def set_rec_src(self):
         # Source and receiver positions.
         offmin = 182        # in meters
         offmax = offmin + 120*self.dg*self.model.dh   # in meters
         if self.singleshot:
             # Add just one source at the right (offmax)
-            sx = np.arange(self.Npad + offmax,1+self.Npad + offmax)
+            sx = np.arange(self.Npad + offmax, 1 + self.Npad + offmax)
             # sx = np.arange(self.model.NX / 2,
             #                1 + self.model.NX / 2) * self.model.dh
         else:
@@ -289,7 +283,6 @@ class AcquisitionPermafrost(Acquisition):
                             np.zeros_like(gx)], axis=0,)
 
         return src_pos, rec_pos
-
 
 
 class SeismicGenerator(SeisCL):
@@ -350,11 +343,10 @@ class SeismicGenerator(SeisCL):
         """
         Compute the seismic data of a model.
 
-        :param props: A Dict containint {name_of_property: array_of_property}
+        :param props: A dictionary of properties' name-values pairs.
 
         :return: An array containing the modeled seismic data.
         """
-
         self.src_all = None  # Reset source to generate new random source.
         self.set_forward(self.src_pos_all[3, :], props, withgrad=False)
         self.execute()
