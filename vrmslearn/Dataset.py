@@ -1,43 +1,50 @@
 """
-The Dataset class define the basic class to build a Dataset containing parameters
-for creating the dataset and training the neural network.
+Define the base class for building a dataset.
+
+The `Dataset` class defines the basic class to build a dataset containing
+parameters for creating the dataset and training the neural network.
+
 See Dataset2Dtest for usage example.
 """
 
 import os
 import gc
 import fnmatch
-import random
+from typing import List
+
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
-import numpy as np
+
 from vrmslearn.DatasetGenerator import DatasetGenerator
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
-from typing import List
 
 
 class Dataset:
     """
-    Base class of a Dataset. Build a specific Dataset by creating a new class
-    from this class and changing the model parameters.
+    Base class of a dataset.
+
+    Define a specific dataset by inheriting from this class and changing the
+    model parameters.
     """
     name = "BaseDataset"
     basepath = "Datasets"
 
-    # Seed of the 1st model generated. Seeds fo subsequent models are
+    # Seed of the 1st model generated. Seeds for subsequent models are
     # incremented by 1.
     seed0 = 0
 
     def __init__(self):
         """
-        Initiate a Dataset.
+        Initialize a Dataset.
         """
         self.trainsize = 10000
         self.validatesize = 0
         self.testsize = 100
-        self.model, self.acquire, self.inputs, self.outputs = self.set_dataset()
+        (self.model, self.acquire,
+         self.inputs, self.outputs) = self.set_dataset()
         self.generator = DatasetGenerator(model=self.model,
                                           acquire=self.acquire,
                                           inputs=self.inputs,
@@ -55,16 +62,17 @@ class Dataset:
 
     def set_dataset(self):
         """
-        A method that defines the parameters of a Dataset.
-        Override to set the parameters of a Dataset.
+        Define the parameters of a dataset.
+
+        Override this method to set the parameters of a dataset.
 
         :return:
-            model: A BaseModelGenerator object that generates models
-            acquire: An Acquisition objects that set data creation
-            inputs: A dict of objects derived from GraphInput that defines the
-                    input of the graph {GraphInput.name: GraphInput()}
-            outputs: A dict of objects derived from GraphOutput that defines
-                     the output of the graph {GraphOutput.name: GraphOutput()}
+            model: A `BaseModelGenerator` object that generates models.
+            acquire: An `Acquisition` object that set data creation.
+            inputs: A dictionary of names and `GraphInput` objects that define
+                    the inputs of the graph, for instance `{graph_input.name:
+                    graph_input}` with `graph_input = GraphInput()`.
+            outputs: The parallel to `inputs` for graph outputs.
         """
         self.trainsize = 10000
         self.validatesize = 0
@@ -87,7 +95,7 @@ class Dataset:
 
     def _getfilelist(self, phase=None):
         """
-        Search for examples found in the dataset paths
+        Search for examples found in the dataset directory.
         """
         phases = {"train": self.datatrain,
                   "validate": self.datavalidate,
@@ -121,23 +129,22 @@ class Dataset:
     def get_example(self, filename=None, phase="train", shuffle=True,
                     toinputs=None, tooutputs=None):
         """
-        Read an example from a file and apply the preprocessing.
+        Read an example from a file and apply preprocessing.
 
-        @params:
-        filename (str): If provided, get the example in filename. If None, get
-                        an example for a file list provided by phase.
-        phase (str): Either "train", "test" or "validate". Get an example from
-                     the "phase" dataset.
-        shuffle (bool): If True, draws randomly an example, else give examples
+        :param filename: If provided, get the example in filename. If None, get
+                         a random example for a file list provided by phase.
+        :param phase: Either "train", "test" or "validate". Get an example from
+                      the "phase" dataset.
+        :param shuffle: If True, draws randomly an example, else give examples
                         in order.
-        toinputs (list):  List of the name(s) of the input to the network
-        tooutputs (list): List of the name(s) of the output of the network
+        :param toinputs: List of the name(s) of the inputs to the network.
+        :param tooutputs: List of the name(s) of the outputs of the network.
 
-        @returns:
-            inputspre (dict) The preprocessed input data {name1: input1}
-            labelspre (dict) The preprocessed labels {name1: label1}
-            weightspre (dict) The preprocessed weights {name1: weight1}
-
+        :return:
+            inputspre: A dictionary of inputs' name-values pairs.
+            labelspre: A dictionary of labels' name-values pairs.
+            weightspre: A dictionary of weights' name-values pairs.
+            filename: The filename of the example.
         """
         if toinputs is None:
             toinputs = [el for el in self.inputs]
@@ -173,20 +180,22 @@ class Dataset:
                   toinput: str = None,
                   tooutputs: List[str] = None):
         """
-        Get a batch of data and ouputs in a format compatible with
-        tf.Keras.Sequence
+        Get a batch of data and outputs.
 
-        :param batch_size: The batch size
-        :param toinput: The name of the input variable
-        :param phase: The name of the phase either "train", "test" or "validate"
-        :param tooutputs: A list of names of the output variables
+        The format is compatible with `tf.Keras.Sequence`.
+
+        :param batch_size: The batch size.
+        :param toinput: The name of the input variable.
+        :param phase: The name of the phase. Either `"train"`, `"test"` or
+                      `"validate"`.
+        :param tooutputs: A list of names of the output variables.
 
         :returns:
-            inputs: The inputs, an array of size [batch_size, input_size]
-            outputs: The labels, an array of size [batch_size, 2, output_size]
-                     The second dimension, first element is the label, and
-                     second is the weight
-            filenames: A corresponding filenames for each example in the batch
+            inputs: The inputs, an array of size `[batch_size, input_size]`.
+            outputs: The labels, an array of size `[batch_size, 2,
+                     output_size]`. The items of the second dimension are the
+                     labels and weights, respectively.
+            filenames: A corresponding filename for each example in the batch.
         """
         if toinput is None:
             toinput = list(self.inputs.keys())[0]
@@ -200,9 +209,10 @@ class Dataset:
         inputs = None
         outputs = [None for _ in tooutputs]
         for i in range(batch_size):
-            data, labels, weights, fname = self.get_example(phase=phase,
-                                                            toinputs=[toinput],
-                                                            tooutputs=tooutputs)
+            (data, labels,
+             weights, fname) = self.get_example(phase=phase,
+                                                toinputs=[toinput],
+                                                tooutputs=tooutputs)
             filenames.append(fname)
             if inputs is None:
                 input_size = data[toinput].shape
@@ -221,9 +231,8 @@ class Dataset:
         """
         Plot the data and the labels of an example.
 
-        @params:
-        filename (str): If provided, get the example in filename. If None, get
-                        a random example.
+        :param filename: If provided, get the example in filename. If None, get
+                         a random example.
         """
 
         inputs, labels, weights, _ = self.get_example(filename=filename,
@@ -259,13 +268,13 @@ class Dataset:
 
     def animate(self, phase='train', toinputs=None, tooutputs=None):
         """
-        Produces an animation of a dataset, showing the input data, and the
-        different labels for each example.
+        Produce an animation of a dataset.
 
-        @params:
-        phase (str): Which dataset: either train, test or validate
+        Show the input data and the labels for each example.
+
+        :param phase: Which dataset to animate. Either `"train"`, `"test"` or
+                      `"validate"`.
         """
-
         fig, axs, ims = self.plot_example(toinputs=toinputs,
                                           tooutputs=tooutputs)
         plt.tight_layout()
@@ -283,8 +292,3 @@ class Dataset:
                                     interval=3000, blit=True, repeat=True)
         plt.show()
         gc.collect()
-
-
-
-
-

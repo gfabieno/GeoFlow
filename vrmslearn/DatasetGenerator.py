@@ -4,32 +4,36 @@ Produce a dataset on multiple GPUs.
 Used by the `vrmslearn.Dataset.Dataset` class.
 """
 
-import numpy as np
 import os
+from multiprocessing import Process, Queue
+from typing import Dict
+
+import numpy as np
 import h5py as h5
 
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
 from vrmslearn.GraphIO import GraphOutput, GraphInput
-from multiprocessing import Process, Queue
-from typing import Dict
 from vrmslearn.SeismicUtilities import dispersion_curve
+
 
 class DatasetGenerator:
     """
-    Class to generate a complete dataset for geophysics learning.
+    Generate a complete dataset.
     """
 
     def __init__(self, model: BaseModelGenerator, acquire: Acquisition,
-                 outputs: Dict[str, GraphOutput], inputs: Dict[str, GraphInput],
+                 outputs: Dict[str, GraphOutput],
+                 inputs: Dict[str, GraphInput],
                  gpu: int = 0):
         """
-        To generate a `Dataset`, we need several elements:
+        Generate a dataset as implied by the arguments.
 
-        :param model: A `BaseModelGenerator` that can create the earth properties
-        :param acquire: An Acquisition object controlling the data creation
+        :param model: A `BaseModelGenerator` that can create the earth
+                      properties.
+        :param acquire: An Acquisition object controlling the data creation.
         :param outputs: A dict of GraphOutput that generate the labels of the
-                        network from the generated data and earth properties
+                        network from the generated data and earth properties.
         :param inputs: A dict of GraphInput that generate the inputs of the
                        netowrk from the generated data.
         :param gpu:    The GPU id to use for generating the data.
@@ -66,9 +70,9 @@ class DatasetGenerator:
         :param filename: Name of the file.
 
         :returns:
-                inputs: A dict {name: input_data}
-                labels: A dict {name: label}
-                weights: A dict {name: weight}
+                inputs: A dictionary of inputs' name-data pairs.
+                labels: A dictionary of labels' name-values pairs.
+                weights: A dictionary of weights' name-values pairs.
         """
         file = h5.File(filename, "r")
         inputs = {key: file[key][:] for key in self.inputs}
@@ -78,16 +82,17 @@ class DatasetGenerator:
 
         return inputs, labels, weights
 
-    def write(self, exampleid, savedir, inputs, labels, weights, filename=None):
+    def write(self, exampleid, savedir, inputs, labels, weights,
+              filename=None):
         """
         Write one example in hdf5 format.
 
         @params:
-        :param exampleid: The example id number
+        :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
-        :param inputs: Contains the graph inputs {name: input}
-        :param labels: Contains the graph labels {name: label}
-        :param weights: Contains the label weights {name: weight}
+        :param inputs: A dicitonary of graph inputs' name-values pairs.
+        :param labels: A dicitonary of graph labels' name-values pairs.
+        :param weights:  A dicitonary of graph weights' name-values pairs.
         :param filename: If provided, save the example in filename.
         """
         if filename is None:

@@ -625,28 +625,37 @@ def semblance(nmo_corrected, window=10):
     den = np.convolve(den, weights, mode='same')
     return num / den
 
+
 def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
     """
+    Compute the dispersion curve of `data`.
 
-    :param data: time-offset gather
-    :param gx: geophones positions in m
-    :param dt: time step
-    :param sx: source position
-    :param minc: minimum phase velocity value to be evaluated
-    :param maxc: maximum phase velocity value to be evaluated
-    :return: A: the transformed dispersion data, freq: vector of frequencies, c: vector of evaluated velocities
+    :param data: Time-offset gather.
+    :param gx: Geophones positions in m.
+    :param dt: Time step.
+    :param sx: Source position.
+    :param minc: Minimum phase velocity value to be evaluated.
+    :param maxc: Maximum phase velocity value to be evaluated.
+
+    :return:
+        A: The transformed dispersion data.
+        freq: Vector of frequencies.
+        c: Vector of evaluated velocities.
     """
     # data = np.pad(data, [(500, 500), (0, 0)])
-    freq = np.fft.fftfreq(np.size(data,0), dt)
-    c = np.linspace(minc,maxc,201)[:-1]
+    freq = np.fft.fftfreq(np.size(data, 0), dt)
+    c = np.linspace(minc, maxc, 201)[:-1]
     c = c[1:]
-    data_fft = np.fft.fft(data,axis = 0)
-    data_fft_norm = data_fft/np.abs(data_fft)
-    A = np.zeros((len(freq),len(c)),dtype=complex); A2 = np.zeros((len(freq),len(c)),dtype =complex)
-    freq = np.reshape(freq,[-1,1])
-    x = np.abs(gx-sx); x = x-np.min(x); x = np.reshape(x,[1,-1])
+    data_fft = np.fft.fft(data, axis=0)
+    data_fft_norm = data_fft / np.abs(data_fft)
+    A = np.zeros((len(freq), len(c)), dtype=complex)
+    A2 = np.zeros((len(freq), len(c)), dtype=complex)
+    freq = np.reshape(freq, [-1, 1])
+    x = np.abs(gx-sx)
+    x -= np.min(x)
+    x = np.reshape(x, [1, -1])
     for i in range(len(c)):
         delta = 2 * np.pi * freq * x / c[i]
-        A2[:, i] =      np.sum(np.exp(1j * delta) * data_fft_norm,axis = 1)
+        A2[:, i] = np.sum(np.exp(1j*delta) * data_fft_norm, axis=1)
     A = np.transpose(A2)
     return A, freq, c

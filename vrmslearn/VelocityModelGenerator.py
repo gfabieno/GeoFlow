@@ -4,6 +4,7 @@ Generate seismic models
 """
 
 import argparse
+
 from ModelGenerator import (ModelGenerator, Sequence, Stratigraphy,
                             Deformation, Property, Lithology)
 
@@ -62,12 +63,10 @@ class BaseModelGenerator(ModelGenerator):
         """
         Output the media parameters required for seismic modelling.
 
-        @params:
-
-        @returns:
-            props2d: a dict of gridded properties {name: np.array}
-            layerids: numpy array with the layer id of each cell
-            layers: A list of layer objects
+        :return:
+            props2d: A dictionary of gridded properties' name-values pairs.
+            layerids: An array with the layer ID of each cell.
+            layers: A list of `Layer` objects.
         """
         props2d, layerids, layers = super().generate_model(self.strati,
                                                            seed=seed)
@@ -79,11 +78,12 @@ class BaseModelGenerator(ModelGenerator):
         Build the stratigraphy object that controls model creation.
 
         :returns:
-            strati: A Stratigraphy objects
-            properties: A dict of properties with {name: [vmin, vmax]} where
-                        vmin and vmax are the minimum and maximum values that
-                        can take a property. Each property returned by generate
-                        model should be found in this dict.
+            strati: A `Stratigraphy` object.
+            properties: A dict of properties with key-values pairs `name:
+                        [vmin, vmax]` where `vmin` and `vmax` are the minimum
+                        and maximum values that can take a property. Each
+                        property returned by generate model should be found in
+                        this dictionary.
         """
         vp = Property(name="vp", vmin=self.vp_min, vmax=self.vp_max,
                       texture=self.max_texture, trend_min=self.vp_trend_min,
@@ -105,19 +105,21 @@ class BaseModelGenerator(ModelGenerator):
 
 class MarineModelGenerator(BaseModelGenerator):
     def __init__(self):
-
+        # Minimum water depth (m).
+        self.water_dmin = 1000
+        # Maximum water depth (m).
+        self.water_dmax = 5000
         # Minimum velocity of water.
-        self.water_vmin = 1470.0
+        self.water_vmin = 1470
         # Maximum velocity of water.
-        self.water_vmax = 1530.0
-        # Mean water depth (m).
-        self.water_dmin = 1000.0
-        # Maximum amplitude of water depth variations.
-        self.water_dmax = 5000.0
+        self.water_vmax = 1530
+
         super().__init__()
 
-
     def build_stratigraphy(self):
+        self.thick0min = int(self.water_dmin/self.dh)
+        self.thick0max = int(self.water_dmax/self.dh)
+
         vp = Property(name="vp", vmin=self.water_vmin, vmax=self.water_vmax,
                       dzmax=0)
         vs = Property(name="vs", vmin=0, vmax=0)
@@ -135,9 +137,9 @@ class MarineModelGenerator(BaseModelGenerator):
                                  prob_deform_change=self.prob_deform_change)
         else:
             deform = None
-        waterseq = Sequence(lithologies=[water], ordered=False,
-                            thick_min=int(self.water_dmin/self.dh),
-                            thick_max=int(self.water_dmax/self.dh))
+        waterseq = Sequence(lithologies=[water], ordered=False, nmax=1,
+                            thick_min=self.thick0min,
+                            thick_max=self.thick0max)
         rocseq = Sequence(lithologies=[roc], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[waterseq, rocseq])
         properties = strati.properties()
@@ -155,7 +157,7 @@ class PermafrostModelGenerator(BaseModelGenerator):
         name = "Water"
         vp = Property("vp", vmin=1430, vmax=1430)
         # vs = Property("vs", vmin=0, vmax=0)
-        vpvs = Property("vpvs",vmin=0,vmax=0)
+        vpvs = Property("vpvs", vmin=0, vmax=0)
         rho = Property("rho", vmin=1000, vmax=1000)
         q = Property("q", vmin=1000, vmax=1000)
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
@@ -164,7 +166,7 @@ class PermafrostModelGenerator(BaseModelGenerator):
         name = "Unfrozen sediments"  # Buckingham 1996, Fig 11
         vp = Property("vp", vmin=1700, vmax=1700, texture=200)
         # vs = Property("vs", vmin=400, vmax=400, texture=150)
-        vpvs = Property("vpvs",vmin=4.25, vmax=4.25, texture=1.52)
+        vpvs = Property("vpvs", vmin=4.25, vmax=4.25, texture=1.52)
         rho = Property("rho", vmin=1900, vmax=1900, texture=150)
         q = Property("q", vmin=50, vmax=50, texture=30)
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
@@ -188,7 +190,7 @@ class PermafrostModelGenerator(BaseModelGenerator):
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Frozen Silts"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        name = "Frozen Silts"  # Dou 2016, Fig 9, # Buckingham 1996, Fig 11
         vp = Property("vp", vmin=3400, vmax=3400, texture=300)
         # vs = Property("vs", vmin=1888, vmax=1888, texture=170)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.29)
@@ -197,7 +199,9 @@ class PermafrostModelGenerator(BaseModelGenerator):
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Partially Frozen Silts"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        # Dou 2016, Fig 9
+        # Buckingham 1996, Fig 11
+        name = "Partially Frozen Silts"
         vp = Property("vp", vmin=2200, vmax=2200, texture=450)
         # vs = Property("vs", vmin=792, vmax=792, texture=160)
         vpvs = Property("vpvs", vmin=2.78, vmax=2.78, texture=0.94)
@@ -206,7 +210,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Partially Frozen Silts2"  # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        name = "Partially Frozen Silts2"
         vp = Property("vp", vmin=1950, vmax=1950, texture=550)
         # vs = Property("vs", vmin=650, vmax=650, texture=186)
         vpvs = Property("vpvs", vmin=3, vmax=3, texture=1.3)
@@ -216,7 +221,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
         name = "Frozen Shale"  # Bellefleur 2007, Figure 3 zone 2
-        vp = Property("vp", vmin=3000, vmax=3000, texture=950)  # IOE Taglu D-43
+        # IOE Taglu D-43
+        vp = Property("vp", vmin=3000, vmax=3000, texture=950)
         # vs = Property("vs", vmin=1666, vmax=650, texture=527)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.87)
         rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
@@ -225,7 +231,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
         name = "Iperk"  # Bellefleur 2007, Figure 3 zone 2
-        vp = Property("vp", vmin=4000, vmax=4000, texture=1500)  # IOE Taglu D-43
+        # IOE Taglu D-43
+        vp = Property("vp", vmin=4000, vmax=4000, texture=1500)
         # vs = Property("vs", vmin=2222, vmax=2222, texture=52)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.7)
         rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
@@ -234,7 +241,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
         name = "Unfrozen Shale"  # Bellefleur 2007, Figure 3 zone 2
-        vp = Property("vp", vmin=2200, vmax=2200, texture=200)  # IOE Taglu D-43
+        # IOE Taglu D-43
+        vp = Property("vp", vmin=2200, vmax=2200, texture=200)
         # vs = Property("vs", vmin=1222, vmax=1222, texture=111)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.3)
         rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
@@ -242,7 +250,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Frozen Sands2"  # Modified from Matsushima 2016, fig 13c @ 6C Dou 2016
+        # Modified from Matsushima 2016, fig 13c @ 6C Dou 2016
+        name = "Frozen Sands2"
         vp = Property("vp", vmin=2600, vmax=2600, texture=300)
         # vs = Property("vs", vmin=1000, vmax=1000, texture=150)
         vpvs = Property("vpvs", vmin=2.6, vmax=2.6, texture=0.6)
@@ -251,7 +260,9 @@ class PermafrostModelGenerator(BaseModelGenerator):
         # lithologies[name] = Lithology(name=name, properties=[vp, vs, rho, q])
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Hydrates"  # Modified from Partially frozen Silts Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        # Modified from Partially frozen Silts Dou 2016, Fig 9,
+        # Buckingham 1996, Fig 11
+        name = "Hydrates"
         vp = Property("vp", vmin=2200, vmax=2200, texture=450)
         # vs = Property("vs", vmin=792, vmax=792, texture=160)
         vpvs = Property("vpvs", vmin=2.78, vmax=2.78, texture=0.94)
@@ -274,8 +285,7 @@ class PermafrostModelGenerator(BaseModelGenerator):
                                            lithologies["Frozen Sands2"],
                                            lithologies["Partially Frozen Silts"],
                                            lithologies["Unfrozen sediments"],
-                                           lithologies["Hydrates"]
-                                           ],
+                                           lithologies["Hydrates"]],
                               ordered=False, deform=deform)
 
         sequences = [water, unfrozen, permafrost, unfrozen]
@@ -300,7 +310,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
         tempvpvs = props2D["vpvs"]
         tempvp = props2D["vp"]
         tempvs = tempvp*0
-        tempvs[tempvpvs!=0] = tempvp[tempvpvs!=0] / tempvpvs[tempvpvs!=0]
+        mask = tempvpvs != 0
+        tempvs[mask] = tempvp[mask] / tempvpvs[mask]
         props2D["vs"] = tempvs
         # props2D["vs"] = props2D["vp"] / props2D["vpvs"]
 
@@ -347,23 +358,23 @@ class MaswModelGenerator(BaseModelGenerator):
 
         deform = Deformation(max_deform_freq=0.02,
                              min_deform_freq=0.0001,
-                             amp_max=5, #8
-                             max_deform_nfreq=10, #40
+                             amp_max=5,  # 8
+                             max_deform_nfreq=10,  # 40
                              prob_deform_change=0.1)
 
         unsat_seq = Sequence(name="unsaturated",
                              lithologies=[unsaturated_sand],
-                             thick_max=25, deform = deform)
+                             thick_max=25, deform=deform)
         sat_seq = Sequence(name="saturated",
                            lithologies=[saturated_clay,
                                         saturated_sand],
-                           thick_max=100, deform = deform)
+                           thick_max=100, deform=deform)
         weathered_seq = Sequence(name="weathered",
                                  lithologies=[weathered_shale],
-                                 thick_max=50, deform = deform)
+                                 thick_max=50, deform=deform)
         roc_seq = Sequence(name="roc",
                            lithologies=[shale],
-                           thick_max=99999, deform = deform)
+                           thick_max=99999, deform=deform)
 
         sequences = [unsat_seq,
                      sat_seq,
