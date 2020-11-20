@@ -19,7 +19,8 @@ PROJECT_NAME = "Deep_2D_velocity"
 
 
 class ArchiveRepository:
-    """Create a duplicate of the current project in a subdirectory.
+    """
+    Create a duplicate of the current project in a subdirectory.
 
     `ArchiveRepository` can be used with the `with` statement. Upon entering,
     the current repository is copied to a unique subdirectory of
@@ -50,7 +51,9 @@ class ArchiveRepository:
             return True
 
     def create_directory_tree(self):
-        """Create the target subdirectory tree."""
+        """
+        Create the target subdirectory tree.
+        """
         current_branch = run(["git", "branch", "--show-current"],
                              capture_output=True, check=True, text=True)
         current_branch = current_branch.stdout.strip("\n")
@@ -82,7 +85,9 @@ class ArchiveRepository:
         return logs_dir, model_dir, code_dir, current_prototype
 
     def archive_current_state(self):
-        """Copy the current project to `self.code` using `git`."""
+        """
+        Copy the current project to `self.code` using `git`.
+        """
         logs_dir, code_dir = self.logs, self.code
 
         stash_name = run(["git", "stash", "create", "'Uncommitted changes'"],
@@ -99,7 +104,9 @@ class ArchiveRepository:
                 target_is_directory=True)
 
     def chdir(self):
-        """Select `self.code` as the current working directory."""
+        """
+        Select `self.code` as the current working directory.
+        """
         self._previous_dir = getcwd()
         self._previous_state = deepcopy(sys.path)
 
@@ -110,13 +117,17 @@ class ArchiveRepository:
         sys.path.extend(subdirectories)
 
     def recover_previous_state(self):
-        """Set the previous working directory as the current one."""
+        """
+        Set the previous working directory as the current one.
+        """
         chdir(self._previous_dir)
         sys.path = self._previous_state
         del self._previous_dir, self._previous_state
 
     def write(self, *lines):
-        """Write `lines` to `command.sh` at the commit level directory."""
+        """
+        Write `lines` to `command.sh` at the commit level directory.
+        """
         command_path = join(pardir, pardir, "command.sh")
         if exists(command_path):
             mode = "a"

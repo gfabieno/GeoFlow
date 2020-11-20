@@ -1,21 +1,21 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Define parameters for different cases"""
+"""
+Define parameters for different cases
+"""
+
+import argparse
 
 from vrmslearn.Case import Case
 from vrmslearn.VelocityModelGenerator import (MarineModelGenerator,
                                               MaswModelGenerator)
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.LabelGenerator import LabelGenerator
-import argparse
 
 
 class Case_masw(Case):
-
     name = "Case_masw"
 
     def __init__(self, noise=0):
-
         if noise == 1:
             self.name = self.name + "_noise"
         super().__init__()
@@ -26,7 +26,6 @@ class Case_masw(Case):
             self.label.random_noise_max = 0.02
 
     def set_case(self):
-
         model = MaswModelGenerator()
         model.NX = 500
         model.NZ = 100
@@ -65,7 +64,6 @@ class Case_masw(Case):
 
 
 class Case1Dsmall(Case):
-
     name = "Case1Dsmall"
 
     def set_case(self):
@@ -76,11 +74,9 @@ class Case1Dsmall(Case):
 
 
 class Case1Darticle(Case):
-
     name = "Case1Darticle"
 
     def set_case(self):
-
         model = MarineModelGenerator()
         model.layer_dh_min = 5
         model.layer_num_min = 48
@@ -128,11 +124,9 @@ class Case1Darticle(Case):
 
 
 class Case2Dtest(Case):
-
     name = "Case2Dtest"
 
     def set_case(self):
-
         model = MarineModelGenerator()
         model.NX = 150
         model.NZ = 100
@@ -164,7 +158,6 @@ class Case2Dtest(Case):
         return model, acquire, label
 
     def __init__(self, noise=0):
-
         if noise == 1:
             self.name = self.name + "_noise"
 

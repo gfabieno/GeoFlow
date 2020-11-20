@@ -1,6 +1,7 @@
 """
-The case class define the basic class to build a case containing parameters
+The `Case` class defines the basic class to build a case containing parameters
 for creating the dataset and training the neural network.
+
 See Case2Dtest for usage example.
 """
 
@@ -8,9 +9,11 @@ import os
 import gc
 import fnmatch
 import random
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+
 import numpy as np
+from matplotlib import pyplot as plt
+from matplotlib import animation
+
 from vrmslearn.DatasetGenerator import SampleGenerator
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
@@ -19,8 +22,10 @@ from vrmslearn.LabelGenerator import LabelGenerator
 
 class Case:
     """
-    Base class of a Case. Build a specific case by creating a new class from
-    this class and changing the model parameters.
+    Base class of a Case.
+
+    Build a specific case by creating a new class from this class and changing
+    the model parameters.
     """
     name = "BaseCase"
     basepath = "Datasets"
@@ -32,8 +37,6 @@ class Case:
     def __init__(self):
         """
         Initiate a Case by setting the training, validation and test sets size.
-
-        @returns:
         """
         self.trainsize = 10000
         self.validatesize = 0
@@ -55,8 +58,9 @@ class Case:
 
     def set_case(self):
         """
-        A method that defines the parameters of a case.
-        Override to set the parameters of a case.
+        Define the parameters of a case.
+
+        Override this method to set the parameters of a case.
 
         :return:
             model: A BaseModelGenerator object that generates models
@@ -81,7 +85,7 @@ class Case:
 
     def _getfilelist(self):
         """
-        Search for examples found in the dataset paths
+        Search for examples found in the dataset paths.
         """
         try:
             files = fnmatch.filter(os.listdir(self.datatrain), 'example_*')
@@ -104,7 +108,7 @@ class Case:
 
     def generate_dataset(self, ngpu=1):
         """
-        Generate the training, testing and validation datasets with ngpus.
+        Generate the training, testing and validation datasets with `ngpus`.
         """
         seed0 = self.seed0
         self.sample.generate_dataset(self.datatrain, self.trainsize, ngpu=ngpu,
@@ -122,14 +126,12 @@ class Case:
         """
         Provide an example.
 
-        @params:
-        filename (str): If provided, get the example in filename. If None, get
-                        a random example.
-        phase (str): Either "train", "test" or "validate". Get an example from
-                     the "phase" dataset.
+        :param filename: If provided, get the example in filename. If None, get
+                         a random example.
+        :param phase: Either "train", "test" or "validate". Get an example from
+                      the "phase" dataset.
 
-        @returns:
-        (list): A list: First element is the data, the rest are labels.
+        :return: A list with the data as first item. The rest is labels.
 
         """
         if filename is None:
@@ -150,7 +152,7 @@ class Case:
 
     def get_dimensions(self):
         """
-        Output the dimension of the data and the labels (first label)
+        Output the dimension of the data and the labels (first label).
         """
         example = self.get_example()
         return [e.shape for e in example]
@@ -158,9 +160,12 @@ class Case:
     def ex2batch(self, examples):
         """
         Pack a list of examples into a dict with the entry name.
-        Transforms examples = [ex0, ex1, ex2, ...]
-                  -> batch = {names[0]: [ex0[0], ex1[0], ex2[0]],
-                              names[1]: [ex0[1], ex1[1], ex2[1]], ...}
+
+        Sample usage:
+            self.ex2batch([ex0, ex1, ex2, ...])
+        Output:
+            {names[0]: [ex0[0], ex1[0], ex2[0]],
+             names[1]: [ex0[1], ex1[1], ex2[1]], ...}
         """
         batch = {
             name: np.stack([el[ii] for el in examples])
@@ -172,9 +177,8 @@ class Case:
         """
         Plot the data and the labels of an example.
 
-        @params:
-        filename (str): If provided, get the example in filename. If None, get
-                        a random example.
+        :param filename: If provided, get the example in filename. If None, get
+                         a random example.
         """
         examples = self.get_example(filename=filename)
         data = examples[0]
@@ -226,11 +230,11 @@ class Case:
 
     def animated_dataset(self, phase='train'):
         """
-        Produces an animation of a dataset, showing the input data, and the
-        different labels for each example.
+        Produce an animation of a dataset.
 
-        @params:
-        phase (str): Which dataset: either train, test or validate
+        Show the input data and the labels for each example.
+
+        param phase: Which dataset: either `"train"`, `"test"` or `"validate"`.
         """
 
         toplots = self.get_example(phase=phase)
@@ -301,10 +305,10 @@ class Case:
         gc.collect()
 
 
+# TODO Test this class.
 class CaseCollection:
     """
     A class to build a case from multiples cases
-    TODO Test this Cases collection
     """
 
     def __init__(self, cases):

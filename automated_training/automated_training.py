@@ -23,11 +23,11 @@ import numpy as np
 
 from archive import ArchiveRepository
 from vrmslearn.RCNN2D import Hyperparameters
-from Cases_define import *
 
 
 def chain(main, **args):
-    """Call `main` a succession of times as implied by `args`.
+    """
+    Call `main` a succession of times as implied by `args`.
 
     :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
@@ -93,7 +93,8 @@ def chain(main, **args):
 
 
 def optimize(**args):
-    """Call `chain` for all combinations of `args`.
+    """
+    Call `chain` for all combinations of `args`.
 
     :param args: Key-value pairs of argument names and values. Values
                  that are lists will be iterated upon.
@@ -147,7 +148,8 @@ def optimize(**args):
 
 
 def generate_variations(base_params, **variations):
-    """Generate variations of an `Hyperparameters` object.
+    """
+    Generate variations of an `Hyperparameters` object.
 
     :param base_params: A base `Hyperparameters` object.
     :param variations: Values with which to overwrite the attributes of
@@ -174,7 +176,8 @@ def generate_variations(base_params, **variations):
 
 
 def drop_useless(hyperparams):
-    """Drop useless hyperparameters combinations.
+    """
+    Drop useless hyperparameters combinations.
 
     Useless hyperparameters combinations have diltations in dimensions of
     length 1.
@@ -213,6 +216,8 @@ def drop_useless(hyperparams):
 
 
 if __name__ == "__main__":
+    from Cases_define import *
+
     optimize(params=Hyperparameters(),
              case=Case1Dsmall(),
              epochs=(100, 100, 50),

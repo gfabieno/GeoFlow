@@ -1,5 +1,5 @@
-
 import numpy as np
+
 from vrmslearn.SeismicGenerator import Acquisition
 from vrmslearn.VelocityModelGenerator import BaseModelGenerator
 from vrmslearn.SeismicUtilities import (random_noise,
@@ -16,14 +16,17 @@ from vrmslearn.SeismicUtilities import (random_noise,
 
 class LabelGenerator:
     """
-    A class to generate the label from seismic data and model
+    Generate the label from seismic data and model.
     """
 
     def __init__(self, model: BaseModelGenerator, acquire: Acquisition):
         """
+        Define the default parameters of label generation.
 
-        :param acquire: An Acquisition object describing the seismic acquisition
-        :param model: A VelocityModelGenerator describing model creation
+        :param acquire: An `Acquisition` object describing seismic acquisition.
+        :type acquire: Acquisition
+        :param model: A `VelocityModelGenerator` describing model creation.
+        :type model: VelocityModelGenerator
         """
         self.acquire = acquire
         self.model = model
@@ -51,7 +54,7 @@ class LabelGenerator:
         self.random_time_scaling = False
 
         # Model gaussian smoothing.
-        # See smooth_velocity_wavelength in velocity_transformations.
+        # See `smooth_velocity_wavelength` in `velocity_transformations`.
         # Standard deviation in x.
         self.model_smooth_x = 0
         # Standard deviation in t (z smoothing).
@@ -61,14 +64,16 @@ class LabelGenerator:
 
     def generate_labels(self, props):
         """
-        Output the labels attached to modelling of a particular dataset. In
-        this case, we want to predict vp in depth from cmp gathers.
+        Output the labels attached to modelling of a particular dataset
 
-        :param props: A dict with {name_of_prop: array of property}
-        :return: labels A list of labels
-                 weights A list of weights
+        In this case, we want to predict v_p in depth from CMP gathers.
+
+        :param props: A dictionary of properties' name-values pairs.
+
+        :return:
+            labels: A list of labels.
+            weights: A list of weights.
         """
-
         vp, vs, rho = (props["vp"], props["vs"], props["rho"])
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -103,19 +108,20 @@ class LabelGenerator:
         vint = vint[::self.acquire.resampling, :]
 
         tweights = vrms * 0 + 1
-        dweights = 2 * np.cumsum(self.model.dh / vp, axis=0) + self.acquire.tdelay
+        dweights = 2*np.cumsum(self.model.dh/vp, axis=0) + self.acquire.tdelay
         dweights = dweights - 2 * np.sum(self.model.dh / vp[:z0, :], axis=0)
         for ii in range(vp.shape[1]):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
-            mask = dweights[:, ii] >= i_t * self.acquire.dt * self.acquire.resampling
+            threshold = i_t * self.acquire.dt * self.acquire.resampling
+            mask = dweights[:, ii] >= threshold
             dweights[mask, ii] = 0
             dweights[dweights[:, ii] != 0, ii] = 1
 
-        # Normalize so the labels are between 0 and 1
-        vrms = (vrms - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
-        vint = (vint - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
-        vp = (vp - self.model.vp_min) / (self.model.vp_max - self.model.vp_min)
+        # Normalize the labels between 0 and 1.
+        vrms = (vrms-self.model.vp_min) / (self.model.vp_max-self.model.vp_min)
+        vint = (vint-self.model.vp_min) / (self.model.vp_max-self.model.vp_min)
+        vp = (vp-self.model.vp_min) / (self.model.vp_max-self.model.vp_min)
 
         labels = [refs, vrms, vint, vp]
         weights = [tweights, dweights]
@@ -124,21 +130,19 @@ class LabelGenerator:
 
     def preprocess(self, data, labels, weights):
         """
-        A function to preprocess the data and labels before feeding it to the
-        network.
+        Preprocess the data and labels before feeding it to the network.
 
-        @params:
-        data (numpy.array): Data array
-        labels  (list): A list of numpy.array containing the labels
-        weights (list): A list of weights to apply to the outputs
+        :param data: A data array.
+        :param labels: A list of arrays containing the labels.
+        :param weights: A list of weight arrays to apply to the outputs.
 
-        @returns:
-        data (numpy.array): The preprocessed data
-        labels (list):      The preprocessed label list
+        :return:
+            data: The preprocessed data.
+            labels: The preprocessed label list.
         """
         vp = labels[-1]
 
-        # Adding random noises to the data.
+        # Add random noises to the data.
         if self.random_time_scaling:
             data = random_time_scaling(data,
                                        self.acquire.dt * self.acquire.resampling)
@@ -182,8 +186,8 @@ class LabelGenerator:
 
         for label in labels:
             if label.shape[-1] != data.shape[-1]:
-                raise ValueError("Number of x positions in label and number cmp"
-                                 " mismatch.")
+                raise ValueError("Quantity of x positions in label and "
+                                 "quantity of CMPs mismatch.")
 
         # We can predict velocities under the source and receiver arrays only.
         sz = int(self.acquire.source_depth / self.model.dh)
@@ -192,31 +196,29 @@ class LabelGenerator:
         weights[-1] = weights[-1][sz:, :]
 
         data = np.expand_dims(data, axis=-1)
-        # labels = [np.expand_dims(label, axis=-1) for label in labels]
-        # weights = [np.expand_dims(weight, axis=-1) for weight in weights]
 
         return data, labels, weights
 
     def postprocess(self, labels, preds, vproc=True):
         """
-        A function to postprocess the predictions.
+        Postprocess the predictions.
 
-        @params:
-        labels  (dict): A dict containing {labelname: label}
-        preds  (dict): A dict containing {predname: prediction}
+        :param labels: A dictionary of labels' name-values pairs.
+        :param preds: A dictionary of preds' name-values pairs.
+        :param vproc: Whether or not to postprocess the velocities.
 
-        @returns:
-        labels (dict):      The preprocessed labels {labelname: processed_label}
-        preds (dict):       The preprocessed predictions
+        :return:
+            labels: A dictionary of labels' name-values pairs.
+            preds: A dictionary of preds' name-values pairs.
         """
         if vproc:
             for el in ['vrms', 'vint', 'vdepth']:
                 if el in labels:
-                    labels[el] = labels[el] * (self.model.vp_max -
-                                          self.model.vp_min) + self.model.vp_min
+                    labels[el] *= self.model.vp_max - self.model.vp_min
+                    labels[el] += self.model.vp_min
                 if el in preds:
-                    preds[el] = preds[el] * (self.model.vp_max -
-                                 self.model.vp_min) + self.model.vp_min
+                    preds[el] *= self.model.vp_max - self.model.vp_min
+                    preds[el] += self.model.vp_min
         if 'ref' in preds:
             preds['ref'] = np.argmax(preds['ref'], axis=2)
 
