@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """Define parameters for different Datasets"""
 
@@ -212,9 +211,9 @@ class Dataset1Darticle(Dataset):
 
 
 class Dataset2Dtest(Dataset):
-    name = "Case2Darticle"
+    name = "Dataset2Dtest"
 
-    def set_case(self):
+    def set_dataset(self):
         self.trainsize = 10
         self.validatesize = 0
         self.testsize = 0
