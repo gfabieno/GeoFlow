@@ -290,4 +290,4 @@ if __name__ == "__main__":
     args, unparsed = parser.parse_known_args()
 
     dataset = eval(args.dataset)()
-    dataset.model.animate()
+    dataset.model.animated_dataset()

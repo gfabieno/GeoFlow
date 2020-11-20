@@ -57,7 +57,6 @@ class BaseModelGenerator(ModelGenerator):
         self.texture_zrange = 0
 
         self.strati, self.properties = self.build_stratigraphy()
-        self.Dispersion = False
 
     def generate_model(self, seed=None):
         """
@@ -70,8 +69,6 @@ class BaseModelGenerator(ModelGenerator):
             layerids: numpy array with the layer id of each cell
             layers: A list of layer objects
         """
-        if self.strati is None:
-            self.strati = self.build_stratigraphy()
         props2d, layerids, layers = super().generate_model(self.strati,
                                                            seed=seed)
 
@@ -146,8 +143,6 @@ class MarineModelGenerator(BaseModelGenerator):
         properties = strati.properties()
 
         return strati, properties
-
-
 
 
 class PermafrostModelGenerator(BaseModelGenerator):
@@ -273,9 +268,9 @@ class PermafrostModelGenerator(BaseModelGenerator):
 
         water = Sequence(lithologies=[lithologies["Water"]],
                          thick_min=50, thick_max=150)
-        unfrozen = Sequence(lithologies = [lithologies["Unfrozen sediments"]],
+        unfrozen = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                             deform=deform)
-        Permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
+        permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
                                            lithologies["Frozen Sands2"],
                                            lithologies["Partially Frozen Silts"],
                                            lithologies["Unfrozen sediments"],
@@ -283,7 +278,8 @@ class PermafrostModelGenerator(BaseModelGenerator):
                                            ],
                               ordered=False, deform=deform)
 
-        strati = Stratigraphy(sequences = [water,unfrozen,Permafrost,unfrozen])
+        sequences = [water, unfrozen, permafrost, unfrozen]
+        strati = Stratigraphy(sequences=sequences)
 
         properties = strati.properties()
         vmin = 99999
@@ -295,19 +291,6 @@ class PermafrostModelGenerator(BaseModelGenerator):
                 if vmax < lith.vp.max / lith.vpvs.min:
                     vmax = lith.vp.max / lith.vpvs.min
         properties["vs"] = [vmin, vmax]
-        # sequence = Sequence(lithologies=[lithologies["Water"],
-        #                                  lithologies["Unfrozen sediments"],
-        #                                  lithologies["Partially Frozen Silts"],
-        #                                  lithologies["Frozen Sands2"],
-        #                                  lithologies["Partially Frozen Silts"],
-        #                                  lithologies["Unfrozen sediments"],
-        #                                  lithologies["Hydrates"],
-        #                                  lithologies["Unfrozen sediments"]
-        #                                  ],
-        #                     ordered=True, deform=deform)
-        #
-        # strati = Stratigraphy(sequences=[sequence])
-
 
         return strati
 
