@@ -13,6 +13,11 @@ def main(args):
     batch_size = args.batchsize
     dataset = args.dataset
 
+    if args.debug == 1:
+        dataset.trainsize = 5
+        dataset.validatesize = 0
+        dataset.testsize = 0
+
     # Generate the dataset.
     if args.training in [0, 2]:
         dataset.generate_dataset(ngpu=args.ngpu)
@@ -186,6 +191,10 @@ if __name__ == "__main__":
                         default=None,
                         help="The weights file used for inference. Defaults "
                              "to the last checkpoint in `args.logdir`.")
+    parser.add_argument("--debug",
+                        type=int,
+                        default=00,
+                        help="1: A small dataset of 5 examples is generate ")
 
     # Parse the input for training parameters.
     args = parser.parse_args()
