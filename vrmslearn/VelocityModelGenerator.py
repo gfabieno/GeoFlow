@@ -108,15 +108,16 @@ class BaseModelGenerator(ModelGenerator):
 
 class MarineModelGenerator(BaseModelGenerator):
     def __init__(self):
-        super().__init__()
-        # Minimum velocity of water.
-        self.water_vmin = 1470
-        # Maximum velocity of water.
-        self.water_vmax = 1530
         # Minimum water depth (m).
         self.water_dmin = 1000
         # Maximum water depth (m).
         self.water_dmax = 5000
+        # Minimum velocity of water.
+        self.water_vmin = 1470
+        # Maximum velocity of water.
+        self.water_vmax = 1530
+
+        super().__init__()
 
     def build_stratigraphy(self):
         self.thick0min = int(self.water_dmin/self.dh)
