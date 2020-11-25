@@ -311,10 +311,10 @@ class PermafrostLabelGenerator(LabelGenerator):
                                  " mismatch.")
 
         # We can predict velocities under the source and receiver arrays only.
-        sz = int(self.acquire.source_depth / self.model.dh)
-
-        labels[-1] = labels[-1][sz:, :]
-        weights[-1] = weights[-1][sz:, :]
+        # sz = int(self.acquire.source_depth / self.model.dh)
+        #
+        # labels[-1] = labels[-1][sz:, :]
+        # weights[-1] = weights[-1][sz:, :]
 
         data = np.expand_dims(data, axis=-1)
 

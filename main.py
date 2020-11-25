@@ -30,7 +30,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--training",
         type=int,
-        default=0,
+        # default=0,
+        default=1,
         help="1: training only, 0: create dataset only, 2: training+dataset, "
              "3: testing"
     )
@@ -61,7 +62,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--batchsize",
         type=int,
-        default=50,
+        # default=50,
+        default=40,
         help="size of the batches"
     )
     parser.add_argument(
@@ -189,7 +191,6 @@ if __name__ == "__main__":
         )
         restore_from = tf.train.latest_checkpoint(args.logdir)
         trainer.train_model(
-            batch_size=batch_size,
             epochs=args.epochs,
             steps_per_epoch=args.steps,
             restore_from=restore_from,

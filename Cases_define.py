@@ -14,10 +14,10 @@ class Case_Permafrost(Case):
 
     name = "Case_Permafrost"
 
-    def __init__(self, noise=0):
+    def __init__(self, trainsize=5, validatesize=0, testsize=0, noise=0):
         if noise == 1:
             self.name = self.name + "_noise"
-        super().__init__()
+        super().__init__(trainsize = trainsize, validatesize = validatesize, testsize = testsize)
         if noise == 1:
             self.label.random_static = True
             self.label.random_static_max = 1
@@ -25,10 +25,6 @@ class Case_Permafrost(Case):
             self.label.random_noise_max = 0.02
 
     def set_case(self):
-        self.trainsize = 5
-        self.validatesize = 0
-        self.testsize = 0
-
         model = PermafrostModelGenerator()
 
         model.dh = dh = 2.5
@@ -47,8 +43,8 @@ class Case_Permafrost(Case):
         model.dip_max = 0
         model.ddip_max = 0
 
-        model.layer_num_min = 3
-        model.layer_dh_min = 20
+        model.layer_num_min = 8
+        model.layer_dh_min = 5
         # model.layer_dh_max = 20
 
         model.Dispersion = True
