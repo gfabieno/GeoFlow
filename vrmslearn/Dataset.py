@@ -12,6 +12,7 @@ import gc
 import fnmatch
 from typing import List
 
+import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -233,6 +234,9 @@ class Dataset:
 
         :param filename: If provided, get the example in filename. If None, get
                          a random example.
+        :param toinputs: List of the name(s) of the inputs to the network.
+        :param tooutputs: List of the name(s) of the outputs of the network.
+        :param ims:      List of return values of plt.imshow to update.
         """
 
         inputs, labels, weights, _ = self.get_example(filename=filename,
@@ -274,6 +278,8 @@ class Dataset:
 
         :param phase: Which dataset to animate. Either `"train"`, `"test"` or
                       `"validate"`.
+        :param toinputs: List of the name(s) of the inputs to the network.
+        :param tooutputs: List of the name(s) of the outputs of the network.
         """
         fig, axs, ims = self.plot_example(toinputs=toinputs,
                                           tooutputs=tooutputs)
@@ -283,7 +289,7 @@ class Dataset:
             self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
             return ims
 
-        def animate(t):
+        def animate(_):
             self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
             return ims
 
@@ -292,3 +298,51 @@ class Dataset:
                                     interval=3000, blit=True, repeat=True)
         plt.show()
         gc.collect()
+
+    def tfdataset(self,
+                  phase: str = "train",
+                  shuffle: bool = True,
+                  tooutputs: List[str] = None,
+                  toinputs: List[str] = None,
+                  batch_size: int = 1,
+                  num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
+                  ):
+        """
+        Outputs at tf.data.dataset to feed a tf or keras network.
+
+        :param phase: Either "train", "test" or "validate". Get an example from
+                      the "phase" dataset.
+        :param tooutputs: The list of the name of the desired outputs.
+        :param toinputs: The list of the name of the inputs.
+        :param shuffle: If True, shuffles the examples.
+        :param batch_size: The size of a batch.
+        :param num_parallel_calls: Number of parallel threads for data reading.
+                                   By default, determined automatically by tf.
+
+        :return: A tf.dataset object outputting the batch of examples.
+
+        """
+
+        phases = {"train": self.datatrain,
+                  "validate": self.datavalidate,
+                  "test": self.datatest}
+        pathstr = os.path.join(phases[phase], 'example_*')
+        tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
+
+        def get_example(fname):
+            (data, labels, weights, fname) = self.get_example(filename=fname)
+            data = [data[el] for el in toinputs]
+            labels = [labels[el] for el in tooutputs]
+            weights = [weights[el] for el in tooutputs]
+            return data, labels, weights, fname
+
+        def tf_fun(x):
+            otype = [tf.float32, tf.float32, tf.float32, tf.string]
+            return tf.numpy_function(get_example, inp=[x], Tout=otype)
+
+        tfdataset = tfdataset.map(tf_fun,
+                                  num_parallel_calls=num_parallel_calls,
+                                  deterministic=False)
+        tfdataset = tfdataset.batch(batch_size=batch_size)
+
+        return tfdataset
