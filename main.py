@@ -2,10 +2,10 @@ import os
 import re
 import argparse
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Trainer import Trainer
-from vrmslearn.Tester import Tester
-from vrmslearn.Sequence import Sequence
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.Trainer import Trainer
+from GeoFlow.Tester import Tester
+from GeoFlow.Sequence import Sequence
 
 
 def main(args):
@@ -45,12 +45,14 @@ def main(args):
                 restore_from=restore_from,
                 dataset=dataset)
 
+    # TODO Jerome replace sequence with Dataset.tfdataset
     # Train the model.
     if args.training in [1, 2]:
         sequence = Sequence(is_training=True,
                             dataset=dataset,
                             batch_size=batch_size,
                             out_names=loss_scales.keys())
+
         trainer = Trainer(nn=nn,
                           sequence=sequence,
                           checkpoint_dir=logdir,
@@ -98,8 +100,8 @@ def find_latest_checkpoint(logdir):
 
 
 if __name__ == "__main__":
-    from Datasets_define import *
-    from vrmslearn.RCNN2D import *
+    from GeoDataset import *
+    from GeoFlow.RCNN2D import *
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()

@@ -1,7 +1,7 @@
 """
 Produce a dataset on multiple GPUs.
 
-Used by the `vrmslearn.Dataset.Dataset` class.
+Used by the `GeoFlow.Dataset.Dataset` class.
 """
 
 import os
@@ -11,10 +11,10 @@ from typing import Dict
 import numpy as np
 import h5py as h5
 
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.SeismicGenerator import SeismicGenerator, Acquisition
-from vrmslearn.GraphIO import GraphOutput, GraphInput
-from vrmslearn.SeismicUtilities import dispersion_curve
+from GeoFlow.EarthModel import EarthModel
+from GeoFlow.SeismicGenerator import SeismicGenerator, Acquisition
+from GeoFlow.GraphIO import GraphOutput, GraphInput
+from GeoFlow.SeismicUtilities import dispersion_curve
 
 
 class DatasetGenerator:
@@ -22,14 +22,14 @@ class DatasetGenerator:
     Generate a complete dataset.
     """
 
-    def __init__(self, model: BaseModelGenerator, acquire: Acquisition,
+    def __init__(self, model: EarthModel, acquire: Acquisition,
                  outputs: Dict[str, GraphOutput],
                  inputs: Dict[str, GraphInput],
                  gpu: int = 0):
         """
         Generate a dataset as implied by the arguments.
 
-        :param model: A `BaseModelGenerator` that can create the earth
+        :param model: A `EarthModel` that can create the earth
                       properties.
         :param acquire: An Acquisition object controlling the data creation.
         :param outputs: A dict of GraphOutput that generate the labels of the

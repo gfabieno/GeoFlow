@@ -5,7 +5,7 @@ Launch hyperoptimization and chain training stages.
 This module allows chaining multiple calls to a `main` script such as
 `..main.main` through `chain` and lauching `chain` with different combinations
 of hyperparameters through `optimize`. To use different combinations of
-architecture hyperparameters (`vrmslearn.RCNN2D.Hyperparameters`) in launching
+architecture hyperparameters (`GeoFlow.RCNN2D.Hyperparameters`) in launching
 a main script, the combinations must be placed in a list beforehand through
 `generate_variations`. `optimize` processes all combinations of items from
 arguments that are lists. This module leverages `automated_training.archive`
@@ -22,7 +22,7 @@ from importlib import import_module
 import numpy as np
 
 from archive import ArchiveRepository
-from vrmslearn.RCNN2D import Hyperparameters
+from GeoFlow.RCNN2D import Hyperparameters
 
 
 def chain(main, **args):

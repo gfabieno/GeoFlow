@@ -12,9 +12,9 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Dataset import Dataset
-from vrmslearn.Sequence import Sequence
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.Dataset import Dataset
+from GeoFlow.Sequence import Sequence
 
 
 class Tester(object):

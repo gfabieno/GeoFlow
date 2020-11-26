@@ -12,27 +12,27 @@ lowest:
 
 *   The file [Dataset2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
-*   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
+*   A neural network is defined in [RCNN2D.py](GeoFlow/RCNN2D.py).
 This class builds the NN and the loss. It is used in [Dataset2Dtest.py](main.py).
 To build a new network, a child class can be defined from `RCNN2D`.
-*   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
+*   To help with training, a class [Trainer](GeoFlow/Trainer.py) is provided.
 It needs a Dataset class and a `RCNN2D`-like class as input.
 *   The file [Dataset_define.py](Dataset_define.py) is where different Datasets are
 defined.
-*  A `Dataset` is implemented with the [Dataset](vrmslearn/Dataset.py) class. It provides an
+*  A `Dataset` is implemented with the [Dataset](GeoFlow/Dataset.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
 *   The `Dataset` class contains the method `set_dataset`. A new Dataset can be defined 
 by defining a child class from the `Dataset` base class and overriding `set_dataset`.
 This method needs to return three objects based on three classes
-    *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
+    *  [EarthModel](GeoFlow/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon
     request. Different model generator can be defined from this case (see
-    [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
-    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters
+    [MarineModel](GeoFlow/BaseModelGenerator.py)).
+    *   [Acquisition](GeoFlow/SeismicGenerator.py) defines all the parameters
     for the creation of the seismic data by SeisCL. In particular, override the
     method `set_rec_src` to define a different acquisition setup.
-    * [OutputGenerator](vrmslearn/GraphIO.py) is a class that generate the
+    * [OutputGenerator](GeoFlow/GraphIO.py) is a class that generate the
     labels from the model and acquires objects. 
 
 

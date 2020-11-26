@@ -11,8 +11,8 @@ from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
-from vrmslearn.Sequence import OUTS
-from vrmslearn.Dataset import Dataset
+from GeoFlow.Sequence import OUTS
+from GeoFlow.Dataset import Dataset
 
 
 class Hyperparameters:

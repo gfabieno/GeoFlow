@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from vrmslearn.DatasetGenerator import DatasetGenerator
-from vrmslearn.SeismicGenerator import Acquisition
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
+from GeoFlow.DatasetGenerator import DatasetGenerator
+from GeoFlow.SeismicGenerator import Acquisition
+from GeoFlow.EarthModel import EarthModel
+from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
 class Dataset:
@@ -68,7 +68,7 @@ class Dataset:
         Override this method to set the parameters of a dataset.
 
         :return:
-            model: A `BaseModelGenerator` object that generates models.
+            model: A `EarthModel` object that generates models.
             acquire: An `Acquisition` object that set data creation.
             inputs: A dictionary of names and `GraphInput` objects that define
                     the inputs of the graph, for instance `{graph_input.name:
@@ -79,7 +79,7 @@ class Dataset:
         self.validatesize = 0
         self.testsize = 100
 
-        model = BaseModelGenerator()
+        model = EarthModel()
         model.texture_xrange = 3
         model.texture_zrange = 1.95 * model.NZ / 2
 
