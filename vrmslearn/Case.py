@@ -28,7 +28,6 @@ class Case:
     # incremented by 1.
     seed0 = 0
 
-    # def __init__(self, trainsize=1, validatesize=0, testsize=0):
     def __init__(self, trainsize=1, validatesize=0, testsize=0):
         """
         Initiate a Case by setting the training, validation and test sets size.
@@ -52,9 +51,9 @@ class Case:
         self.datavalidate = os.path.join(self.basepath, self.name, "validate")
         self.datatest = os.path.join(self.basepath, self.name, "test")
 
-        self.trainsize = trainsize
-        self.validatesize = validatesize
-        self.testsize = testsize
+        # self.trainsize = trainsize
+        # self.validatesize = validatesize
+        # self.testsize = testsize
 
         # List of examples found in the dataset paths.
         self.files = {"train": [], "validate": [], "test": []}
