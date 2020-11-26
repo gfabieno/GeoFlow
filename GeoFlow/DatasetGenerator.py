@@ -1,7 +1,7 @@
 """
 Produce a dataset on multiple GPUs.
 
-Used by the `GeoFlow.Dataset.Dataset` class.
+Used by the `GeoFlow.GeoDataset.GeoDataset` class.
 """
 
 import os
@@ -11,10 +11,9 @@ from typing import Dict
 import numpy as np
 import h5py as h5
 
-from GeoFlow.EarthModel import EarthModel
-from GeoFlow.SeismicGenerator import SeismicGenerator, Acquisition
-from GeoFlow.GraphIO import GraphOutput, GraphInput
-from GeoFlow.SeismicUtilities import dispersion_curve
+from GeoFlow import EarthModel
+from GeoFlow import SeismicGenerator, Acquisition
+from GeoFlow import GraphOutput, GraphInput
 
 
 class DatasetGenerator:

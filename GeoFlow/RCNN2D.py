@@ -12,7 +12,7 @@ from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
 from GeoFlow.Sequence import OUTS
-from GeoFlow.Dataset import Dataset
+from GeoFlow.GeoDataset import GeoDataset
 
 
 class Hyperparameters:
@@ -74,7 +74,7 @@ class RCNN2D:
                  params: Hyperparameters = None,
                  out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
                  restore_from: str = None,
-                 dataset: Dataset = None):
+                 dataset: GeoDataset = None):
         """
         Build and restore the network.
 

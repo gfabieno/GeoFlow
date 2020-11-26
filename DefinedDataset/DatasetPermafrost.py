@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from GeoFlow import Dataset
+from GeoFlow import GeoDataset
 from GeoFlow import Acquisition
 from GeoFlow import Vsdepth, ShotGather, Dispersion
 from GeoFlow import EarthModel
@@ -240,7 +240,7 @@ class AcquisitionPermafrost(Acquisition):
 
         return src_pos, rec_pos
 
-class DatasetPermafrost(Dataset):
+class DatasetPermafrost(GeoDataset):
     name = "DatasetPermafrost"
 
     def __init__(self, noise=0):
@@ -310,3 +310,7 @@ class DatasetPermafrost(Dataset):
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
 
         return model, acquire, inputs, outputs
+
+if __name__ == "__main__":
+    dataset = DatasetPermafrost()
+    dataset.model.animated_dataset()

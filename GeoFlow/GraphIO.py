@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from GeoFlow.SeismicGenerator import Acquisition
-from GeoFlow.EarthModel import EarthModel
+from GeoFlow import Acquisition
+from GeoFlow import EarthModel
 from GeoFlow.SeismicUtilities import (smooth_velocity_wavelength,
                                       generate_reflections_ttime,
                                       vdepth2time,

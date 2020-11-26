@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
 
-from GeoFlow.Dataset import Dataset
+from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.EarthModel import MarineModel
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
 
 
-class Dataset1Darticle(Dataset):
+class Dataset1Darticle(GeoDataset):
 
     name = "Dataset1Darticle"
 
@@ -62,3 +62,9 @@ class Dataset1Darticle(Dataset):
                 self.inputs[name].random_static_max = 1
                 self.inputs[name].random_noise = True
                 self.inputs[name].random_noise_max = 0.02
+
+
+if __name__ == "__main__":
+
+    dataset = Dataset1Darticle()
+    dataset.model.animated_dataset()

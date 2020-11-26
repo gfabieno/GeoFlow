@@ -1,6 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-Generate seismic models
+EarthModel provides a library to general layered earth models with flexibility
+on the type of properties that can be generated.
+
+See MarineModel for how this can be used.
 """
 
 import argparse
@@ -159,89 +162,6 @@ class MarineModel(EarthModel):
 
         return strati, properties
 
-
-class MaswModel(EarthModel):
-
-    def build_stratigraphy(self):
-        name = "unsaturated_sand"
-        vp = Property("vp", vmin=300, vmax=500, texture=100)
-        vpvs = Property("vpvs", vmin=1.8, vmax=2.5, texture=0.2)
-        rho = Property("rho", vmin=1500, vmax=1800, texture=50)
-        q = Property("q", vmin=7, vmax=20, texture=4)
-        unsaturated_sand = Lithology(name=name, properties=[vp, vpvs, rho, q])
-
-        name = "saturated_sand"
-        vp = Property("vp", vmin=1400, vmax=1800, texture=50)
-        vpvs = Property("vpvs", vmin=3.5, vmax=12, texture=1)
-        rho = Property("rho", vmin=1800, vmax=2200, texture=50)
-        q = Property("q", vmin=7, vmax=20, texture=4)
-        saturated_sand = Lithology(name=name, properties=[vp, vpvs, rho, q])
-
-        name = "saturated_clay"
-        vp = Property("vp", vmin=1500, vmax=1800, texture=50)
-        vpvs = Property("vpvs", vmin=6, vmax=20, texture=1)
-        rho = Property("rho", vmin=1800, vmax=2200, texture=50)
-        q = Property("q", vmin=15, vmax=30, texture=4)
-        saturated_clay = Lithology(name=name, properties=[vp, vpvs, rho, q])
-
-        name = "weathered_shale"
-        vp = Property("vp", vmin=1950, vmax=2100, texture=50)
-        vpvs = Property("vpvs", vmin=2.4, vmax=4.5, texture=1)
-        rho = Property("rho", vmin=2000, vmax=2400, texture=50)
-        q = Property("q", vmin=15, vmax=30, texture=4)
-        weathered_shale = Lithology(name=name, properties=[vp, vpvs, rho, q])
-
-        name = "shale"
-        vp = Property("vp", vmin=2000, vmax=2500, texture=20)
-        vpvs = Property("vpvs", vmin=2.6, vmax=4.5, texture=1)
-        rho = Property("rho", vmin=2000, vmax=2400, texture=50)
-        q = Property("q", vmin=30, vmax=60, texture=4)
-        shale = Lithology(name=name, properties=[vp, vpvs, rho, q])
-
-        deform = Deformation(max_deform_freq=0.02,
-                             min_deform_freq=0.0001,
-                             amp_max=5,  # 8
-                             max_deform_nfreq=10,  # 40
-                             prob_deform_change=0.1)
-
-        unsat_seq = Sequence(name="unsaturated",
-                             lithologies=[unsaturated_sand],
-                             thick_max=25, deform=deform)
-        sat_seq = Sequence(name="saturated",
-                           lithologies=[saturated_clay,
-                                        saturated_sand],
-                           thick_max=100, deform=deform)
-        weathered_seq = Sequence(name="weathered",
-                                 lithologies=[weathered_shale],
-                                 thick_max=50, deform=deform)
-        roc_seq = Sequence(name="roc",
-                           lithologies=[shale],
-                           thick_max=99999, deform=deform)
-
-        sequences = [unsat_seq,
-                     sat_seq,
-                     weathered_seq,
-                     roc_seq]
-        strati = Stratigraphy(sequences=sequences)
-
-        properties = strati.properties()
-        vmin = 99999
-        vmax = 0
-        for seq in sequences:
-            for lith in seq:
-                if vmin > lith.vp.min / lith.vpvs.max:
-                    vmin = lith.vp.min / lith.vpvs.max
-                if vmax < lith.vp.max / lith.vpvs.min:
-                    vmax = lith.vp.max / lith.vpvs.min
-        properties["vs"] = [vmin, vmax]
-
-        return strati, properties
-
-    def generate_model(self, seed=None):
-        props2D, layerids, layers = super().generate_model(seed=seed)
-        props2D["vs"] = props2D["vp"] / props2D["vpvs"]
-
-        return props2D, layerids, layers
 
 
 if __name__ == "__main__":

@@ -13,8 +13,7 @@ import matplotlib.animation as animation
 import numpy as np
 
 from GeoFlow.RCNN2D import RCNN2D
-from GeoFlow.Dataset import Dataset
-from GeoFlow.Sequence import Sequence
+from GeoFlow.GeoDataset import GeoDataset
 
 
 class Tester(object):
@@ -25,7 +24,7 @@ class Tester(object):
     def __init__(self,
                  nn: RCNN2D,
                  sequence: Sequence,
-                 dataset: Dataset):
+                 dataset: GeoDataset):
         """
         Initialize the tester.
 

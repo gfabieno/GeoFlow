@@ -16,14 +16,14 @@ a training set, and train a NN with it. This is the starting point.
 This class builds the NN and the loss. It is used in [Dataset2Dtest.py](main.py).
 To build a new network, a child class can be defined from `RCNN2D`.
 *   To help with training, a class [Trainer](GeoFlow/Trainer.py) is provided.
-It needs a Dataset class and a `RCNN2D`-like class as input.
+It needs a GeoDataset class and a `RCNN2D`-like class as input.
 *   The file [Dataset_define.py](Dataset_define.py) is where different Datasets are
 defined.
-*  A `Dataset` is implemented with the [Dataset](GeoFlow/Dataset.py) class. It provides an
+*  A `GeoDataset` is implemented with the [GeoDataset](GeoFlow/GeoDataset.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*   The `Dataset` class contains the method `set_dataset`. A new Dataset can be defined 
-by defining a child class from the `Dataset` base class and overriding `set_dataset`.
+*   The `GeoDataset` class contains the method `set_dataset`. A new GeoDataset can be defined 
+by defining a child class from the `GeoDataset` base class and overriding `set_dataset`.
 This method needs to return three objects based on three classes
     *  [EarthModel](GeoFlow/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon

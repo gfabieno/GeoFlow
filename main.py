@@ -2,10 +2,8 @@ import os
 import re
 import argparse
 
-from GeoFlow.RCNN2D import RCNN2D
 from GeoFlow.Trainer import Trainer
 from GeoFlow.Tester import Tester
-from GeoFlow.Sequence import Sequence
 
 
 def main(args):
@@ -45,13 +43,9 @@ def main(args):
                 restore_from=restore_from,
                 dataset=dataset)
 
-    # TODO Jerome replace sequence with Dataset.tfdataset
+    # TODO Jerome replace sequence with GeoDataset.tfdataset
     # Train the model.
     if args.training in [1, 2]:
-        sequence = Sequence(is_training=True,
-                            dataset=dataset,
-                            batch_size=batch_size,
-                            out_names=loss_scales.keys())
 
         trainer = Trainer(nn=nn,
                           sequence=sequence,
@@ -68,10 +62,7 @@ def main(args):
 
     # Test model.
     if args.training == 3:
-        sequence = Sequence(is_training=False,
-                            dataset=dataset,
-                            batch_size=batch_size,
-                            out_names=loss_scales.keys())
+
         tester = Tester(nn=nn, sequence=sequence, dataset=dataset)
         savepath = os.path.join(dataset.datatest, "pred")
         if not os.path.isdir(savepath):
@@ -100,8 +91,8 @@ def find_latest_checkpoint(logdir):
 
 
 if __name__ == "__main__":
-    from GeoDataset import *
     from GeoFlow.RCNN2D import *
+    from DefinedDataset import *
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()

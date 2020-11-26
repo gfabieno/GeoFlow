@@ -1,20 +1,13 @@
 # -*- coding: utf-8 -*-
 """Define parameters for different Datasets"""
 
-import argparse
-
-from GeoFlow.Dataset import Dataset
-from GeoFlow.EarthModel import (MarineModel,
-                                MaswModel,
-                                PermafrostModel)
-from GeoFlow.SeismicGenerator import (Acquisition,
-                                      AcquisitionPermafrost,
-                                      Aquisition_masw)
-from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, Vsdepth,
-                             ShotGather)
+from GeoFlow.GeoDataset import GeoDataset
+from GeoFlow.EarthModel import MarineModel
+from GeoFlow.SeismicGenerator import Acquisition
+from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
 
 
-class Dataset2Dtest(Dataset):
+class Dataset2Dtest(GeoDataset):
     name = "Dataset2Dtest"
 
     def set_dataset(self):
@@ -86,14 +79,5 @@ class Dataset2Dtest(Dataset):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--dataset",
-        type=str,
-        default="Dataset1Dsmall",
-        help="Name of the Dataset to use"
-    )
-    args, unparsed = parser.parse_known_args()
-
-    dataset = eval(args.dataset)()
+    dataset = Dataset2Dtest()
     dataset.model.animated_dataset()

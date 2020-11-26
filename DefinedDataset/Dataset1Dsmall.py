@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
 
-from GeoFlow.Dataset import Dataset
+from GeoFlow.GeoDataset import GeoDataset
 
-class Dataset1Dsmall(Dataset):
+
+class Dataset1Dsmall(GeoDataset):
     name = "Dataset1Dsmall"
 
     def set_dataset(self):
@@ -13,3 +14,8 @@ class Dataset1Dsmall(Dataset):
             outputs[name].train_on_shots = True
 
         return model, acquire, inputs, outputs
+
+
+if __name__ == "__main__":
+    dataset = Dataset1Dsmall()
+    dataset.model.animated_dataset()
