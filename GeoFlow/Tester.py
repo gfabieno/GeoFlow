@@ -12,9 +12,8 @@ from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Dataset import Dataset
-from vrmslearn.Sequence import Sequence
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.GeoDataset import GeoDataset
 
 
 class Tester(object):
@@ -25,7 +24,7 @@ class Tester(object):
     def __init__(self,
                  nn: RCNN2D,
                  sequence: Sequence,
-                 dataset: Dataset):
+                 dataset: GeoDataset):
         """
         Initialize the tester.
 

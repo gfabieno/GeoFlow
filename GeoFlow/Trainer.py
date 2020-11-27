@@ -8,8 +8,8 @@ from os.path import join
 import tensorflow as tf
 from tensorflow.keras import callbacks, optimizers
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Sequence import Sequence, OUTS
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.Sequence import Sequence, OUTS
 
 WEIGHTS_NAME = "{epoch:04d}.ckpt"
 

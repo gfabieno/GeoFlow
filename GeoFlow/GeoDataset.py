@@ -1,10 +1,10 @@
 """
 Define the base class for building a dataset.
 
-The `Dataset` class defines the basic class to build a dataset containing
-parameters for creating the dataset and training the neural network.
+The `GeoDataset` class is the main interface to define and build a Geophysical
+dataset for deep neural network training.
 
-See Dataset2Dtest for usage example.
+See `DefinedDataset` for examples on how to use this class.
 """
 
 import os
@@ -17,13 +17,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from vrmslearn.DatasetGenerator import DatasetGenerator
-from vrmslearn.SeismicGenerator import Acquisition
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
-from vrmslearn.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
+from GeoFlow import DatasetGenerator
+from GeoFlow import Acquisition
+from GeoFlow import EarthModel
+from GeoFlow import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
-class Dataset:
+class GeoDataset:
     """
     Base class of a dataset.
 
@@ -39,7 +39,7 @@ class Dataset:
 
     def __init__(self):
         """
-        Initialize a Dataset.
+        Initialize a GeoDataset.
         """
         self.trainsize = 10000
         self.validatesize = 0
@@ -68,7 +68,7 @@ class Dataset:
         Override this method to set the parameters of a dataset.
 
         :return:
-            model: A `BaseModelGenerator` object that generates models.
+            model: A `EarthModel` object that generates models.
             acquire: An `Acquisition` object that set data creation.
             inputs: A dictionary of names and `GraphInput` objects that define
                     the inputs of the graph, for instance `{graph_input.name:
@@ -79,7 +79,7 @@ class Dataset:
         self.validatesize = 0
         self.testsize = 100
 
-        model = BaseModelGenerator()
+        model = EarthModel()
         model.texture_xrange = 3
         model.texture_zrange = 1.95 * model.NZ / 2
 
