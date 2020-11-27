@@ -20,16 +20,25 @@ for i in range(batch_size):
 
 def build_cnn_model():
     cnn_network = tf.keras.Sequential([
-        tf.keras.layers.Conv3D(16, [15, 1, 1], padding='same',activation=tf.nn.leaky_relu),
+        # tf.keras.layers.Conv3D(16, [15, 1, 1], padding='same',activation=tf.nn.leaky_relu),
         # tf.keras.layers.Conv3D(16, [1, 9, 1], padding='same', activation=tf.nn.leaky_relu),
         # tf.keras.layers.Conv3D(16, [15, 1, 1], padding='same', activation=tf.nn.leaky_relu),
         # tf.keras.layers.Conv3D(16, [1, 9, 1], padding='same', activation=tf.nn.leaky_relu),
         # tf.keras.layers.Conv3D(32, [15, 1, 1], padding='same', activation=tf.nn.leaky_relu),
         # tf.keras.layers.Conv3D(32, [1, 9, 1], padding='same', activation=tf.nn.leaky_relu),
-        tf.keras.layers.Conv2D(filters=1, kernel_size=(1, 5), activation=tf.nn.leaky_relu, padding='same'),
-        tf.keras.layers.Conv2D(filters=1, kernel_size=(1, 1), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.Conv2D(filters=16, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.Conv2D(filters=32, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.maxpooling()
+        tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.maxpooling()
+        tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.Conv2D(filters=256, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.maxpooling()
+        tf.keras.layers.Conv2D(filters=128, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.Conv2D(filters=64, kernel_size=(3, 3), activation=tf.nn.leaky_relu, padding='same'),
+        tf.keras.layers.maxpooling()
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(200, activation=tf.nn.relu),
         tf.keras.layers.Dense(400, activation=tf.nn.softmax),
         tf.keras.layers.Reshape(target_shape=(-1, 400, 1))
     ])
