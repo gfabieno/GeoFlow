@@ -138,14 +138,12 @@ class RCNN2D:
     def build_network(self, params):
         outputs = {}
 
-        data_stream = self.scale_inputs(self.inputs)
-
         encoder = build_encoder(kernels=params.encoder_kernels,
                                 dilation_rates=params.encoder_dilations,
                                 qties_filters=params.encoder_filters)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             encoder.trainable = False
-        data_stream = encoder(data_stream)
+        data_stream = encoder(self.inputs)
 
         time_rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
