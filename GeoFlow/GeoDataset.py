@@ -305,8 +305,7 @@ class GeoDataset:
                   tooutputs: List[str] = None,
                   toinputs: List[str] = None,
                   batch_size: int = 1,
-                  num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
-                  ):
+                  num_parallel_calls: int = tf.data.experimental.AUTOTUNE):
         """
         Outputs at tf.data.dataset to feed a tf or keras network.
 
@@ -319,10 +318,8 @@ class GeoDataset:
         :param num_parallel_calls: Number of parallel threads for data reading.
                                    By default, determined automatically by tf.
 
-        :return: A tf.dataset object outputting the batch of examples.
-
+        :return: A `tf.data.Dataset` object outputting the batch of examples.
         """
-
         phases = {"train": self.datatrain,
                   "validate": self.datavalidate,
                   "test": self.datatest}

@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+"""
+Launch dataset generation, training or testing.
+"""
 
 import argparse
 
@@ -47,24 +51,24 @@ if __name__ == "__main__":
     parser.add_argument("--params",
                         type=str,
                         default="Hyperparameters",
-                        help="Name of hyperparameters from `RCNN2D` to use")
+                        help="Name of hyperparameters from `RCNN2D` to use.")
     parser.add_argument("--dataset",
                         type=str,
                         default="Dataset1Dsmall",
-                        help="Name of dataset from `DefinedDataset` to use")
+                        help="Name of dataset from `DefinedDataset` to use.")
     parser.add_argument("--logdir",
                         type=str,
                         default="./logs",
-                        help="Directory in which to store the checkpoints")
+                        help="Directory in which to store the checkpoints.")
     parser.add_argument("--training",
                         type=int,
                         default=0,
-                        help="1: training only, 0: create dataset only, "
-                        "2: training+dataset, 3: testing")
+                        help="0: create dataset only; 1: training only; "
+                        "2: training+dataset; 3: testing.")
     parser.add_argument("--ngpu",
                         type=int,
                         default=1,
-                        help="Number of gpu for data creation")
+                        help="Quantity of GPUs for data creation.")
     parser.add_argument("--plot",
                         action='store_true',
                         help="Validate data by plotting.")
