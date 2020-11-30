@@ -48,6 +48,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Add arguments to parse for training
+    parser.add_argument("--architecture",
+                        type=str,
+                        default="RCNN2D",
+                        help="Name of the architecture from `RCNN2D` to use.")
     parser.add_argument("--params",
                         type=str,
                         default="Hyperparameters",
@@ -77,6 +81,7 @@ if __name__ == "__main__":
                         help="Generate a small dataset of 5 examples.")
 
     args = parser.parse_args()
+    args.architecture = eval(args.architecture)()
     args.dataset = eval(args.dataset)()
     args.params = eval(args.params)()
     main(args)
