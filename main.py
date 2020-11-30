@@ -32,11 +32,7 @@ def main(args):
     if args.training == 3:
         architecture.launch_test()
         if args.plot:
-            is_2d = sizes[0][2] != 1
-            tester.animated_predictions(labelnames=['ref', 'vrms',
-                                                    'vint', 'vdepth'],
-                                        savepath=savepath,
-                                        image=is_2d)
+            architecture.animated_predictions()
 
 
 if __name__ == "__main__":
