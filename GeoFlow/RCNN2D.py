@@ -234,14 +234,14 @@ class RCNN2D:
 
     def restore(self, path=None):
         if path is None:
-            path = find_latest_checkpoint(path)
+            filename = find_latest_checkpoint(path)
         if path is not None:
             filename = split(path)[-1]
             current_epoch = int(filename[:4])
+            self.load_weights(filename)
         else:
             current_epoch = 0
 
-        self.load_weights(filename)
         return current_epoch
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
