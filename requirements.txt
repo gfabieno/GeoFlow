@@ -1,7 +1,0 @@
-numpy
-tensorflow-gpu
-scipy
-matplotlib
-h5py
-SeisCL
--e git+https://github.com/gfabieno/ModelGenerator.git#egg=ModelGenerator
