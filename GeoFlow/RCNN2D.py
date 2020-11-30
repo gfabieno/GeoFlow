@@ -143,7 +143,9 @@ class RCNN2D:
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
-        inputs = Input(shape=self.input_size,
+        inputs, _, _, _ = self.dataset.get_example(toinputs=["shotgather"])
+        shot_gather = inputs["shotgather"]
+        inputs = Input(shape=shot_gather.shape,
                        batch_size=self.params.batch_size,
                        dtype=tf.float32)
         return inputs
