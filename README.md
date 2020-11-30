@@ -38,15 +38,7 @@ This method needs to return three objects based on three classes
 
 #### Style guide
 
-Code style should follow PEP 8. Hanging indents should be at the same level as
-the opening parenthesis, bracket or brace, as in:
-```
-parser.add_argument("--case",
-                    type=str,
-                    default="Case1Dsmall",
-                    help="Name of the case from `Cases_define` to use")
-```
-Identifiers must be descriptive and short enough to maintain ease-of-use.
+Code style should follow closely PEP 8. Commits should follow closely `git` good practices. Refer to [`STYLEGUIDE.md`](https://github.com/gfabieno/Deep_2D_velocity/blob/master/STYLEGUIDE.md) for a comprehensive guide to this project's style conventions.
 
 ## Installation
 
