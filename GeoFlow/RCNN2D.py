@@ -34,7 +34,7 @@ class Hyperparameters:
         # Quantity of epochs, with `self.steps` iterations per epoch.
         self.epochs = 5
         # Quantity of training iterations per epoch.
-        self.steps = 100
+        self.steps_per_epoch = 100
         # Quantity of examples per batch.
         self.batch_size = 50
 
