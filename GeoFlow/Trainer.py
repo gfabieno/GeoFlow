@@ -1,23 +1,22 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This class trains the neural network
+Train a neural network.
 """
 
-from os.path import join, split
+from os.path import join
 
 import tensorflow as tf
 from tensorflow.keras import callbacks, optimizers
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Sequence import Sequence, OUTS
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.Sequence import Sequence, OUTS
 
 WEIGHTS_NAME = "{epoch:04d}.ckpt"
 
 
 class Trainer:
     """
-    This class takes a NN model defined in tensorflow and performs the training
+    Take a Keras model and perform the training.
     """
 
     def __init__(self,
@@ -31,18 +30,19 @@ class Trainer:
                  loss_scales: dict = {'ref': 1.},
                  use_weights: bool = True):
         """
-        Initialize the tester
+        Initialize the trainer.
 
-        @params:
-        nn (RCNN) : A tensorflow neural net
-        sequence (Sequence) : A Sequence object providing data
-        checkpoint_dir (str): The path in which to save checkpoints
-        learning_rate (float): The learning rate.
-        beta1 (float): beta1 of the Adam optimizer
-        beta2 (float): beta2 of the Adam optimizer
-        epsilon (float): epsilon of the Adam optimizer
-        loss_scales (dict): losses associated with each label
-        use_weights (bool): whether to use weights or not in losses.
+        :param nn: A Keras model.
+        :type nn: RCNN2D
+        :param sequence: A Keras `Sequence` object providing data.
+        :type sequence: Sequence
+        :param checkpoint_dir: The path in which to save checkpoints.
+        :param learning_rate: The learning rate.
+        :param beta1: beta1 of the Adam optimizer.
+        :param beta2: beta2 of the Adam optimizer.
+        :param epsilon: epsilon of the Adam optimizer.
+        :param loss_scales: Losses associated with each label.
+        :param use_weights: Whether to use weights or not in losses.
         """
         self.nn = nn
         self.sequence = sequence
@@ -77,31 +77,23 @@ class Trainer:
 
     def train_model(self,
                     epochs: int = 5,
-                    steps_per_epoch: int = 100,
-                    restore_from: str = None):
+                    initial_epoch: int = 0,
+                    steps_per_epoch: int = 100):
         """
-        This method trains the model. The training is restarted automatically
-        if any checkpoints are found in self.checkpoint_dir.
+        Train the model.
 
-        @params:
-        epochs (int): quantity of epochs, of `steps_per_epoch` iterations
-        steps_per_epoch (int): quantity of iterations per epoch
-        restore_from (str): Checkpoint file from which to initialize parameters
+        The training is restarted automatically if any checkpoints are found
+        in `self.checkpoint_dir`.
+
+        :param epochs: Quantity of epochs, of `steps_per_epoch` iterations.
+        :param steps_per_epoch: Quantity of iterations per epoch.
         """
-        if restore_from is not None:
-            strategy = tf.distribute.MirroredStrategy()
-            with strategy.scope():
-                self.nn.load_weights(restore_from)
-            filename = split(restore_from)[-1]
-            initial_epoch = int(filename[:4])
-            epochs += initial_epoch
-        else:
-            initial_epoch = 0
+        epochs += initial_epoch
 
-        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir)
+        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir,
+                                            profile_batch=0)
         checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
                                                      WEIGHTS_NAME),
-                                                save_weights_only=True,
                                                 save_freq='epoch')
         self.nn.fit(self.sequence,
                     epochs=epochs,
@@ -113,7 +105,9 @@ class Trainer:
 
 
 def ref_loss(use_weights=True):
-    """Get the loss function for the reflection prediction."""
+    """
+    Get the loss function for the reflection prediction.
+    """
     def loss(label, output):
         label, weights = label[:, 0], label[:, 1]
         #  Logistic regression of zero offset time of reflections
@@ -133,16 +127,15 @@ def ref_loss(use_weights=True):
 
 
 def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
-    """Get the three-part loss function for velocity.
+    """
+    Get the three-part loss function for velocity.
 
-    @params:
-        alpha (scalar) : proportion of loss associated with minimizing the
-                         error between derivatives
-        beta (scalar) : proportion of loss associated with minimizing the
-                         gradient (blocky inversion)
+    :param alpha: Proportion of loss associated with minimizing the error
+                  between derivatives.
+    :param beta: Proportion of loss associated with minimizing the gradient
+                 (blocky inversion).
 
-    @returns:
-        loss (tf.tensor) : Output of node calculating loss.
+    :return: Output of node calculating loss.
     """
     fact1 = 1 - alpha - beta
 

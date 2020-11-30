@@ -1,62 +1,55 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This class tests a NN on a dataset.
+Test a neural network.
 """
 
-import fnmatch
 import os
 from os.path import join, basename
+import fnmatch
 
 import h5py as h5
 from matplotlib import pyplot as plt
 import matplotlib.animation as animation
 import numpy as np
-import tensorflow as tf
 
-from vrmslearn.RCNN2D import RCNN2D
-from vrmslearn.Case import Case
-from vrmslearn.Sequence import Sequence
+from GeoFlow.RCNN2D import RCNN2D
+from GeoFlow.GeoDataset import GeoDataset
 
 
 class Tester(object):
     """
-    This class tests a NN on a dataset.
+    Test a neural network.
     """
 
     def __init__(self,
                  nn: RCNN2D,
                  sequence: Sequence,
-                 case: Case):
+                 dataset: GeoDataset):
         """
-        Initialize the tester
+        Initialize the tester.
 
-        @params:
-        nn (RCNN) : A tensforlow neural net
-        sequence (Sequence) : A Sequence object providing data
+        :param nn: A Keras model.
+        :type nn: RCNN2D
+        :param sequence: A Keras `Sequence` object providing data.
+        :type sequence: Sequence
+        :param case: The current case describing the test dataset.
+        :type case: Case
         """
         self.nn = nn
         self.sequence = sequence
-        self.case = case
+        self.dataset = dataset
 
         self.out_names = self.nn.out_names
 
     def test_dataset(self,
-                     savepath: str,
-                     restore_from: str = None):
+                     savepath: str):
         """
-        This method evaluate predictions on all examples contained in savepath,
-        and save the predictions in hdf5 files.
+        Evaluate and save predictions on all examples in `savepath`.
 
-        @params:
-        savepath (str) : The path in which the test examples are found
-        restore_from (str): File containing the trained weights
+        The predictions are saved in hdf5 files.
+
+        :param savepath: The path in which the test examples are found.
         """
-        if restore_from is not None:
-            strategy = tf.distribute.MirroredStrategy()
-            with strategy.scope():
-                self.nn.load_weights(restore_from)
-
         self.sequence.reset_test_generator()
 
         for data, filenames in self.sequence:
@@ -88,19 +81,18 @@ class Tester(object):
                   examples: list = None,
                   filename: str = 'example_*'):
         """
-        This method returns the labels and predictions for labels in prednames.
+        Get the labels and predictions for labels in `prednames`.
 
-        @params:
-        prednames (list) : List of name of the predictions in the example file
-        savepath (str) : The path in which the predictions are found
-        examples (list):   List of name of example to get predictions.
-                           If None, predictions for all examples in savepath
-                           are returned
-        filename (str): The structure of the examples' filenames
+        :param prednames: List of name of the predictions in the example file
+        :param savepath: The path in which the predictions are found
+        :param examples: List of name of examples to get predictions of. If
+                         None, predictions for all examples in savepath are
+                         returned
+        :param filename: The structure of the examples' filenames
 
-        @returns:
-        labels (dict):  Dict containing the {predname: label}
-        preds (dict):   Dict containing the {predname: prediction}
+        :return:
+            labels: A dictionary of labels' name-values pairs.
+            preds: DA dictionary of predictions' name-values pairs.
         """
         preds = {predname: [] for predname in prednames}
         labels = []
@@ -113,10 +105,12 @@ class Tester(object):
                 if predname in file.keys():
                     preds[predname].append(file[predname][:])
             file.close()
-            labelfile = os.path.join(self.case.datatest, example)
-            labels.append(self.case.get_example(labelfile))
+            labelfile = os.path.join(self.dataset.datatest, example)
+            data, labels, weights, _ = self.dataset.get_example(labelfile)
+            labels.append({labels[k] for k in prednames})
 
-        labels = self.case.ex2batch(labels)
+        labels = {name: np.stack([el[name] for el in labels])
+                  for name in prednames}
 
         return labels, preds
 
@@ -126,14 +120,13 @@ class Tester(object):
                          quantity: int = 1,
                          image=True):
         """
-        This method plots the labels and the predictions for each test sample.
+        Plot the labels and the predictions for each test sample.
 
-        @params:
-        labelnames (list) : List of names of the labels in the example file
-        savepath (str) : The path in which the test examples are found
+        :param labelnames: List of names of the labels in the example file.
+        :param savepath: The path in which the test examples are found.
         """
 
-        examples = [os.path.basename(self.case.files["test"][ii])
+        examples = [os.path.basename(self.dataset.files["test"][ii])
                     for ii in range(quantity)]
 
         labels, preds = self.get_preds(labelnames, savepath, examples=examples)
@@ -145,7 +138,7 @@ class Tester(object):
 
             labeld = {la: labels[la][ii] for la in labelnames}
             predd = {la: preds[la][ii] for la in labelnames}
-            label, pred = self.case.label.postprocess(labeld, predd)
+            label, pred = self.dataset.label.postprocess(labeld, predd)
             for jj, labelname in enumerate(labelnames):
                 if image:
                     vmin = np.min(label[labelname])
@@ -175,22 +168,20 @@ class Tester(object):
                              quantity: int = None,
                              image: bool = True):
         """
-        Makes an animation that shows iteratively the data, labels and
-        predictions over the testing dataset.
+        Make an animation that shows the testing data, labels and predictions.
 
-        @params:
-        labelnames (list) : List of names of the labels to predict
-        savepath (str) : The path in which the test examples are found
-        quantity (int): Number of examples to show. If None, show all examples
-                        in the test set
-        image (bool):   If True, labels and predictions are shown as images,
-                        else plot 1D profiles.
+        :param labelnames: List of names of the labels to predict
+        :param savepath: The path in which the test examples are found
+        :param quantity: Number of examples to show. If None, show all examples
+                         in the test set
+        :param image: If True, labels and predictions are shown as images,
+                      else plot 1D profiles.
         """
         if quantity is None:
-            examples = [os.path.basename(f) for f in self.case.files["test"]
+            examples = [os.path.basename(f) for f in self.dataset.files["test"]
                         if os.path.basename(f) in os.listdir(savepath)]
         else:
-            examples = [os.path.basename(self.case.files["test"][ii])
+            examples = [os.path.basename(self.dataset.files["test"][ii])
                         for ii in range(quantity)]
 
         labels, preds = self.get_preds(labelnames, savepath, examples=examples)
@@ -198,7 +189,7 @@ class Tester(object):
         datas = [np.reshape(el, [el.shape[0], -1]) for el in datas]
 
         if image:
-            fig, axs = plt.subplots(2, 1 + len(labelnames), squeeze=False)
+            fig, axs = plt.subplots(3, 1 + len(labelnames), squeeze=False)
         else:
             fig, axs = plt.subplots(1, 1 + len(labelnames), squeeze=False)
 
@@ -213,85 +204,105 @@ class Tester(object):
                                cmap=plt.get_cmap('Greys'))
         axs[0, 0].set_title('data')
         ims = [im1]
+        if image:
+            src_pos, _ = self.dataset.acquire.set_rec_src()
+            qty_shots = src_pos.shape[1]
+            data = datas[0]
+            data = data.reshape([data.shape[0], -1, qty_shots])
+            im2 = axs[1, 0].imshow(data[..., qty_shots//2],
+                                   animated=True,
+                                   vmin=vmin,
+                                   vmax=vmax,
+                                   aspect='auto',
+                                   cmap=plt.get_cmap('Greys'))
+            axs[1, 0].set_title('center shot')
+            ims.append(im2)
 
         labeld = {la: labels[la][0] for la in labelnames}
         predd = {la: preds[la][0] for la in labelnames}
-        label, pred = self.case.label.postprocess(labeld, predd)
+        label, pred = self.dataset.label.postprocess(labeld, predd)
 
         for ii, labelname in enumerate(labelnames):
             if labelname == "ref":
                 vmin, vmax = 0, 1
             else:
-                vmin = self.case.model.vp_min
-                vmax = self.case.model.vp_max
+                vmin = self.dataset.model.vp_min
+                vmax = self.dataset.model.vp_max
+            y = np.arange(pred[labelname].shape[0])
             if image:
-                im1 = axs[0, 1 + ii].imshow(pred[labelname],
+                im1 = axs[0, 1 + ii].imshow(label[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno',
                                             aspect='auto')
-                im2 = axs[1, 1 + ii].imshow(label[labelname],
+                im2 = axs[1, 1 + ii].imshow(pred[labelname],
                                             vmin=vmin,
                                             vmax=vmax,
                                             animated=True,
                                             cmap='inferno', aspect='auto')
+                center_label = label[labelname][:, qty_shots//2]
+                center_pred = pred[labelname][:, qty_shots//2]
+                im3, = axs[2, 1 + ii].plot(center_label, y)
+                im4, = axs[2, 1 + ii].plot(center_pred, y)
+                axs[2, 1 + ii].set_ylim(np.min(y), np.max(y))
+                axs[2, 1 + ii].set_xlim(vmin, vmax)
+                axs[2, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+                ims.append(im3)
+                ims.append(im4)
             else:
-                y = np.arange(pred[labelname].shape[0])
-
                 im1, = axs[0, 1 + ii].plot(label[labelname][:, 0][:len(y)], y)
                 im2, = axs[0, 1 + ii].plot(pred[labelname][:, 0][:len(y)], y)
                 axs[0, 1 + ii].set_ylim(np.min(y), np.max(y))
-                axs[0, 1 + ii].set_xlim(-vmin, vmax)
+                axs[0, 1 + ii].set_xlim(vmin, vmax)
                 axs[0, 1 + ii].invert_yaxis()
                 axs[0, 1 + ii].set_title(labelname)
                 ims.append(im1)
                 ims.append(im2)
+        axs[2, 0].axis('off')
         plt.tight_layout()
-
-        def init():
-            for ii, im in enumerate(ims):
-                labeld = {la: labels[la][0] for la in labelnames}
-                predd = {la: preds[la][0] for la in labelnames}
-                label, pred = self.case.label.postprocess(labeld, predd)
-                if ii == 0:
-                    toplot = datas[0]
-                    im.set_array(toplot)
-                else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
-                    else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
-                    if image:
-                        im.set_array(toplot)
-                    else:
-                        y = np.arange(toplot.shape[0])
-                        im.set_data(toplot, y)
-            return ims
 
         def animate(t):
             labeld = {la: labels[la][t] for la in labelnames}
             predd = {la: preds[la][t] for la in labelnames}
-            label, pred = self.case.label.postprocess(labeld, predd)
+            label, pred = self.dataset.label.postprocess(labeld, predd)
 
             for ii, im in enumerate(ims):
                 if ii == 0:
                     toplot = datas[t]
                     im.set_array(toplot)
+                elif ii == 1 and image:
+                    toplot = datas[t]
+                    toplot = toplot.reshape([toplot.shape[0], -1, qty_shots])
+                    im.set_array(toplot[..., qty_shots//2])
                 else:
-                    if ii % 2 == 0:
-                        toplot = pred[labelnames[(ii - 1) // 2]]
-                    else:
-                        toplot = label[labelnames[(ii - 1) // 2]]
+                    # Ignore the first column.
                     if image:
+                        label_idx = (ii-2) // 4
+                        item = (ii-2) % 4
+                    else:
+                        label_idx = (ii-1) // 2
+                        item = (ii-1) % 2
+                    if item == 0:
+                        toplot = label[labelnames[label_idx]]
+                    elif item == 1:
+                        toplot = pred[labelnames[label_idx]]
+                    elif item == 2:
+                        toplot = label[labelnames[label_idx]][:, qty_shots//2]
+                    elif item == 3:
+                        toplot = pred[labelnames[label_idx]][:, qty_shots//2]
+                    if image and item not in [2, 3]:
                         im.set_array(toplot)
                     else:
                         y = np.arange(toplot.shape[0])
                         im.set_data(toplot, y)
             return ims
+
+        def init():
+            return animate(0)
 
         _ = animation.FuncAnimation(fig,
                                     animate,

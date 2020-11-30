@@ -10,31 +10,43 @@ seismic data.
 This repository is organized in the following fashion. From highest level to
 lowest:
 
-*   The file [Case2Dtest.py](main.py) shows an example of how to generate
+*   The file [Dataset2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
-*   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
-This class builds the NN and the loss. It is used in [Case2Dtest.py](main.py).
+*   A neural network is defined in [RCNN2D.py](GeoFlow/RCNN2D.py).
+This class builds the NN and the loss. It is used in [Dataset2Dtest.py](main.py).
 To build a new network, a child class can be defined from `RCNN2D`.
-*   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
-It needs a Case class and a `RCNN2D`-like class as input.
-*   The file [Case_define.py](Case_define.py) is where different cases are
+*   To help with training, a class [Trainer](GeoFlow/Trainer.py) is provided.
+It needs a GeoDataset class and a `RCNN2D`-like class as input.
+*   The file [Dataset_define.py](Dataset_define.py) is where different Datasets are
 defined.
-*  A `Case` is implemented with the [Case](vrmslearn/Case.py) class. It provides an
+*  A `GeoDataset` is implemented with the [GeoDataset](GeoFlow/GeoDataset.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*   The `Case` class contains the method `set_case`. A new case can be defined 
-by defining a child class from the `Case` base class and overriding `set_case`.
+*   The `GeoDataset` class contains the method `set_dataset`. A new GeoDataset can be defined 
+by defining a child class from the `GeoDataset` base class and overriding `set_dataset`.
 This method needs to return three objects based on three classes
-    *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
+    *  [EarthModel](GeoFlow/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon
-    request. Different model generator can be defined from this case (see 
-    [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
-    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters 
-    for the creation of the seismic data by SeisCL. In particular, override the 
+    request. Different model generator can be defined from this case (see
+    [MarineModel](GeoFlow/BaseModelGenerator.py)).
+    *   [Acquisition](GeoFlow/SeismicGenerator.py) defines all the parameters
+    for the creation of the seismic data by SeisCL. In particular, override the
     method `set_rec_src` to define a different acquisition setup.
-    * [LabelGenerator](vrmslearn/LabelGenerator.py) is a class that generate the
+    * [OutputGenerator](GeoFlow/GraphIO.py) is a class that generate the
     labels from the model and acquires objects. 
 
+
+#### Style guide
+
+Code style should follow PEP 8. Hanging indents should be at the same level as
+the opening parenthesis, bracket or brace, as in:
+```
+parser.add_argument("--case",
+                    type=str,
+                    default="Case1Dsmall",
+                    help="Name of the case from `Cases_define` to use")
+```
+Identifiers must be descriptive and short enough to maintain ease-of-use.
 
 ## Installation
 

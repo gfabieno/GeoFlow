@@ -1,25 +1,26 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-A class to generate the labels (seismic data) with SeisCL. Requires SeisCL
-python interface.
+Generate the labels (seismic data) using SeisCL.
+
+Requires the SeisCL python interface.
 """
 
-import shutil
 import os
+import shutil
+
 import numpy as np
+
 from SeisCL.SeisCL import SeisCL
-from vrmslearn.SeismicUtilities import random_wavelet_generator
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
+from GeoFlow.SeismicUtilities import random_wavelet_generator
+from GeoFlow.EarthModel import EarthModel
 
 
 class Acquisition:
     """
-    This class contains all model parameters needed to model seismic data
+    Define all model parameters needed to model seismic data.
     """
 
-    def __init__(self, model: BaseModelGenerator):
-
+    def __init__(self, model: EarthModel):
         self.model = model
         # Whether free surface is turned on the top face.
         self.fs = False
@@ -52,22 +53,23 @@ class Acquisition:
         # Maximum position of receivers (-1 = maximum of grid).
         self.gmax = None
         self.minoffset = 0
-        # Integer used by SeisCL for pressure source (100) or force in z (2)
+        # Integer used by SeisCL for pressure source (100) or force in z (2).
         self.sourcetype = 100
-        # Integer used by SeisCL indicating which type of recording (2: pressure
-        # 1 velocities)
+        # Integer used by SeisCL indicating which type of recording. Either
+        # 2) pressure or 1) velocities.
         self.rectype = 2
 
         self.singleshot = True
 
     def set_rec_src(self):
         """
-        This methods outputs the src_pos and rec_pos arrays providing the
-        sources and receiver positions for SeisCL. Override to change which data
-        is modelled if needed.
+        Provide the sources' and receivers' positions for SeisCL.
+
+        Override to change which data is modelled if needed.
 
         :return:
-        src_pos, rec_pos (np.Array) Provides the source et receiver arrays
+            src_pos: Source array.
+            rec_pos: Receiver array.
         """
         # Source and receiver positions.
         if self.singleshot:
@@ -120,93 +122,27 @@ class Acquisition:
                                         self.df, self.tdelay)
 
 
-class AcquisitionPermafrost(Acquisition):
-    def set_rec_src(self):
-        """
-        ***** Modified to fix the survey geometry for the ARAC05 survey on the Beauford Sea
-        This methods outputs the src_pos and rec_pos arrays providing the
-        sources and receiver positions for SeisCL. Override to change which data
-        is modelled if needed.
-
-        :return:
-        src_pos, rec_pos (np.Array) Provides the source et receiver arrays
-        """
-        # Source and receiver positions.
-        offmin = 182        # in meters
-        offmax = offmin + 120*self.dg*self.model.dh   # in meters
-        if self.singleshot:
-            # Add just one source at the right (offmax)
-            sx = np.arange(self.Npad + offmax,1+self.Npad + offmax)
-            # sx = np.arange(self.model.NX / 2,
-            #                1 + self.model.NX / 2) * self.model.dh
-        else:
-            # Compute several sources
-            l1 = self.Npad + 1
-            l2 = self.model.NX - self.Npad
-            sx = np.arange(l1, l2, self.ds) * self.model.dh
-        sz = np.full_like(sx, self.source_depth)
-        sid = np.arange(0, sx.shape[0])
-
-        src_pos = np.stack([sx,
-                            np.zeros_like(sx),
-                            sz,
-                            sid,
-                            np.full_like(sx, self.sourcetype)], axis=0)
-
-        # Add receivers
-        if self.gmin:
-            gmin = self.gmin
-        else:
-            gmin = self.Npad
-        if self.gmax:
-            gmax = self.gmax
-        else:
-            gmax = self.model.NX - self.Npad
-
-        gx0 = np.arange(offmin, offmax, self.dg*self.model.dh)
-        gx = np.concatenate([s - gx0 for s in sx], axis = 0)
-
-        # gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
-        # gx = np.concatenate([gx0 for _ in sx], axis=0)
-        gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
-        gz = np.full_like(gx, self.receiver_depth)
-        gid = np.arange(0, len(gx))
-
-        rec_pos = np.stack([gx,
-                            np.zeros_like(gx),
-                            gz,
-                            gsid,
-                            gid,
-                            np.full_like(gx, 2),
-                            np.zeros_like(gx),
-                            np.zeros_like(gx)], axis=0,)
-
-        return src_pos, rec_pos
-
-
-
 class SeismicGenerator(SeisCL):
     """
-    Class to generate seismic data with SeisCL and output an example to build
-    a seismic dataset for training.
+    Generate seismic data with SeisCL.
     """
 
-    def __init__(self, acquire: Acquisition, model: BaseModelGenerator,
+    def __init__(self, acquire: Acquisition, model: EarthModel,
                  workdir="workdir", gpu=0):
         """
-
-        @params:
-        acquire (Acquisition): Parameters for data creation
-        model (VelocityModelGenerator): Model generator
-        workdir (str): Working directory for SeisCL (must be unique for each
-                       SeismicGenerator objects working in parallel)
-        gpu (int): The GPU id on which to compute data.
+        :param acquire: Parameters for data creation.
+        :type acquire: Acquisition
+        :param model: Model generator.
+        :param model: VelocityModelGenerator
+        :param workdir: Working directory for SeisCL. Must be unique for each
+                        SeismicGenerator object working in parallel.
+        :param gpu: The GPU ID on which to compute data.
         """
         super().__init__()
 
         self.acquire = acquire
         self.model = model
-        # Remove old working directory and assign a new one.
+        # Remove the old working directory and assign a new one.
         shutil.rmtree(self.workdir, ignore_errors=True)
         shutil.rmtree(workdir, ignore_errors=True)
         try:
@@ -220,20 +156,20 @@ class SeismicGenerator(SeisCL):
         self.workdir = workdir
 
         # Assign constants for modeling with SeisCL.
-        self.csts['N'] = np.array([model.NZ, model.NX])
-        self.csts['ND'] = 2
-        self.csts['dh'] = model.dh  # Grid spacing
-        self.csts['nab'] = acquire.Npad  # Set padding cells
-        self.csts['dt'] = acquire.dt  # Time step size
-        self.csts['NT'] = acquire.NT  # Nb of time steps
-        self.csts['f0'] = acquire.peak_freq  # Source frequency
-        self.csts['seisout'] = acquire.rectype  # Output pressure
-        self.csts['freesurf'] = int(acquire.fs)  # Free surface
+        self.N = np.array([model.NZ, model.NX])
+        self.ND = 2
+        self.dh = model.dh  # Grid spacing
+        self.nab = acquire.Npad  # Set padding cells
+        self.dt = acquire.dt  # Time step size
+        self.NT = acquire.NT  # Nb of time steps
+        self.f0 = acquire.peak_freq  # Source frequency
+        self.seisout = acquire.rectype  # Output pressure
+        self.freesurf = int(acquire.fs)  # Free surface
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
         nouse = nouse[nouse != gpu]
-        self.csts['no_use_GPUs'] = nouse
+        self.no_use_GPUs = nouse
 
         self.src_pos_all, self.rec_pos_all = acquire.set_rec_src()
         self.resampling = acquire.resampling
@@ -242,13 +178,12 @@ class SeismicGenerator(SeisCL):
 
     def compute_data(self, props: dict):
         """
-        This method generates compute the data a seismic properties in props.
+        Compute the seismic data of a model.
 
-        :param props: A Dict containint {name_of_property: array_of_property}
+        :param props: A dictionary of properties' name-values pairs.
 
-        :return: An array containing the modeled seismic data
+        :return: An array containing the modeled seismic data.
         """
-
         self.src_all = None  # Reset source to generate new random source.
         self.set_forward(self.src_pos_all[3, :], props, withgrad=False)
         self.execute()
