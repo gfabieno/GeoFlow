@@ -9,7 +9,7 @@ def main(args):
     logdir = args.logdir
     dataset = args.dataset
 
-    if args.debug == 1:
+    if args.debug:
         dataset.trainsize = 5
         dataset.validatesize = 0
         dataset.testsize = 0
@@ -80,14 +80,11 @@ if __name__ == "__main__":
                         default=1,
                         help="Number of gpu for data creation")
     parser.add_argument("--plot",
-                        type=int,
-                        default=1,
-                        help="1: Validate data by plotting.")
                         action='store_true',
+                        help="Validate data by plotting.")
     parser.add_argument("--debug",
-                        type=int,
-                        default=00,
-                        help="1: A small dataset of 5 examples is generate ")
+                        action='store_true',
+                        help="Generate a small dataset of 5 examples.")
 
     args = parser.parse_args()
     args.dataset = eval(args.dataset)()
