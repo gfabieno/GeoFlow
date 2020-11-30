@@ -100,6 +100,7 @@ class RCNN2D:
 
     def __init__(self,
                  dataset: GeoDataset,
+                 phase: str,
                  params: Hyperparameters,
                  checkpoint_dir: str):
         """
@@ -116,7 +117,7 @@ class RCNN2D:
         self.out_names = self.params.loss_scales.keys()
 
         batch_size = self.params.batch_size
-        self.tfdataset = self.dataset.tfdataset(phase="train",
+        self.tfdataset = self.dataset.tfdataset(phase=phase,
                                                 shuffle=True,
                                                 tooutputs=self.out_names,
                                                 toinputs=["shotgather"],

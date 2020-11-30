@@ -21,18 +21,22 @@ def main(args):
     if args.plot:
         dataset.animate()
 
-    architecture = args.architecture(dataset=dataset,
-                                     params=args.params,
-                                     checkpoint_dir=args.logdir)
+    if args.training != 0:
+        phase = "train" if args.training in [1, 2] else "test"
+        architecture = args.architecture(dataset=dataset,
+                                         phase=phase,
+                                         params=args.params,
+                                         checkpoint_dir=args.logdir)
 
-    if args.training in [1, 2]:
-        architecture.launch_training()
+        # Train model.
+        if args.training in [1, 2]:
+            architecture.launch_training()
 
-    # Test model.
-    if args.training == 3:
-        architecture.launch_test()
-        if args.plot:
-            architecture.animated_predictions()
+        # Test model.
+        if args.training == 3:
+            architecture.launch_test()
+            if args.plot:
+                architecture.animated_predictions()
 
 
 if __name__ == "__main__":
