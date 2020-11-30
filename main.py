@@ -36,8 +36,8 @@ def main(args):
 
 
 if __name__ == "__main__":
-    from GeoFlow.RCNN2D import *
-    from DefinedDataset import *
+    from importlib import import_module
+    from GeoFlow import RCNN2D
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()
@@ -76,7 +76,8 @@ if __name__ == "__main__":
                         help="Generate a small dataset of 5 examples.")
 
     args = parser.parse_args()
-    args.architecture = eval(args.architecture)()
-    args.dataset = eval(args.dataset)()
-    args.params = eval(args.params)()
+    args.architecture = getattr(RCNN2D, args.architecture)
+    dataset_module = import_module("DefinedDataset." + args.dataset)
+    args.dataset = getattr(dataset_module, args.dataset)()
+    args.params = getattr(RCNN2D, args.params)()
     main(args)
