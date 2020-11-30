@@ -75,10 +75,6 @@ if __name__ == "__main__":
                         default=0,
                         help="1: training only, 0: create dataset only, "
                         "2: training+dataset, 3: testing")
-    parser.add_argument("--nmodel",
-                        type=int,
-                        default=1,
-                        help="Number of models to train")
     parser.add_argument("--ngpu",
                         type=int,
                         default=1,
