@@ -11,7 +11,6 @@ from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
-from GeoFlow.Sequence import OUTS
 from GeoFlow.GeoDataset import GeoDataset
 
 
@@ -20,6 +19,9 @@ class Hyperparameters:
         """
         Build the default hyperparameters for `RCNN2D`.
         """
+        # Select which network outputs to return.
+        self.params.out_names = ("ref", "vrms", "vint", "vdepth")
+
         # A label. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
 
@@ -72,7 +74,6 @@ class RCNN2D:
                  input_size: list,
                  batch_size: int = 1,
                  params: Hyperparameters = None,
-                 out_names: list = ('ref', 'vrms', 'vint', 'vdepth'),
                  restore_from: str = None,
                  dataset: GeoDataset = None):
         """
@@ -98,12 +99,7 @@ class RCNN2D:
         self.input_size = input_size
         self.batch_size = batch_size
 
-        for l in out_names:
-            if l not in OUTS:
-                raise ValueError(f"`out_names` should be from {OUTS}")
-        self.out_names = [out for out in OUTS if out in out_names]
-
-        if 'vdepth' in out_names and dataset is None:
+        if 'vdepth' in self.params.out_names and dataset is None:
             raise ValueError("Time-to-depth conversion requires `dataset`.")
         self.dataset = dataset
 
@@ -159,7 +155,7 @@ class RCNN2D:
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
-        if 'ref' in self.out_names:
+        if 'ref' in self.params.out_names:
             conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
                              name="ref")
             outputs['ref'] = conv_2d(data_stream)
@@ -179,7 +175,7 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vrms' in self.out_names:
+        if 'vrms' in self.params.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
                              name="vrms")
             outputs['vrms'] = conv_2d(data_stream)
@@ -199,12 +195,12 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vint' in self.out_names:
+        if 'vint' in self.params.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
                              name="vint")
             outputs['vint'] = conv_2d(data_stream)
 
-        if 'vdepth' in self.out_names:
+        if 'vdepth' in self.params.out_names:
             vint = outputs['vint']
             time_to_depth = build_time_to_depth_converter(self.case,
                                                           vint.shape[1:],
@@ -213,7 +209,7 @@ class RCNN2D:
             vdepth = time_to_depth(vint)
             outputs['vdepth'] = vdepth
 
-        return [outputs[out] for out in self.out_names]
+        return [outputs[out] for out in self.params.out_names]
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
         """
