@@ -21,17 +21,16 @@ def main(args):
     if args.plot:
         dataset.animate()
 
-    nn = RCNN2D(dataset=dataset,
-                params=args.params,
-                checkpoint_dir=args.logdir)
+    architecture = args.architecture(dataset=dataset,
+                                     params=args.params,
+                                     checkpoint_dir=args.logdir)
 
     if args.training in [1, 2]:
-        nn.launch_training()
+        architecture.launch_training()
 
     # Test model.
     if args.training == 3:
-        nn.launch_test()
-
+        architecture.launch_test()
         if args.plot:
             is_2d = sizes[0][2] != 1
             tester.animated_predictions(labelnames=['ref', 'vrms',
