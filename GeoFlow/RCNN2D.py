@@ -117,14 +117,14 @@ class RCNN2D:
 
         self.tfdataset = self.dataset.tfdataset(phase="train",
                                                 shuffle=True,
-                                                tooutputs=None,
-                                                toinputs=None,
-                                                batch_size=1)
+                                                tooutputs=self.out_names,
+                                                toinputs=["shotgather"],
+                                                batch_size=self.params.batch_size)
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             self.inputs = self.build_inputs()
-            self.outputs = self.build_network(self.params)
+            self.outputs = self.build_network()
             self.model = Model(inputs=self.inputs,
                                outputs=self.outputs,
                                name="RCNN2D")
@@ -144,11 +144,13 @@ class RCNN2D:
 
     def build_inputs(self):
         inputs = Input(shape=self.input_size,
-                       batch_size=self.batch_size,
+                       batch_size=self.params.batch_size,
                        dtype=tf.float32)
         return inputs
 
-    def build_network(self, params):
+    def build_network(self):
+        params = self.params
+
         outputs = {}
 
         encoder = build_encoder(kernels=params.encoder_kernels,
@@ -163,7 +165,7 @@ class RCNN2D:
                                qty_filters=params.rcnn_filters,
                                dilation_rate=params.rcnn_dilation,
                                input_shape=data_stream.shape,
-                               batch_size=self.batch_size,
+                               batch_size=params.batch_size,
                                name="time_rcnn")
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             time_rcnn.trainable = False
@@ -178,7 +180,7 @@ class RCNN2D:
             outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=self.batch_size, name="rnn_vrms")
+                             batch_size=params.batch_size, name="rnn_vrms")
         if params.freeze_to in ['vrms', 'vint', 'vdepth']:
             rnn_vrms.trainable = False
         data_stream = rnn_vrms(data_stream)
@@ -198,7 +200,7 @@ class RCNN2D:
             outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=self.batch_size, name="rnn_vint")
+                             batch_size=params.batch_size, name="rnn_vint")
         if params.freeze_to in ['vint', 'vdepth']:
             rnn_vint.trainable = False
         data_stream = rnn_vint(data_stream)
@@ -219,9 +221,9 @@ class RCNN2D:
 
         if 'vdepth' in self.out_names:
             vint = outputs['vint']
-            time_to_depth = build_time_to_depth_converter(self.case,
+            time_to_depth = build_time_to_depth_converter(self.dataset,
                                                           vint.shape[1:],
-                                                          self.batch_size,
+                                                          params.batch_size,
                                                           name="vdepth")
             vdepth = time_to_depth(vint)
             outputs['vdepth'] = vdepth
