@@ -6,16 +6,14 @@ Define custom losses.
 import tensorflow as tf
 
 
-def ref_loss(use_weights=True):
+def ref_loss():
     """
     Get the loss function for the reflection prediction.
     """
     def loss(label, output):
         label, weights = label[:, 0], label[:, 1]
-        #  Logistic regression of zero offset time of reflections
+        # Logistic regression of zero offset time of reflections.
         weights = tf.expand_dims(weights, -1)
-        if not use_weights:
-            weights = tf.ones_like(weights)
         output = output * weights
         temp_lbl = tf.cast(label, tf.int32)
         label = tf.one_hot(temp_lbl, 2) * weights
@@ -28,7 +26,7 @@ def ref_loss(use_weights=True):
     return loss
 
 
-def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
+def v_compound_loss(alpha=0.2, beta=0.1):
     """
     Get the three-part loss function for velocity.
 
@@ -43,8 +41,6 @@ def v_compound_loss(alpha=0.2, beta=0.1, use_weights=True):
 
     def loss(label, output):
         label, weight = label[:, 0], label[:, 1]
-        if not use_weights:
-            weight = tf.ones_like(weight)
         output = output[:, :, :, 0]
         losses = []
 
