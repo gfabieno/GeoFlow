@@ -4,8 +4,8 @@ Build the neural network for predicting v_p in 2D and in depth.
 """
 
 import re
-from os import mkdir
-from os.path import split, join, basename, listdir, isdir
+from os import mkdir, listdir
+from os.path import split, join, basename, isdir
 
 import h5py as h5
 import numpy as np
