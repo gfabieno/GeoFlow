@@ -115,11 +115,12 @@ class RCNN2D:
 
         self.out_names = self.params.loss_scales.keys()
 
+        batch_size = self.params.batch_size
         self.tfdataset = self.dataset.tfdataset(phase="train",
                                                 shuffle=True,
                                                 tooutputs=self.out_names,
                                                 toinputs=["shotgather"],
-                                                batch_size=self.params.batch_size)
+                                                batch_size=batch_size)
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
