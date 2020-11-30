@@ -27,9 +27,28 @@ class Hyperparameters:
         """
         Build the default hyperparameters for `RCNN2D`.
         """
-        # The weights to start training from or to infer from. Defaults to the
+        # Checkpoint directory from which to restore the model. Defaults to the
         # last checkpoint in `args.logdir`.
         self.restore_from = None
+
+        # Quantity of epochs, with `self.steps` iterations per epoch.
+        self.epochs = 5
+        # Quantity of training iterations per epoch.
+        self.steps = 100
+        # Quantity of examples per batch.
+        self.batch_size = 50
+
+        # The learning rate.
+        self.learning_rate = 8E-4
+        # Adam optimizer hyperparameters.
+        self.beta_1 = 0.9
+        self.beta_2 = 0.98
+        self.epsilon = 1e-5
+        # Losses associated with each label.
+        self.loss_scales = {'ref': .8, 'vrms': .1, 'vint': .1, 'vdepth': .0}
+
+        # Whether to add noise or not to the data.
+        self.add_noise = False
 
         # A label. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
