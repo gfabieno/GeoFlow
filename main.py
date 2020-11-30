@@ -65,7 +65,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset",
                         type=str,
                         default="Dataset1Dsmall",
-                        help="Name of dataset from `Datasets_define` to use")
+                        help="Name of dataset from `DefinedDataset` to use")
     parser.add_argument("--logdir",
                         type=str,
                         default="./logs",
