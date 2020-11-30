@@ -3,6 +3,9 @@
 Build the neural network for predicting v_p in 2D and in depth.
 """
 
+import re
+from os.path import split
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential
@@ -21,6 +24,9 @@ class Hyperparameters:
         """
         # Select which network outputs to return.
         self.params.out_names = ("ref", "vrms", "vint", "vdepth")
+        # The weights to start training from or to infer from. Defaults to the
+        # last checkpoint in `args.logdir`.
+        self.restore_from = None
 
         # A label. Set layers up to the decoder of `freeze_to` to untrainable.
         self.freeze_to = None
@@ -74,7 +80,6 @@ class RCNN2D:
                  input_size: list,
                  batch_size: int = 1,
                  params: Hyperparameters = None,
-                 restore_from: str = None,
                  dataset: GeoDataset = None):
         """
         Build and restore the network.
@@ -122,8 +127,7 @@ class RCNN2D:
             self.layers = self.model.layers
             self.get_layer = self.model.get_layer
 
-            if restore_from is not None:
-                self.load_weights(restore_from)
+            self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
         inputs = Input(shape=self.input_size,
@@ -210,6 +214,18 @@ class RCNN2D:
             outputs['vdepth'] = vdepth
 
         return [outputs[out] for out in self.params.out_names]
+
+    def restore(self, path=None):
+        if path is None:
+            path = find_latest_checkpoint(path)
+        if path is not None:
+            filename = split(path)[-1]
+            current_epoch = int(filename[:4])
+        else:
+            current_epoch = 0
+
+        self.load_weights(filename)
+        return current_epoch
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
         """
@@ -446,3 +462,15 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
     y = tf.transpose(y, permutation)
     return y
+
+
+def find_latest_checkpoint(logdir):
+    expr = re.compile(r"[0-9]{4}\.ckpt")
+    checkpoints = [f for f in os.listdir(logdir) if expr.match(f)]
+    if checkpoints:
+        checkpoints.sort()
+        restore_from = checkpoints[-1]
+        restore_from = os.path.join(logdir, restore_from)
+    else:
+        restore_from = None
+    return restore_from

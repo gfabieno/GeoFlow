@@ -1,5 +1,4 @@
 import os
-import re
 import argparse
 
 from GeoFlow.Trainer import Trainer
@@ -28,25 +27,12 @@ def main(args):
                    'vint': args.loss_vint,
                    'vdepth': args.loss_vdepth}
 
-    if args.restore_from is None:
-        restore_from = find_latest_checkpoint(logdir)
-    else:
-        restore_from = args.restore_from
-    if restore_from is not None:
-        filename = os.path.split(restore_from)[-1]
-        current_epoch = int(filename[:4])
-    else:
-        current_epoch = 0
     nn = RCNN2D(batch_size=batch_size,
                 params=args.params,
                 out_names=loss_scales.keys(),
-                restore_from=restore_from,
                 dataset=dataset)
 
-    # TODO Jerome replace sequence with GeoDataset.tfdataset
-    # Train the model.
     if args.training in [1, 2]:
-
         trainer = Trainer(nn=nn,
                           sequence=sequence,
                           checkpoint_dir=logdir,
@@ -57,12 +43,11 @@ def main(args):
                           loss_scales=loss_scales,
                           use_weights=not args.no_weights)
         trainer.train_model(epochs=args.epochs,
-                            initial_epoch=current_epoch,
+                            initial_epoch=nn.current_epoch,
                             steps_per_epoch=args.steps)
 
     # Test model.
     if args.training == 3:
-
         tester = Tester(nn=nn, sequence=sequence, dataset=dataset)
         savepath = os.path.join(dataset.datatest, "pred")
         if not os.path.isdir(savepath):
@@ -70,24 +55,11 @@ def main(args):
         tester.test_dataset(savepath=savepath)
 
         if args.plot:
-            #TODO fix that
             is_2d = sizes[0][2] != 1
             tester.animated_predictions(labelnames=['ref', 'vrms',
                                                     'vint', 'vdepth'],
                                         savepath=savepath,
                                         image=is_2d)
-
-
-def find_latest_checkpoint(logdir):
-    expr = re.compile(r"[0-9]{4}\.ckpt")
-    checkpoints = [f for f in os.listdir(logdir) if expr.match(f)]
-    if checkpoints:
-        checkpoints.sort()
-        restore_from = checkpoints[-1]
-        restore_from = os.path.join(logdir, restore_from)
-    else:
-        restore_from = None
-    return restore_from
 
 
 if __name__ == "__main__":
