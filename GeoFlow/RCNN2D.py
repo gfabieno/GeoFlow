@@ -4,17 +4,22 @@ Build the neural network for predicting v_p in 2D and in depth.
 """
 
 import re
-from os.path import split
+from os import mkdir
+from os.path import split, join, basename, listdir, isdir
 
+import h5py as h5
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model, Sequential
+from tensorflow.keras import Model, Sequential, callbacks, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
 
 from GeoFlow.GeoDataset import GeoDataset
+from GeoFlow.Losses import ref_loss, v_compound_loss
+
+WEIGHTS_NAME = "{epoch:04d}.ckpt"
 
 
 class Hyperparameters:
@@ -22,8 +27,6 @@ class Hyperparameters:
         """
         Build the default hyperparameters for `RCNN2D`.
         """
-        # Select which network outputs to return.
-        self.params.out_names = ("ref", "vrms", "vint", "vdepth")
         # The weights to start training from or to infer from. Defaults to the
         # last checkpoint in `args.logdir`.
         self.restore_from = None
@@ -77,36 +80,27 @@ class RCNN2D:
     """
 
     def __init__(self,
-                 input_size: list,
-                 batch_size: int = 1,
-                 params: Hyperparameters = None,
-                 dataset: GeoDataset = None):
+                 dataset: GeoDataset,
+                 params: Hyperparameters,
+                 checkpoint_dir: str):
         """
         Build and restore the network.
 
-        :param input_size: The shape of the shot gather, `[nt, nx, nshots]`.
-        :parama batch_size: Quantity of examples in a batch.
         :param params: A grouping of hyperparameters.
         :type : Hyperparameters
-        :param out_names: List of the label names to predict among
-                          `'ref'`, `'vrms'`, `'vint'` and `'vdepth'`.
-        :param restore_from: Checkpoint directory from which to restore the
-                             model.
-        :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
-                     `tdelay`, `nz`, `source_depth` and `receiver_depth` are
-                     used for time-to-depth conversion. Required if `'vdepth'`
-                     is in `out_names`.
+        :param batch_size: Quantity of examples in a batch.
         """
-        if params is None:
-            self.params = Hyperparameters()
-        else:
-            self.params = params
-        self.input_size = input_size
-        self.batch_size = batch_size
-
-        if 'vdepth' in self.params.out_names and dataset is None:
-            raise ValueError("Time-to-depth conversion requires `dataset`.")
         self.dataset = dataset
+        self.params = params
+        self.checkpoint_dir = checkpoint_dir
+
+        self.out_names = self.params.loss_scales.keys()
+
+        self.tfdataset = self.dataset.tfdataset(phase="train",
+                                                shuffle=True,
+                                                tooutputs=None,
+                                                toinputs=None,
+                                                batch_size=1)
 
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
@@ -159,7 +153,7 @@ class RCNN2D:
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
-        if 'ref' in self.params.out_names:
+        if 'ref' in self.out_names:
             conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
                              name="ref")
             outputs['ref'] = conv_2d(data_stream)
@@ -179,7 +173,7 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vrms' in self.params.out_names:
+        if 'vrms' in self.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
                              name="vrms")
             outputs['vrms'] = conv_2d(data_stream)
@@ -199,12 +193,12 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vint' in self.params.out_names:
+        if 'vint' in self.out_names:
             conv_2d = Conv2D(1, params.decode_kernel, padding='same',
                              name="vint")
             outputs['vint'] = conv_2d(data_stream)
 
-        if 'vdepth' in self.params.out_names:
+        if 'vdepth' in self.out_names:
             vint = outputs['vint']
             time_to_depth = build_time_to_depth_converter(self.case,
                                                           vint.shape[1:],
@@ -213,7 +207,7 @@ class RCNN2D:
             vdepth = time_to_depth(vint)
             outputs['vdepth'] = vdepth
 
-        return [outputs[out] for out in self.params.out_names]
+        return [outputs[out] for out in self.out_names]
 
     def restore(self, path=None):
         if path is None:
@@ -258,6 +252,72 @@ class RCNN2D:
             current_weights = broadcast_weights(loaded_weights,
                                                 current_weights)
             current_layer.set_weights(current_weights)
+
+    def launch_training(self):
+        losses, losses_weights = self.build_losses()
+
+        optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
+                                    beta_1=self.params.beta_1,
+                                    beta_2=self.params.beta_2,
+                                    epsilon=self.params.epsilon,
+                                    name="Adam")
+        self.compile(optimizer=optimizer,
+                     loss=losses,
+                     loss_weights=losses_weights)
+
+        epochs = self.params.epochs + self.current_epoch
+
+        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir,
+                                            profile_batch=0)
+        checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
+                                                     WEIGHTS_NAME),
+                                                save_freq='epoch')
+        self.fit(self.tfdataset,
+                 epochs=epochs,
+                 callbacks=[tensorboard, checkpoints],
+                 initial_epoch=self.current_epoch,
+                 steps_per_epoch=self.params.steps_per_epoch,
+                 max_queue_size=10,
+                 use_multiprocessing=False)
+
+    def build_losses(self):
+        losses, losses_weights = [], []
+        for lbl in self.out_names:
+            if lbl == 'ref':
+                losses.append(ref_loss())
+            else:
+                loss = v_compound_loss()
+                losses.append(loss)
+            losses_weights.append(self.params.loss_scales[lbl])
+        return losses, losses_weights
+
+    def launch_testing(self):
+        savepath = join(self.dataset.datatest, "pred")
+        if not isdir(savepath):
+            mkdir(savepath)
+
+        for data, filenames in self.tfdataset:
+            evaluated = self.predict(
+                data,
+                max_queue_size=10,
+                use_multiprocessing=False,
+            )
+            is_batch_incomplete = len(data) != len(filenames)
+            if is_batch_incomplete:
+                for i in range(len(evaluated)):
+                    evaluated[i] = evaluated[i][:len(filenames)]
+
+            for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
+                if lbl != 'ref':
+                    evaluated[i] = out[..., 0]
+
+            for i, example in enumerate(filenames):
+                example = join(savepath, basename(example))
+                with h5.File(example, "w") as savefile:
+                    for j, el in enumerate(self.out_names):
+                        if el in savefile.keys():
+                            del savefile[el]
+                        savefile[el] = evaluated[j][i, :]
 
 
 def broadcast_weights(loaded_weights, current_weights):
@@ -466,11 +526,11 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
 def find_latest_checkpoint(logdir):
     expr = re.compile(r"[0-9]{4}\.ckpt")
-    checkpoints = [f for f in os.listdir(logdir) if expr.match(f)]
+    checkpoints = [f for f in listdir(logdir) if expr.match(f)]
     if checkpoints:
         checkpoints.sort()
         restore_from = checkpoints[-1]
-        restore_from = os.path.join(logdir, restore_from)
+        restore_from = join(logdir, restore_from)
     else:
         restore_from = None
     return restore_from

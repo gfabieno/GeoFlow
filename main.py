@@ -1,12 +1,8 @@
-import os
-import argparse
 
-from GeoFlow.Trainer import Trainer
-from GeoFlow.Tester import Tester
+import argparse
 
 
 def main(args):
-    logdir = args.logdir
     dataset = args.dataset
 
     if args.debug:
@@ -21,26 +17,16 @@ def main(args):
     if args.plot:
         dataset.animate()
 
-    nn = RCNN2D(batch_size=batch_size,
+    nn = RCNN2D(dataset=dataset,
                 params=args.params,
-                out_names=loss_scales.keys(),
-                dataset=dataset)
+                checkpoint_dir=args.logdir)
 
     if args.training in [1, 2]:
-        trainer = Trainer(nn=nn,
-                          sequence=sequence,
-                          checkpoint_dir=logdir)
-        trainer.train_model(epochs=args.epochs,
-                            initial_epoch=nn.current_epoch,
-                            steps_per_epoch=args.steps)
+        nn.launch_training()
 
     # Test model.
     if args.training == 3:
-        tester = Tester(nn=nn, sequence=sequence, dataset=dataset)
-        savepath = os.path.join(dataset.datatest, "pred")
-        if not os.path.isdir(savepath):
-            os.mkdir(savepath)
-        tester.test_dataset(savepath=savepath)
+        nn.launch_test()
 
         if args.plot:
             is_2d = sizes[0][2] != 1
