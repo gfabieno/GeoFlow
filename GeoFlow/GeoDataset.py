@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from GeoFlow import DatasetGenerator
-from GeoFlow import Acquisition
-from GeoFlow import EarthModel
-from GeoFlow import Reftime, Vrms, Vint, Vdepth, ShotGather
+from GeoFlow.DatasetGenerator import DatasetGenerator
+from GeoFlow.SeismicGenerator import Acquisition
+from GeoFlow.EarthModel import EarthModel
+from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
 class GeoDataset:

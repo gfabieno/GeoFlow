@@ -11,9 +11,9 @@ from typing import Dict
 import numpy as np
 import h5py as h5
 
-from GeoFlow import EarthModel
-from GeoFlow import SeismicGenerator, Acquisition
-from GeoFlow import GraphOutput, GraphInput
+from GeoFlow.EarthModel import EarthModel
+from GeoFlow.SeismicGenerator import SeismicGenerator, Acquisition
+from GeoFlow.GraphIO import GraphOutput, GraphInput
 
 
 class DatasetGenerator:
