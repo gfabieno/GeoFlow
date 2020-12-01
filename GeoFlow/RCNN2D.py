@@ -327,7 +327,7 @@ class RCNN2D:
         if not isdir(savepath):
             mkdir(savepath)
 
-        for data, _, _, filenames in self.tfdataset:
+        for data, _, filenames in self.tfdataset:
             evaluated = self.predict(data,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
@@ -336,6 +336,7 @@ class RCNN2D:
                     evaluated[i] = out[..., 0]
 
             for i, example in enumerate(filenames):
+                example = example.numpy().decode("utf-8")
                 example = join(savepath, basename(example))
                 with h5.File(example, "w") as savefile:
                     for j, el in enumerate(self.out_names):
