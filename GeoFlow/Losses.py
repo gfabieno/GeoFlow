@@ -11,16 +11,16 @@ def ref_loss():
     Get the loss function for the reflection prediction.
     """
     def loss(label, output):
-        label, weights = label[:, 0], label[:, 1]
+        label, weight = label[:, 0], label[:, 1]
         # Logistic regression of zero offset time of reflections.
-        weights = tf.expand_dims(weights, -1)
-        output = output * weights
+        weight = tf.expand_dims(weight, -1)
+        output = output * weight
         temp_lbl = tf.cast(label, tf.int32)
-        label = tf.one_hot(temp_lbl, 2) * weights
+        label = tf.one_hot(temp_lbl, 2) * weight
 
-        loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(
-            logits=output,
-            labels=label))
+        loss = tf.nn.softmax_cross_entropy_with_logits(logits=output,
+                                                       labels=label)
+        loss = tf.reduce_mean(loss)
         return loss
 
     return loss
