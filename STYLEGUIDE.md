@@ -116,3 +116,5 @@ See also: #456, #789
 Commits should be small and unitary. This makes it easier to review changes and to detect where bugs were introduced, for instance. Leave minimal uncommitted work in your working directory at all times. This also makes it easier to track ongoing work on features. Don't mind having too many commits: commits will be squashed into a single commit after review, when a pull request is accepted.
 
 Use significative branch names, that is, label branches by features instead of by your own name. Use hyphens between words, for instance `add-feature`.
+
+Some IDEs (PyCharm is one of them) recommend wrapping lines at 80 characters instead of 79, although PEP 8 advocates having 79 characters per line. You can manually change this setting to comply with PEP 8.
