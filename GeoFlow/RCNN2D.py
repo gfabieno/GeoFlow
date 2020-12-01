@@ -322,11 +322,9 @@ class RCNN2D:
             mkdir(savepath)
 
         for data, filenames in self.tfdataset:
-            evaluated = self.predict(
-                data,
-                max_queue_size=10,
-                use_multiprocessing=False,
-            )
+            evaluated = self.predict(data,
+                                     max_queue_size=10,
+                                     use_multiprocessing=False)
             is_batch_incomplete = len(data) != len(filenames)
             if is_batch_incomplete:
                 for i in range(len(evaluated)):

@@ -327,9 +327,9 @@ class GeoDataset:
         tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
 
         def get_example(fname):
-            data, labels, weights, fname = self.get_example(filename=fname,
-                                                            toinputs=toinputs,
-                                                            tooutputs=tooutputs)
+            data, labels, weights, _ = self.get_example(filename=fname,
+                                                        toinputs=toinputs,
+                                                        tooutputs=tooutputs)
             data = [data[el] for el in toinputs]
             labels = [labels[el] for el in tooutputs]
             weights = [weights[el] for el in tooutputs]
