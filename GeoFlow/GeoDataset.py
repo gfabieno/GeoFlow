@@ -307,7 +307,7 @@ class GeoDataset:
                   batch_size: int = 1,
                   num_parallel_calls: int = tf.data.experimental.AUTOTUNE):
         """
-        Outputs at tf.data.dataset to feed a tf or keras network.
+        Output a `tf.data.dataset` to feed a TensorFlow or Keras network.
 
         :param phase: Either "train", "test" or "validate". Get an example from
                       the "phase" dataset.
@@ -316,7 +316,8 @@ class GeoDataset:
         :param shuffle: If True, shuffles the examples.
         :param batch_size: The size of a batch.
         :param num_parallel_calls: Number of parallel threads for data reading.
-                                   By default, determined automatically by tf.
+                                   By default, determined automatically by
+                                   TensorFlow.
 
         :return: A `tf.data.Dataset` object outputting the batch of examples.
         """
