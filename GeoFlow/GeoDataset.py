@@ -11,6 +11,7 @@ import os
 import gc
 import fnmatch
 from typing import List
+from glob import glob
 
 import tensorflow as tf
 import numpy as np
@@ -325,24 +326,22 @@ class GeoDataset:
                   "validate": self.datavalidate,
                   "test": self.datatest}
         pathstr = os.path.join(phases[phase], 'example_*')
-        tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
+        fnames = glob(pathstr)
 
-        def get_example(fname):
-            data, labels, weights, _ = self.get_example(filename=fname,
-                                                        toinputs=toinputs,
-                                                        tooutputs=tooutputs)
-            data = [data[el] for el in toinputs]
-            labels = [labels[el] for el in tooutputs]
-            weights = [weights[el] for el in tooutputs]
-            return data, labels, weights, fname
+        def get_examples():
+            for fname in fnames:
+                (data, labels, weights, _) = self.get_example(
+                    filename=fname,
+                    toinputs=toinputs,
+                    tooutputs=tooutputs)
+                data = tuple(data[el] for el in toinputs)
+                labels = tuple([labels[el], weights[el]] for el in tooutputs)
+                yield data, labels, fname
 
-        def tf_fun(x):
-            otype = [tf.float32, tf.float32, tf.float32, tf.string]
-            return tf.numpy_function(get_example, inp=[x], Tout=otype)
-
-        tfdataset = tfdataset.map(tf_fun,
-                                  num_parallel_calls=num_parallel_calls,
-                                  deterministic=False)
+        output_types = ((tf.float32,) * len(toinputs),
+                        (tf.float32,) * len(tooutputs),
+                        tf.string)
+        tfdataset = tf.data.Dataset.from_generator(get_examples,
+                                                   output_types)
         tfdataset = tfdataset.batch(batch_size=batch_size)
-
         return tfdataset
