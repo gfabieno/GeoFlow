@@ -331,11 +331,6 @@ class RCNN2D:
             evaluated = self.predict(data,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
-            is_batch_incomplete = len(data) != len(filenames)
-            if is_batch_incomplete:
-                for i in range(len(evaluated)):
-                    evaluated[i] = evaluated[i][:len(filenames)]
-
             for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
                 if lbl != 'ref':
                     evaluated[i] = out[..., 0]
