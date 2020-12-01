@@ -146,7 +146,7 @@ class RCNN2D:
 
     def fit(self, x, **kwargs):
         x = x.unbatch()
-        x = x.map(lambda data, labels, weights, fname: (data, labels, weights))
+        x = x.map(lambda data, labels, fname: (data, labels))
         x = x.batch(self.params.batch_size)
         return self.model.fit(x, **kwargs)
 
