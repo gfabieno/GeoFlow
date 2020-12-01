@@ -34,7 +34,7 @@ def main(args):
 
         # Test model.
         if args.training == 3:
-            architecture.launch_test()
+            architecture.launch_testing()
             if args.plot:
                 architecture.animated_predictions()
 
