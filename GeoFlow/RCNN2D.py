@@ -97,6 +97,8 @@ class RCNN2D:
     """
     Combine a recursive CNN and LSTMs to predict 2D v_p velocity.
     """
+    tooutputs = ["ref", "vrms", "vint", "vdepth"]
+    toinputs = ["shotgather"]
 
     def __init__(self,
                  dataset: GeoDataset,
@@ -117,10 +119,9 @@ class RCNN2D:
         self.out_names = self.params.loss_scales.keys()
 
         batch_size = self.params.batch_size
-        self.tfdataset = self.dataset.tfdataset(phase=phase,
-                                                shuffle=True,
-                                                tooutputs=self.out_names,
-                                                toinputs=["shotgather"],
+        self.tfdataset = self.dataset.tfdataset(phase=self.phase,
+                                                tooutputs=self.tooutputs,
+                                                toinputs=self.toinputs,
                                                 batch_size=batch_size)
 
         strategy = tf.distribute.MirroredStrategy()
