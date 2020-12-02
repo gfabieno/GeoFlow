@@ -145,12 +145,15 @@ class RCNN2D:
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
-        inputs, _, _, _ = self.dataset.get_example(toinputs=["shotgather"])
+        inputs, _, _, _ = self.dataset.get_example(toinputs=self.toinputs)
         shot_gather = inputs["shotgather"]
-        inputs = Input(shape=shot_gather.shape,
-                       batch_size=self.params.batch_size,
-                       dtype=tf.float32)
-        return {"shotgather": inputs}
+        shotgather = Input(shape=shot_gather.shape,
+                           batch_size=self.params.batch_size,
+                           dtype=tf.float32)
+        filename = Input(shape=[1],
+                         batch_size=self.params.batch_size,
+                         dtype=tf.string)
+        return {"shotgather": shotgather, "filename": filename}
 
     def build_network(self):
         params = self.params
@@ -318,7 +321,7 @@ class RCNN2D:
         if not isdir(savepath):
             mkdir(savepath)
 
-        for data, _, filenames in self.tfdataset:
+        for data, _ in self.tfdataset:
             evaluated = self.predict(data,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
@@ -326,7 +329,7 @@ class RCNN2D:
                 if lbl != 'ref':
                     evaluated[i] = out[..., 0]
 
-            for i, example in enumerate(filenames):
+            for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
                 example = join(savepath, basename(example))
                 with h5.File(example, "w") as savefile:
