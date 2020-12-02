@@ -132,10 +132,6 @@ class RCNN2D:
                                outputs=self.outputs,
                                name="RCNN2D")
 
-
-            # TODO Jerome, I think you may just subclass tf.keras.Model here
-            # without changing anything, You would get rid of the next few lines
-
             # `RCNN2D` has the same interface as a keras `Model`, but
             # subclassing is avoided by using the functional API. This is
             # necessary for model intelligibility.
@@ -148,9 +144,6 @@ class RCNN2D:
 
             self.current_epoch = self.restore(self.params.restore_from)
 
-    # TODO Jerome, why is this required ? Seems that we change the behavior
-    # of the tfdataset here, if this is required, put it in Geodataset.tfdataset
-    # I added fname as a named input of the tfdataset, maybe that solve it
     def fit(self, x, **kwargs):
         # x = x.unbatch()
         # x = x.map(lambda data, labels, fname: (data, labels))
@@ -163,7 +156,6 @@ class RCNN2D:
         inputs = Input(shape=shot_gather.shape,
                        batch_size=self.params.batch_size,
                        dtype=tf.float32)
-        # TODO Jerome, make sure that this works
         return {"shotgather": inputs}
 
     def build_network(self):
@@ -177,7 +169,6 @@ class RCNN2D:
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             encoder.trainable = False
 
-        # TODO Jerome, make sure that this works
         data_stream = encoder(self.inputs["shotgather"])
 
         time_rcnn = build_rcnn(reps=7,
@@ -248,7 +239,6 @@ class RCNN2D:
             vdepth = time_to_depth(vint)
             outputs['vdepth'] = vdepth
 
-        # TODO Jerome check that works
         return {out: outputs[out] for out in self.out_names}
 
     def restore(self, path=None):
@@ -323,7 +313,6 @@ class RCNN2D:
                  use_multiprocessing=False)
 
     def build_losses(self):
-        #TODO Jerome, see that this works
         losses, losses_weights = {}, {}
         for lbl in self.out_names:
             if lbl == 'ref':
