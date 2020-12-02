@@ -11,7 +11,6 @@ import os
 import gc
 import fnmatch
 from typing import List
-from glob import glob
 
 import tensorflow as tf
 import numpy as np
