@@ -116,7 +116,6 @@ class RCNN2D:
         self.params = params
         self.checkpoint_dir = checkpoint_dir
         self.phase = phase
-        self.out_names = self.params.loss_scales.keys()
 
         batch_size = self.params.batch_size
         self.tfdataset = self.dataset.tfdataset(phase=self.phase,
@@ -180,10 +179,9 @@ class RCNN2D:
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
-        if 'ref' in self.out_names:
-            conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
-                             name="ref")
-            outputs['ref'] = conv_2d(data_stream)
+        conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
+                         name="ref")
+        outputs['ref'] = conv_2d(data_stream)
 
         rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=params.batch_size, name="rnn_vrms")
@@ -200,10 +198,9 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vrms' in self.out_names:
-            conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                             name="vrms")
-            outputs['vrms'] = conv_2d(data_stream)
+        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
+                         name="vrms")
+        outputs['vrms'] = conv_2d(data_stream)
 
         rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
                              batch_size=params.batch_size, name="rnn_vint")
@@ -220,21 +217,19 @@ class RCNN2D:
                 conv_2d.trainable = False
             data_stream = conv_2d(data_stream)
 
-        if 'vint' in self.out_names:
-            conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                             name="vint")
-            outputs['vint'] = conv_2d(data_stream)
+        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
+                         name="vint")
+        outputs['vint'] = conv_2d(data_stream)
 
-        if 'vdepth' in self.out_names:
-            vint = outputs['vint']
-            time_to_depth = build_time_to_depth_converter(self.dataset,
-                                                          vint.shape[1:],
-                                                          params.batch_size,
-                                                          name="vdepth")
-            vdepth = time_to_depth(vint)
-            outputs['vdepth'] = vdepth
+        vint = outputs['vint']
+        time_to_depth = build_time_to_depth_converter(self.dataset,
+                                                      vint.shape[1:],
+                                                      params.batch_size,
+                                                      name="vdepth")
+        vdepth = time_to_depth(vint)
+        outputs['vdepth'] = vdepth
 
-        return {out: outputs[out] for out in self.out_names}
+        return {out: outputs[out] for out in self.tooutputs}
 
     def restore(self, path=None):
         if path is None:
@@ -309,7 +304,7 @@ class RCNN2D:
 
     def build_losses(self):
         losses, losses_weights = {}, {}
-        for lbl in self.out_names:
+        for lbl in self.tooutputs:
             if lbl == 'ref':
                 losses[lbl] = ref_loss()
             else:
@@ -327,7 +322,7 @@ class RCNN2D:
             evaluated = self.predict(data,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
-            for i, (lbl, out) in enumerate(zip(self.out_names, evaluated)):
+            for i, (lbl, out) in enumerate(zip(self.tooutputs, evaluated)):
                 if lbl != 'ref':
                     evaluated[i] = out[..., 0]
 
@@ -335,7 +330,7 @@ class RCNN2D:
                 example = example.numpy().decode("utf-8")
                 example = join(savepath, basename(example))
                 with h5.File(example, "w") as savefile:
-                    for j, el in enumerate(self.out_names):
+                    for j, el in enumerate(self.tooutputs):
                         if el in savefile.keys():
                             del savefile[el]
                         savefile[el] = evaluated[j][i, :]
