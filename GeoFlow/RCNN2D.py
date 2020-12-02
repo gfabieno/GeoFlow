@@ -136,6 +136,7 @@ class RCNN2D:
             # subclassing is avoided by using the functional API. This is
             # necessary for model intelligibility.
             self.compile = self.model.compile
+            self.fit = self.model.fit
             self.predict = self.model.predict
             self.set_weights = self.model.set_weights
             self.get_weights = self.model.get_weights
@@ -143,12 +144,6 @@ class RCNN2D:
             self.get_layer = self.model.get_layer
 
             self.current_epoch = self.restore(self.params.restore_from)
-
-    def fit(self, x, **kwargs):
-        # x = x.unbatch()
-        # x = x.map(lambda data, labels, fname: (data, labels))
-        # x = x.batch(self.params.batch_size)
-        return self.model.fit(x, **kwargs)
 
     def build_inputs(self):
         inputs, _, _, _ = self.dataset.get_example(toinputs=["shotgather"])
