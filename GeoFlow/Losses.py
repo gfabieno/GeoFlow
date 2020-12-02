@@ -11,7 +11,8 @@ def ref_loss():
     Get the loss function for the reflection prediction.
     """
     def loss(label, output):
-        label, weight = label[:, 0], label[:, 1]
+        # TODO Jerome, check that this works
+        label, weight = label[0], label[1]
         # Logistic regression of zero offset time of reflections.
         weight = tf.expand_dims(weight, -1)
         output = output * weight
@@ -40,8 +41,10 @@ def v_compound_loss(alpha=0.2, beta=0.1):
     fact1 = 1 - alpha - beta
 
     def loss(label, output):
-        label, weight = label[:, 0], label[:, 1]
-        output = output[:, :, :, 0]
+        #TODO Jerome, check that this works
+        label, weight = label[0], label[1]
+        # label, weight = label[:, 0], label[:, 1]
+        # output = output[:, :, :, 0]
         losses = []
 
         # Calculate mean squared error

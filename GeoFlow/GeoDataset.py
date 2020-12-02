@@ -326,22 +326,33 @@ class GeoDataset:
                   "validate": self.datavalidate,
                   "test": self.datatest}
         pathstr = os.path.join(phases[phase], 'example_*')
-        fnames = glob(pathstr)
+        tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
 
-        def get_examples():
-            for fname in fnames:
-                (data, labels, weights, _) = self.get_example(
-                    filename=fname,
-                    toinputs=toinputs,
-                    tooutputs=tooutputs)
-                data = tuple(data[el] for el in toinputs)
-                labels = tuple([labels[el], weights[el]] for el in tooutputs)
-                yield data, labels, fname
+        def get_example(fname):
+            data, labels, weights, _ = self.get_example(filename=fname,
+                                                        toinputs=toinputs,
+                                                        tooutputs=tooutputs)
+            data = tuple(np.float32(data[el]) for el in toinputs)
+            labels = tuple([np.float32(labels[el]), np.float32(weights[el])]
+                           for el in tooutputs)
 
-        output_types = ((tf.float32,) * len(toinputs),
-                        (tf.float32,) * len(tooutputs),
-                        tf.string)
-        tfdataset = tf.data.Dataset.from_generator(get_examples,
-                                                   output_types)
+            return data + labels
+
+        def tf_fun(x):
+            output_type = ((tf.float32,) * len(toinputs)
+                           + (tf.float32,) * len(tooutputs))
+            outs = tf.numpy_function(get_example, inp=[x], Tout=output_type)
+
+            data = {el: outs[ii] for ii, el in enumerate(toinputs)}
+            data["filename"] = x
+            nin = len(toinputs)
+            labels = {el: outs[nin + ii] for ii, el in enumerate(tooutputs)}
+
+            return data, labels
+
+        tfdataset = tfdataset.map(tf_fun,
+                                  num_parallel_calls=num_parallel_calls,
+                                  deterministic=False)
         tfdataset = tfdataset.batch(batch_size=batch_size)
+
         return tfdataset
