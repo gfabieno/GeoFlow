@@ -14,7 +14,7 @@ from tensorflow.keras import Model, Sequential, callbacks, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange)
+                                      reshape, cumsum, arange, expand_dims)
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
@@ -159,7 +159,7 @@ class RCNN2D:
         params = self.params
         outputs = {}
 
-        data_stream = tf.expand_dims(self.inputs["shotgather"], axis=-1)
+        data_stream = expand_dims(self.inputs["shotgather"], axis=-1)
 
         encoder = build_encoder(kernels=params.encoder_kernels,
                                 dilation_rates=params.encoder_dilations,
