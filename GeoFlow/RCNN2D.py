@@ -154,16 +154,16 @@ class RCNN2D:
 
     def build_network(self):
         params = self.params
-
         outputs = {}
+
+        data_stream = tf.expand_dims(self.inputs["shotgather"], axis=-1)
 
         encoder = build_encoder(kernels=params.encoder_kernels,
                                 dilation_rates=params.encoder_dilations,
                                 qties_filters=params.encoder_filters)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             encoder.trainable = False
-
-        data_stream = encoder(self.inputs["shotgather"])
+        data_stream = encoder(data_stream)
 
         time_rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
