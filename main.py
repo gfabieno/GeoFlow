@@ -12,7 +12,7 @@ def main(args):
     if args.debug:
         dataset.trainsize = 5
         dataset.validatesize = 0
-        dataset.testsize = 0
+        dataset.testsize = 5
 
     # Generate the dataset.
     if args.training in [0, 2]:
