@@ -63,10 +63,10 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
         # Minimize gradient (blocky inversion)
         if beta > 0:
-            num = tf.norm(output[:, 1:, :] - output[:, :-1, :], ord=1,
+            num = tf_norm(output[:, 1:, :] - output[:, :-1, :],
                           axis=[1, 2])
             if output.get_shape()[-1] != 1:
-                num += tf.norm(output[:, :, 1:] - output[:, :, :-1], ord=1,
+                num += tf_norm(output[:, :, 1:] - output[:, :, :-1],
                                axis=[1, 2])
             den = tf.norm(output, ord=1, axis=[1, 2])
             loss = tf.reduce_sum(num / den)
@@ -75,3 +75,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
         return tf.reduce_sum(losses)
 
     return loss
+
+
+def tf_norm(input, axis=None):
+    return tf.reduce_sum(tf.abs(input), axis=axis)
