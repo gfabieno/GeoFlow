@@ -20,7 +20,7 @@ def ref_loss():
 
         loss = tf.nn.softmax_cross_entropy_with_logits(logits=output,
                                                        labels=label)
-        loss = tf.reduce_mean(loss, axis=[])
+        loss = tf.reduce_mean(loss)
         return loss
 
     return loss
