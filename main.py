@@ -13,6 +13,7 @@ def main(args):
         dataset.trainsize = 5
         dataset.validatesize = 0
         dataset.testsize = 5
+        args.params.batch_size = 2
 
     # Generate the dataset.
     if args.training in [0, 2]:
@@ -30,7 +31,7 @@ def main(args):
 
         # Train model.
         if args.training in [1, 2]:
-            architecture.launch_training()
+            architecture.launch_training(run_eagerly=args.eager)
 
         # Test model.
         if args.training == 3:
@@ -78,6 +79,9 @@ if __name__ == "__main__":
     parser.add_argument("--debug",
                         action='store_true',
                         help="Generate a small dataset of 5 examples.")
+    parser.add_argument("--eager",
+                        action='store_true',
+                        help="Run the Keras model eargerly, for debugging")
 
     args = parser.parse_args()
     args.architecture = getattr(RCNN2D, args.architecture)

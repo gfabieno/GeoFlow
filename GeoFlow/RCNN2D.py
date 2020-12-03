@@ -278,7 +278,7 @@ class RCNN2D:
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def launch_training(self):
+    def launch_training(self, run_eagerly=False):
         losses, losses_weights = self.build_losses()
 
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
@@ -288,7 +288,8 @@ class RCNN2D:
                                     name="Adam")
         self.compile(optimizer=optimizer,
                      loss=losses,
-                     loss_weights=losses_weights)
+                     loss_weights=losses_weights,
+                     run_eagerly=run_eagerly)
 
         epochs = self.params.epochs + self.current_epoch
 
