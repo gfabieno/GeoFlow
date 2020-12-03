@@ -68,7 +68,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
             if output.get_shape()[-1] != 1:
                 num += tf.norm(output[:, :, 1:] - output[:, :, :-1], ord=1,
                                axis=[1, 2])
-            den = tf.norm(output, ord=1, axis=[1, 2]) / 0.02
+            den = tf.norm(output, ord=1, axis=[1, 2])
             loss = tf.reduce_sum(num / den)
             losses.append(beta * loss)
 
