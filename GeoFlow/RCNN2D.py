@@ -14,7 +14,7 @@ from tensorflow.keras import Model, Sequential, callbacks, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange, expand_dims)
+                                      reshape, cumsum, arange)
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
@@ -157,16 +157,15 @@ class RCNN2D:
 
     def build_network(self):
         params = self.params
-        outputs = {}
 
-        data_stream = expand_dims(self.inputs["shotgather"], axis=-1)
+        outputs = {}
 
         encoder = build_encoder(kernels=params.encoder_kernels,
                                 dilation_rates=params.encoder_dilations,
                                 qties_filters=params.encoder_filters)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             encoder.trainable = False
-        data_stream = encoder(data_stream)
+        data_stream = encoder(self.inputs["shotgather"])
 
         time_rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
