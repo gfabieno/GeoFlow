@@ -464,4 +464,6 @@ class ShotGather(GraphInput):
             data = np.reshape(data, [data.shape[0], src_pos_all.shape[1], -1])
             data = data.swapaxes(1, 2)
 
+        data = np.expand_dims(data, axis=-1)
+
         return data
