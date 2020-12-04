@@ -1,8 +1,8 @@
 import numpy as np
 from matplotlib import pyplot as plt
 
-from GeoFlow import Acquisition
-from GeoFlow import EarthModel
+from GeoFlow.SeismicGenerator import Acquisition
+from GeoFlow.EarthModel import EarthModel
 from GeoFlow.SeismicUtilities import (smooth_velocity_wavelength,
                                       generate_reflections_ttime,
                                       vdepth2time,
@@ -123,7 +123,7 @@ class Reftime(GraphOutput):
         self.train_on_shots = False
 
     def generate(self, props):
-        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp, vs, rho = props["vp"], props["vs"], props["rho"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
             refs[:, ii] = generate_reflections_ttime(vp[:, ii],
@@ -165,7 +165,7 @@ class Vrms(Reftime):
     name = "vrms"
 
     def generate(self, props):
-        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
             vrms[:, ii] = calculate_vrms(vp[:, ii],
@@ -212,7 +212,7 @@ class Vint(Vrms):
     name = "vint"
 
     def generate(self, props):
-        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vint = np.zeros((self.acquire.NT, vp.shape[1]))
         z0 = int(self.acquire.source_depth / self.model.dh)
         t = np.arange(0, self.acquire.NT, 1) * self.acquire.dt
@@ -251,7 +251,7 @@ class Vdepth(Vrms):
         self.model_smooth_x = 0
 
     def generate(self, props):
-        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp, vs, rho = props["vp"], props["vs"], props["rho"]
         z0 = int(self.acquire.source_depth / self.model.dh)
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -298,7 +298,7 @@ class Vsdepth(Reftime):
     name = "vsdepth"
 
     def generate(self, props):
-        vp, vs, rho = (props["vp"], props["vs"], props["rho"])
+        vp, vs, rho = props["vp"], props["vs"], props["rho"]
         return vs, vs * 0 + 1
 
     def preprocess(self, label, weight):
@@ -375,9 +375,9 @@ class GraphInput:
        """
         return data
 
+
 # TODO Jefferson complete that
 class Dispersion(GraphInput):
-
     name = "dispersion"
 
     def __init__(self, acquire: Acquisition, model: EarthModel, cmax , cmin):
@@ -386,11 +386,11 @@ class Dispersion(GraphInput):
         self.cmax, self.cmin = cmax, cmin
 
     def generate(self, data):
-
         src_pos, rec_pos = self.acquire.set_rec_src()
         dt = self.acquire.dt
         d = dispersion_curve(data, self.acquire.re)
         return d
+
 
 class ShotGather(GraphInput):
     name = "shotgather"
@@ -463,7 +463,5 @@ class ShotGather(GraphInput):
         else:
             data = np.reshape(data, [data.shape[0], src_pos_all.shape[1], -1])
             data = data.swapaxes(1, 2)
-
-        data = np.expand_dims(data, axis=-1)
 
         return data

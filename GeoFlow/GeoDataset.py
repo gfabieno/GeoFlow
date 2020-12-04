@@ -17,10 +17,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 
-from GeoFlow import DatasetGenerator
-from GeoFlow import Acquisition
-from GeoFlow import EarthModel
-from GeoFlow import Reftime, Vrms, Vint, Vdepth, ShotGather
+from GeoFlow.DatasetGenerator import DatasetGenerator
+from GeoFlow.SeismicGenerator import Acquisition
+from GeoFlow.EarthModel import EarthModel
+from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
 
 class GeoDataset:
@@ -305,10 +305,9 @@ class GeoDataset:
                   tooutputs: List[str] = None,
                   toinputs: List[str] = None,
                   batch_size: int = 1,
-                  num_parallel_calls: int = tf.data.experimental.AUTOTUNE,
-                  ):
+                  num_parallel_calls: int = tf.data.experimental.AUTOTUNE):
         """
-        Outputs at tf.data.dataset to feed a tf or keras network.
+        Output a `tf.data.dataset` to feed a TensorFlow or Keras network.
 
         :param phase: Either "train", "test" or "validate". Get an example from
                       the "phase" dataset.
@@ -317,12 +316,11 @@ class GeoDataset:
         :param shuffle: If True, shuffles the examples.
         :param batch_size: The size of a batch.
         :param num_parallel_calls: Number of parallel threads for data reading.
-                                   By default, determined automatically by tf.
+                                   By default, determined automatically by
+                                   TensorFlow.
 
-        :return: A tf.dataset object outputting the batch of examples.
-
+        :return: A `tf.data.Dataset` object outputting the batch of examples.
         """
-
         phases = {"train": self.datatrain,
                   "validate": self.datavalidate,
                   "test": self.datatest}
@@ -330,15 +328,26 @@ class GeoDataset:
         tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
 
         def get_example(fname):
-            (data, labels, weights, fname) = self.get_example(filename=fname)
-            data = [data[el] for el in toinputs]
-            labels = [labels[el] for el in tooutputs]
-            weights = [weights[el] for el in tooutputs]
-            return data, labels, weights, fname
+            data, labels, weights, _ = self.get_example(filename=fname,
+                                                        toinputs=toinputs,
+                                                        tooutputs=tooutputs)
+            data = tuple(np.float32(data[el]) for el in toinputs)
+            labels = tuple([np.float32(labels[el]), np.float32(weights[el])]
+                           for el in tooutputs)
+
+            return data + labels
 
         def tf_fun(x):
-            otype = [tf.float32, tf.float32, tf.float32, tf.string]
-            return tf.numpy_function(get_example, inp=[x], Tout=otype)
+            output_type = ((tf.float32,) * len(toinputs)
+                           + (tf.float32,) * len(tooutputs))
+            outs = tf.numpy_function(get_example, inp=[x], Tout=output_type)
+
+            data = {el: outs[ii] for ii, el in enumerate(toinputs)}
+            data["filename"] = x
+            nin = len(toinputs)
+            labels = {el: outs[nin + ii] for ii, el in enumerate(tooutputs)}
+
+            return data, labels
 
         tfdataset = tfdataset.map(tf_fun,
                                   num_parallel_calls=num_parallel_calls,
