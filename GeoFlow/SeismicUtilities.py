@@ -2,10 +2,11 @@
 Handle seismic data and velocity models.
 """
 
-import numpy as np
 from scipy.signal import convolve2d
+import numpy as np
+from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
-from scipy.interpolate import interp1d, CubicSpline
+from scipy.interpolate import CubicSpline
 
 
 def gaussian(f0, t, o, amp=1.0, order=2):
@@ -513,18 +514,22 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
 
     ind = np.lexsort((offsets, cmps))
     cmps = cmps[ind]
-    data_cmp = data[:, ind]
+    if data is not None:
+        data_cmp = data[:, ind]
+    else:
+        data_cmp = None
 
     unique_cmps, counts = np.unique(cmps, return_counts=True)
     maxfold = np.max(counts)
     firstcmp = unique_cmps[np.argmax(counts == maxfold)]
     lastcmp = unique_cmps[-np.argmax(counts[::-1] == maxfold)-1]
     unique_cmps = unique_cmps[counts == maxfold]
-    ind1 = np.argmax(cmps == firstcmp)
-    ind2 = np.argmax(cmps > lastcmp)
-    data_cmp = data_cmp[:, ind1:ind2]
-    ncmps = unique_cmps.shape[0]
-    data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
+    if data is not None:
+        ind1 = np.argmax(cmps == firstcmp)
+        ind2 = np.argmax(cmps > lastcmp)
+        data_cmp = data_cmp[:, ind1:ind2]
+        ncmps = unique_cmps.shape[0]
+        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
 
     return data_cmp, unique_cmps
 
@@ -619,3 +624,38 @@ def semblance(nmo_corrected, window=10):
     num = np.convolve(num, weights, mode='same')
     den = np.convolve(den, weights, mode='same')
     return num / den
+
+
+def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000):
+    """
+    Compute the dispersion curve of `data`.
+
+    :param data: Time-offset gather.
+    :param gx: Geophones positions in m.
+    :param dt: Time step.
+    :param sx: Source position.
+    :param minc: Minimum phase velocity value to be evaluated.
+    :param maxc: Maximum phase velocity value to be evaluated.
+
+    :return:
+        A: The transformed dispersion data.
+        freq: Vector of frequencies.
+        c: Vector of evaluated velocities.
+    """
+    # data = np.pad(data, [(500, 500), (0, 0)])
+    freq = np.fft.fftfreq(np.size(data, 0), dt)
+    c = np.linspace(minc, maxc, 201)[:-1]
+    c = c[1:]
+    data_fft = np.fft.fft(data, axis=0)
+    data_fft_norm = data_fft / np.abs(data_fft)
+    A = np.zeros((len(freq), len(c)), dtype=complex)
+    A2 = np.zeros((len(freq), len(c)), dtype=complex)
+    freq = np.reshape(freq, [-1, 1])
+    x = np.abs(gx-sx)
+    x -= np.min(x)
+    x = np.reshape(x, [1, -1])
+    for i in range(len(c)):
+        delta = 2 * np.pi * freq * x / c[i]
+        A2[:, i] = np.sum(np.exp(1j*delta) * data_fft_norm, axis=1)
+    A = np.transpose(A2)
+    return A, freq, c

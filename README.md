@@ -1,38 +1,37 @@
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3492115.svg)](https://doi.org/10.5281/zenodo.3492115)
 
-# 2D Velocity estimation using neural-networks
+# GeoFlow
 
-Repository to build a neural network for 2D velocity model prediction from
-seismic data.
+Dataset management interface with Keras for geophysics
 
 ## Contributing
 
 This repository is organized in the following fashion. From highest level to
 lowest:
 
-*   The file [Case2Dtest.py](main.py) shows an example of how to generate
+*   The file [Dataset2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
-*   A neural network is defined in [RCNN2D.py](vrmslearn/RCNN2D.py).
-This class builds the NN and the loss. It is used in [Case2Dtest.py](main.py).
+*   A neural network is defined in [RCNN2D.py](GeoFlow/RCNN2D.py).
+This class builds the NN and the loss. It is used in [Dataset2Dtest.py](main.py).
 To build a new network, a child class can be defined from `RCNN2D`.
-*   To help with training, a class [Trainer](vrmslearn/Trainer.py) is provided.
-It needs a Case class and a `RCNN2D`-like class as input.
-*   The file [Case_define.py](Case_define.py) is where different cases are
+*   To help with training, a class [Trainer](GeoFlow/Trainer.py) is provided.
+It needs a GeoDataset class and a `RCNN2D`-like class as input.
+*   The file [Dataset_define.py](Dataset_define.py) is where different Datasets are
 defined.
-*  A `Case` is implemented with the [Case](vrmslearn/Case.py) class. It provides an
+*  A `GeoDataset` is implemented with the [GeoDataset](GeoFlow/GeoDataset.py) class. It provides an
 interface to generate 2D velocity models and model the seismic data with
 fixed parameters.
-*   The `Case` class contains the method `set_case`. A new case can be defined
-by defining a child class from the `Case` base class and overriding `set_case`.
+*   The `GeoDataset` class contains the method `set_dataset`. A new GeoDataset can be defined
+by defining a child class from the `GeoDataset` base class and overriding `set_dataset`.
 This method needs to return three objects based on three classes
-    *  [BaseModelGenerator](vrmslearn/BaseModelGenerator.py). This class allows
+    *  [EarthModel](GeoFlow/BaseModelGenerator.py). This class allows
     to generate a random model. It is based the ModGen library available upon
     request. Different model generator can be defined from this case (see
-    [MarineModelGenerator](vrmslearn/BaseModelGenerator.py)).
-    *   [Acquisition](vrmslearn/SeismicGenerator.py) defines all the parameters
+    [MarineModel](GeoFlow/BaseModelGenerator.py)).
+    *   [Acquisition](GeoFlow/SeismicGenerator.py) defines all the parameters
     for the creation of the seismic data by SeisCL. In particular, override the
     method `set_rec_src` to define a different acquisition setup.
-    * [LabelGenerator](vrmslearn/LabelGenerator.py) is a class that generate the
+    * [OutputGenerator](GeoFlow/GraphIO.py) is a class that generate the
     labels from the model and acquires objects.
 
 
@@ -50,7 +49,7 @@ Identifiers must be descriptive and short enough to maintain ease-of-use.
 
 ## Installation
 
-IMPORTANT: USE THE LATEST SEISCL VERSION ON THE DEVEL BRANCH!
+**IMPORTANT: Use the latest SeisCL version on the `devel` branch.**
 
 
 You should clone this repository
@@ -83,14 +82,10 @@ to the same path in the docker (second line), running the docker as the current 
 #### b) Install all requirements
 
 It is recommended to create a new virtual environment for this project with Python3.
-The main python requirements are:
-*   [tensorflow](https://www.tensorflow.org). This project was tested with versions 1.8 to 1.15.
-The preferred method of installation is through pip, but many options are available.
-*  [SeisCL](https://github.com/gfabieno/SeisCL). Follow the instruction in the README of
-the SeisCL repository. Preferred compiling options for this project are api=opencl (use
-OpenCL, which is faster than CUDA for small models) and nompi=1, because no MPI parallelization is required.
-Be sure to install SeisCL's python wrapper.
-
-Once SeisCL is installed, you can install all other python requirements with
-
-    pip install -r requirements.txt
+Install all requirements with
+```
+pip install .
+```
+The main Python requirements are:
+* [tensorflow](https://www.tensorflow.org)
+* [SeisCL](https://github.com/gfabieno/SeisCL). Navigate to the directory of the SeisCL installation and follow the instruction in the README. Preferred compiling options for this project are api=opencl (use OpenCL, which is faster than CUDA for small models) and nompi=1, because no MPI parallelization is required. Be sure to install SeisCL's python wrapper.

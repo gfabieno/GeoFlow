@@ -11,8 +11,8 @@ import shutil
 import numpy as np
 
 from SeisCL.SeisCL import SeisCL
-from vrmslearn.SeismicUtilities import random_wavelet_generator
-from vrmslearn.VelocityModelGenerator import BaseModelGenerator
+from GeoFlow.SeismicUtilities import random_wavelet_generator
+from GeoFlow.EarthModel import EarthModel
 
 
 class Acquisition:
@@ -20,7 +20,7 @@ class Acquisition:
     Define all model parameters needed to model seismic data.
     """
 
-    def __init__(self, model: BaseModelGenerator):
+    def __init__(self, model: EarthModel):
         self.model = model
         # Whether free surface is turned on the top face.
         self.fs = False
@@ -127,7 +127,7 @@ class SeismicGenerator(SeisCL):
     Generate seismic data with SeisCL.
     """
 
-    def __init__(self, acquire: Acquisition, model: BaseModelGenerator,
+    def __init__(self, acquire: Acquisition, model: EarthModel,
                  workdir="workdir", gpu=0):
         """
         :param acquire: Parameters for data creation.
@@ -156,20 +156,20 @@ class SeismicGenerator(SeisCL):
         self.workdir = workdir
 
         # Assign constants for modeling with SeisCL.
-        self.csts['N'] = np.array([model.NZ, model.NX])
-        self.csts['ND'] = 2
-        self.csts['dh'] = model.dh  # Grid spacing.
-        self.csts['nab'] = acquire.Npad  # Set padding cells.
-        self.csts['dt'] = acquire.dt  # Time step size.
-        self.csts['NT'] = acquire.NT  # Nb of time steps.
-        self.csts['f0'] = acquire.peak_freq  # Source frequency.
-        self.csts['seisout'] = acquire.rectype  # Output pressure.
-        self.csts['freesurf'] = int(acquire.fs)  # Free surface.
+        self.N = np.array([model.NZ, model.NX])
+        self.ND = 2
+        self.dh = model.dh  # Grid spacing
+        self.nab = acquire.Npad  # Set padding cells
+        self.dt = acquire.dt  # Time step size
+        self.NT = acquire.NT  # Nb of time steps
+        self.f0 = acquire.peak_freq  # Source frequency
+        self.seisout = acquire.rectype  # Output pressure
+        self.freesurf = int(acquire.fs)  # Free surface
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
         nouse = nouse[nouse != gpu]
-        self.csts['no_use_GPUs'] = nouse
+        self.no_use_GPUs = nouse
 
         self.src_pos_all, self.rec_pos_all = acquire.set_rec_src()
         self.resampling = acquire.resampling
@@ -184,7 +184,6 @@ class SeismicGenerator(SeisCL):
 
         :return: An array containing the modeled seismic data.
         """
-
         self.src_all = None  # Reset source to generate new random source.
         self.set_forward(self.src_pos_all[3, :], props, withgrad=False)
         self.execute()
