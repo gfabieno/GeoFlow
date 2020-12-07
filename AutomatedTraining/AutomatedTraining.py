@@ -31,6 +31,8 @@ def chain(main: Callable,
           dataset: GeoDataset,
           logdir: str = "./logs",
           ngpu: int = 1,
+          debug: bool = False,
+          eager: bool = False,
           use_tune: bool = False,
           **config):
     """
@@ -72,9 +74,9 @@ def chain(main: Callable,
     if to_chain:
         qties_segments = [len(param) for param in params.values()]
         qty_segments = qties_segments[0]
-        assert all([qty == qty_segments for qty in qties_segments]), (
-            "A hyperparameter sequence has a different length."
-        )
+        is_equal_length = all([qty == qty_segments for qty in qties_segments])
+        assert is_equal_length, ("Some hyperparameter sequence has a "
+                                 "different length.")
     else:
         qty_segments = 1
 
@@ -82,10 +84,9 @@ def chain(main: Callable,
         current_params = deepcopy(params)
         for param_name, param_value in to_chain:
             current_params[param_name] = param_value[segment]
-        args = Namespace(
-            architecture=architecture, params=current_params, dataset=dataset,
-            logdir=logdir, ngpu=ngpu,
-        )
+        args = Namespace(architecture=architecture, params=current_params,
+                         dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
+                         plot=False, debug=debug, eager=eager)
         main(args, use_tune)
 
 
@@ -94,6 +95,8 @@ def optimize(architecture: RCNN2D.RCNN2D,
              dataset: GeoDataset,
              logdir: str = "./logs",
              ngpu: int = 1,
+             debug: bool = False,
+             eager: bool = False,
              **config):
     """
     Call `chain` for all combinations of `chain`.
@@ -113,8 +116,8 @@ def optimize(architecture: RCNN2D.RCNN2D,
         with archive.import_main() as main:
             logdir = archive.model
             tune.run(lambda config: chain(main, architecture, params, dataset,
-                                          logdir, ngpu, use_tune=True,
-                                          **config),
+                                          logdir, ngpu, debug, eager,
+                                          use_tune=True, **config),
                      num_samples=1,
                      checkpoint_freq=1,
                      resources_per_trial={"gpu": ngpu},
@@ -146,6 +149,9 @@ if __name__ == "__main__":
     parser.add_argument("--debug",
                         action='store_true',
                         help="Generate a small dataset of 5 examples.")
+    parser.add_argument("--eager",
+                        action='store_true',
+                        help="Run the Keras model eagerly, for debugging.")
     args, config = parser.parse_known_args()
 
     args.architecture = getattr(RCNN2D, args.architecture)
@@ -153,14 +159,11 @@ if __name__ == "__main__":
     args.dataset = getattr(dataset_module, args.dataset)()
     args.params = getattr(RCNN2D, args.params)()
 
-    if args.debug:
-        args.dataset.trainsize = 5
-        args.dataset.validatesize = 0
-        args.dataset.testsize = 5
-
     optimize(architecture=args.architecture,
              params=args.params,
              dataset=args.dataset,
              logdir=args.logdir,
              ngpu=args.ngpu,
+             debug=args.debug,
+             eager=args.eager,
              config=config)
