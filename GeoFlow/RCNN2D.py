@@ -11,11 +11,13 @@ from os.path import split, join, basename, isdir
 import h5py as h5
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model, Sequential, callbacks, optimizers
+from tensorflow.keras import Model, Sequential, optimizers
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
+from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
@@ -280,7 +282,7 @@ class RCNN2D:
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def launch_training(self, run_eagerly=False):
+    def setup_training(self, run_eagerly=False):
         losses, losses_weights = self.build_losses()
 
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
@@ -293,16 +295,22 @@ class RCNN2D:
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
 
+    def launch_training(self, use_tune=False):
         epochs = self.params.epochs + self.current_epoch
 
-        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir,
-                                            profile_batch=0)
-        checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
-                                                     WEIGHTS_NAME),
-                                                save_freq='epoch')
+        if not use_tune:
+            tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
+                                      profile_batch=0)
+            checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
+                                               WEIGHTS_NAME),
+                                          save_freq='epoch')
+            callbacks = [tensorboard, checkpoints]
+        else:
+            tune_report = TuneReportCheckpointCallback(filename=WEIGHTS_NAME)
+            callbacks = [tune_report]
         self.fit(self.tfdataset,
                  epochs=epochs,
-                 callbacks=[tensorboard, checkpoints],
+                 callbacks=callbacks,
                  initial_epoch=self.current_epoch,
                  steps_per_epoch=self.params.steps_per_epoch,
                  max_queue_size=10,

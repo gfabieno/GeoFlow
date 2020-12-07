@@ -6,7 +6,7 @@ Launch dataset generation, training or testing.
 import argparse
 
 
-def main(args):
+def main(args, use_tune=False):
     dataset = args.dataset
 
     if args.debug:
@@ -30,7 +30,8 @@ def main(args):
 
         # Train model.
         if args.training in [1, 2]:
-            architecture.launch_training(run_eagerly=args.eager)
+            architecture.setup_training(run_eagerly=args.eager)
+            architecture.launch_training(use_tune)
 
         # Test model.
         if args.training == 3:

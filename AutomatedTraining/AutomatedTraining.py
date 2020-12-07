@@ -31,6 +31,7 @@ def chain(main: Callable,
           dataset: GeoDataset,
           logdir: str = "./logs",
           ngpu: int = 1,
+          use_tune: bool = False,
           **config):
     """
     Call `main` a succession of times as implied by `config`.
@@ -81,7 +82,7 @@ def chain(main: Callable,
         current_params = deepcopy(params)
         for param_name, param_value in to_chain:
             current_params[param_name] = param_value[segment]
-        main(current_params)
+        main(current_params, use_tune)
 
 
 def optimize(architecture: RCNN2D.RCNN2D,
@@ -108,8 +109,10 @@ def optimize(architecture: RCNN2D.RCNN2D,
         with archive.import_main() as main:
             logdir = archive.model
             tune.run(lambda config: chain(main, architecture, params, dataset,
-                                          logdir, ngpu, **config),
+                                          logdir, ngpu, use_tune=True,
+                                          **config),
                      num_samples=1,
+                     checkpoint_freq=1,
                      resources_per_trial={"gpu": ngpu},
                      config=config)
 
