@@ -92,8 +92,11 @@ def chain(main: Callable,
     for segment in range(qty_segments):
         current_params = deepcopy(params)
         for param_name, param_value in to_chain.items():
-            print(param_name, param_value[segment])
             setattr(current_params, param_name, param_value[segment])
+        if use_tune:
+            if segment > 0:
+                with tune.checkpoint_dir(step=segment-1) as checkpoint_dir:
+                    logdir = checkpoint_dir
         args = Namespace(architecture=architecture, params=current_params,
                          dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
                          plot=False, debug=debug, eager=eager)
@@ -142,7 +145,6 @@ def optimize(architecture: RCNN2D.RCNN2D,
                                           logdir, ngpu, debug, eager,
                                           use_tune=True, **config),
                      num_samples=1,
-                     checkpoint_freq=1,
                      local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
                      config=grid_search_config)

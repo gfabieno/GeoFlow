@@ -22,7 +22,7 @@ from ray.tune.integration.keras import TuneReportCheckpointCallback
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
 
-WEIGHTS_NAME = "{epoch:04d}.ckpt"
+WEIGHTS_NAME = "{epoch:04d}"
 
 
 class Hyperparameters(Namespace):
@@ -307,7 +307,8 @@ class RCNN2D:
             callbacks = [tensorboard, checkpoints]
         else:
             filename = WEIGHTS_NAME.format(epoch=self.current_epoch)
-            tune_report = TuneReportCheckpointCallback(filename=filename)
+            tune_report = TuneReportCheckpointCallback(filename=filename,
+                                                       frequency=1)
             callbacks = [tune_report]
         self.fit(self.tfdataset,
                  epochs=epochs,
@@ -559,7 +560,7 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
 
 def find_latest_checkpoint(logdir):
-    expr = re.compile(r"[0-9]{4}\.ckpt")
+    expr = re.compile(r"[0-9]{4}")
     checkpoints = [f for f in listdir(logdir) if expr.match(f)]
     if checkpoints:
         checkpoints.sort()
