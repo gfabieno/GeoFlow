@@ -306,7 +306,8 @@ class RCNN2D:
                                           save_freq='epoch')
             callbacks = [tensorboard, checkpoints]
         else:
-            tune_report = TuneReportCheckpointCallback(filename=WEIGHTS_NAME)
+            filename = WEIGHTS_NAME.format(epoch=self.current_epoch)
+            tune_report = TuneReportCheckpointCallback(filename=filename)
             callbacks = [tune_report]
         self.fit(self.tfdataset,
                  epochs=epochs,

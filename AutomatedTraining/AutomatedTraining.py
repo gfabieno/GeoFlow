@@ -120,6 +120,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
                                           use_tune=True, **config),
                      num_samples=1,
                      checkpoint_freq=1,
+                     local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
                      config=config)
 
