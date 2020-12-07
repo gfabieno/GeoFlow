@@ -159,6 +159,10 @@ if __name__ == "__main__":
     args.dataset = getattr(dataset_module, args.dataset)()
     args.params = getattr(RCNN2D, args.params)()
 
+    if args.debug:
+        config["epochs"] = 1
+        config["steps_per_epoch"] = 5
+
     optimize(architecture=args.architecture,
              params=args.params,
              dataset=args.dataset,
