@@ -72,7 +72,7 @@ def chain(main: Callable,
             to_chain[param_name] = param_value
 
     if to_chain:
-        qties_segments = [len(param) for param in params.values()]
+        qties_segments = [len(param) for param in to_chain.values()]
         qty_segments = qties_segments[0]
         is_equal_length = all([qty == qty_segments for qty in qties_segments])
         assert is_equal_length, ("Some hyperparameter sequence has a "
@@ -82,8 +82,9 @@ def chain(main: Callable,
 
     for segment in range(qty_segments):
         current_params = deepcopy(params)
-        for param_name, param_value in to_chain:
-            current_params[param_name] = param_value[segment]
+        for param_name, param_value in to_chain.items():
+            print(param_name, param_value[segment])
+            setattr(current_params, param_name, param_value[segment])
         args = Namespace(architecture=architecture, params=current_params,
                          dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
                          plot=False, debug=debug, eager=eager)
@@ -115,6 +116,12 @@ def optimize(architecture: RCNN2D.RCNN2D,
     with ArchiveRepository(logdir) as archive:
         with archive.import_main() as main:
             logdir = archive.model
+
+            grid_search_config = deepcopy(config)
+            for key, value in config.items():
+                if isinstance(value, list):
+                    value = tune.grid_search(value)
+                grid_search_config[key] = value
             tune.run(lambda config: chain(main, architecture, params, dataset,
                                           logdir, ngpu, debug, eager,
                                           use_tune=True, **config),
@@ -122,7 +129,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
                      checkpoint_freq=1,
                      local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
-                     config=config)
+                     config=grid_search_config)
 
 
 if __name__ == "__main__":
@@ -154,7 +161,7 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Run the Keras model eagerly, for debugging.")
     args, config = parser.parse_known_args()
-    config = {name[2:]: value for name, value
+    config = {name[2:]: eval(value) for name, value
               in zip(config[::2], config[1::2])}
     args.architecture = getattr(RCNN2D, args.architecture)
     dataset_module = import_module("DefinedDataset." + args.dataset)
