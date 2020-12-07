@@ -18,14 +18,15 @@ from copy import deepcopy
 from argparse import Namespace
 from itertools import product
 from importlib import import_module
+from typing import Callable
 
 import numpy as np
 
-from archive import ArchiveRepository
-from GeoFlow.RCNN2D import Hyperparameters
+from Archive import ArchiveRepository
+from GeoFlow.RCNN2D import Hyperparameters, RCNN2D
 
 
-def chain(main, **args):
+def chain(main: Callable, **args):
     """
     Call `main` a succession of times as implied by `args`.
 
@@ -37,27 +38,20 @@ def chain(main, **args):
 
     Sample usage:
         from main import main
+        params = Hyperparameters()
+        params.epochs = (100, 100, 50),
+        params.loss_scales = ({'ref': .5, 'vrms': .5,
+                               'vint': .0, 'vdepth': .0},
+                              {'ref': .0, 'vrms': .7,
+                               'vint': .3, 'vdepth': .0},
+                              {'ref': .0, 'vrms': .0,
+                               'vint': 1., 'vdepth': .0})
         chain(main,
               logdir="logs",
-              params=Hyperparameters(),
-              case=Case1Dsmall(),
-              epochs=(100, 100, 50),
-              steps=20,
-              lr=.0008,
-              beta_1=.9,
-              beta_2=.98,
-              eps=1e-5,
-              batchsize=4,
-              loss_ref=(.5, .0, .0),
-              loss_vrms=(.5, .7, .0),
-              loss_vint=(.0, .3, 1.),
-              loss_vdepth=(.0, .0, .0),
-              nmodel=1,
-              ngpu=2,
-              noise=0,
-              plot=0,
-              no_weights=False,
-              restore_from=None)
+              params=params,
+              dataset=Dataset1Dsmall(),
+              architecture=RCNN2D,
+              ngpu=2)
     Output:
         A 3-step training with different quantities of epochs and losses.
     """
@@ -101,24 +95,8 @@ def optimize(**args):
 
     Sample usage:
         optimize(params=Hyperparameters(),
-                 case=Case1Dsmall(),
-                 epochs=(100, 100, 50),
-                 steps=20,
-                 lr=[.0008, .0002],
-                 beta_1=.9,
-                 beta_2=.98,
-                 eps=1e-5,
-                 batchsize=4,
-                 loss_ref=(.5, .0, .0),
-                 loss_vrms=(.5, .7, .0),
-                 loss_vint=(.0, .3, 1.),
-                 loss_vdepth=(.0, .0, .0),
-                 nmodel=1,
-                 ngpu=2,
-                 noise=0,
-                 plot=0,
-                 no_weights=False,
-                 restore_from=None)
+                 dataset=Dataset1Dsmall(),
+                 lr=[.0008, .0002])
     Output:
         Two calls to `chain` with different learning rates.
     """
@@ -147,7 +125,7 @@ def optimize(**args):
             del main
 
 
-def generate_variations(base_params, **variations):
+def generate_variations(base_params: Hyperparameters, **variations):
     """
     Generate variations of an `Hyperparameters` object.
 
@@ -175,7 +153,7 @@ def generate_variations(base_params, **variations):
     return hyperparams
 
 
-def drop_useless(hyperparams):
+def drop_useless(hyperparams: Hyperparameters):
     """
     Drop useless hyperparameters combinations.
 
@@ -187,7 +165,7 @@ def drop_useless(hyperparams):
     Sample usage:
         hyperparams = Hyperparameters()
         hyperparams.rcnn_kernel = [15, 3, 1]
-        hyperparams.dilation = [1, 1, 2]
+        hyperparams.rcnn_dilation = [1, 1, 2]
         drop_useless([hyperparams])
     Output:
         An empty list.
@@ -219,21 +197,6 @@ if __name__ == "__main__":
     from Cases_define import *
 
     optimize(params=Hyperparameters(),
-             case=Case1Dsmall(),
-             epochs=(100, 100, 50),
-             steps=20,
-             lr=.0002,
-             beta_1=.9,
-             beta_2=.98,
-             eps=1e-5,
-             batchsize=4,
-             loss_ref=(.5, .0, .0),
-             loss_vrms=(.5, .7, .0),
-             loss_vint=(.0, .3, 1.),
-             loss_vdepth=(.0, .0, .0),
-             nmodel=1,
-             ngpu=2,
-             noise=0,
-             plot=0,
-             no_weights=False,
-             restore_from=None)
+             dataset=Dataset1Dsmall(),
+             architecture=RCNN2D,
+             ngpu=2)
