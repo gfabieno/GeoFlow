@@ -151,7 +151,7 @@ class _ImportMain:
         self.main = import_module("main").main
         return proxy(self.main)
 
-    def __exit__(self):
+    def __exit__(self, exc_type, exc_value, tb):
         """Delete all references appropriately"""
         del sys.modules["main"]
         del self.main
