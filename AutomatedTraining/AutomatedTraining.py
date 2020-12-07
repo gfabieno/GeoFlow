@@ -153,7 +153,8 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Run the Keras model eagerly, for debugging.")
     args, config = parser.parse_known_args()
-
+    config = {name[2:]: value for name, value
+              in zip(config[::2], config[1::2])}
     args.architecture = getattr(RCNN2D, args.architecture)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
@@ -170,4 +171,4 @@ if __name__ == "__main__":
              ngpu=args.ngpu,
              debug=args.debug,
              eager=args.eager,
-             config=config)
+             **config)
