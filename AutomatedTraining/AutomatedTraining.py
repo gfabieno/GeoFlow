@@ -48,6 +48,7 @@ def chain(main: Callable,
     :param ngpu: Quantity of GPUs for data creation.
     :param debug: Generate a small dataset of 5 examples.
     :param eager: Run the Keras model eagerly, for debugging.
+    :param use_tune: Whether to use `ray[tune]` or not.
     :param config: Key-value pairs of argument names and values. `chain` will
                    fetch a different value at each iteration from values that
                    are tuples.
