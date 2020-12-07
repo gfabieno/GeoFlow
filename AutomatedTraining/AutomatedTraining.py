@@ -20,7 +20,7 @@ from typing import Callable
 
 from ray import tune
 
-from Archive import ArchiveRepository
+from .Archive import ArchiveRepository
 from GeoFlow import RCNN2D
 from GeoFlow.GeoDataset import GeoDataset
 
