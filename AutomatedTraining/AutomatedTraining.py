@@ -82,7 +82,11 @@ def chain(main: Callable,
         current_params = deepcopy(params)
         for param_name, param_value in to_chain:
             current_params[param_name] = param_value[segment]
-        main(current_params, use_tune)
+        args = Namespace(
+            architecture=architecture, params=current_params, dataset=dataset,
+            logdir=logdir, ngpu=ngpu,
+        )
+        main(args, use_tune)
 
 
 def optimize(architecture: RCNN2D.RCNN2D,
