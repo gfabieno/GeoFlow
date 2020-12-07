@@ -81,3 +81,65 @@ pip install .
 The main Python requirements are:
 * [tensorflow](https://www.tensorflow.org)
 * [SeisCL](https://github.com/gfabieno/SeisCL). Navigate to the directory of the SeisCL installation and follow the instruction in the README. Preferred compiling options for this project are api=opencl (use OpenCL, which is faster than CUDA for small models) and nompi=1, because no MPI parallelization is required. Be sure to install SeisCL's python wrapper.
+
+## Getting started
+
+### Step 1 - Create your dataset script
+
+Start by creating a new script for your project in `DefinedDataset`. In this script, 
+you can create new derived classes from the classes [EarthModel](GeoFlow/EarthModel.py), 
+[Aquisition](GeoFlow/SeismicGenerator.py) and [GeoDataset](GeoFlow/GeoDataset.py). You can 
+look at other scripts in the `DefinedDataset` directory as examples.
+
+### Step 2 - Override `build_stratigraphy` from [EarthModel](GeoFlow/EarthModel.py)
+You'll probably need to defined your own stratigraphy for your synthetic dataset. To do so, 
+you need to override the `build_stratigraphy` method in <u>your</u> new class from your script.
+
+    DatasetExample.py
+        import ...
+        
+        class NewModel(EarthModel):
+            def build_stratigraphy(self):
+                ...
+
+### Step 3 - Override `set_rec_src` from [Aquisition](GeoFlow/SeismicGenerator.py)
+You can also change the number of receivers, their spacing and the source position. To do so, 
+you need to override the `set_rec_src` method in <u>your</u> new class from your script.
+    
+    DatasetExample.py
+    
+        class NewAquisition(Aquisition):
+            def set_rec_src(self):
+                ...
+
+### Step 4 - Override `set_dataset` from [GeoDataset](GeoFlow/GeoDataset.py)
+Finally you need to override the `set_dataset` method in <u>your</u> new class from your script.
+This method allows you to choose the size of the synthetic dataset and to choose all of your 
+parameters. In this method you will also define the inputs and outputs to save in the 
+hdf5 example files.
+
+    DatasetExample.py
+    
+        class DatasetExample(GeoDataset):
+            name = "DatasetExample"
+            
+            def set_dataset(self):
+                self.trainsize = 10000
+                self.validatesize = 100
+                self.testsize = 100
+                
+                model = NewModel()
+                ...  
+                acquire = NewAquisition(model=model)
+                ...
+                inputs=...
+                outputs=...
+
+### Step 5 - Run [main](main.py) script to create dataset
+Here is an example of how to run the main script. The debug parameter create a dataset 
+of only 5 examples.
+
+    python main.py --dataset DatasetExample --plot True --debug True
+
+    
+    
