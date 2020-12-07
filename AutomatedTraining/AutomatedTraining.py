@@ -6,11 +6,12 @@ This module allows chaining multiple calls to a `main` script such as
 `..main.main` through `chain` and lauching `chain` with different combinations
 of hyperparameters through `optimize`. To use different combinations of
 architecture hyperparameters (`GeoFlow.RCNN2D.Hyperparameters`) in launching
-a main script, the combinations must be placed in a list beforehand through
-`generate_variations`. `optimize` processes all combinations of items from
-arguments that are lists. This module leverages `automated_training.archive`
-to make sure modifications in the repository during training do not impact an
-ongoing training. `optimize` automatically fetches the archived main script.
+a main script, the alterations to the base hyperparameters must be fed to
+`optimize` as key-value pairs of hyperparameter names and lists possible
+values. `optimize` processes all combinations of items from arguments that are
+lists. This module leverages `automated_training.archive` to make sure
+modifications in the repository during training do not impact an ongoing
+training. `optimize` automatically fetches the archived main script.
 """
 
 from copy import deepcopy
@@ -40,9 +41,16 @@ def chain(main: Callable,
 
     :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
-    :param args: Key-value pairs of argument names and values. `chain` will
-                 fetch a different value at each iteration from values that are
-                 tuples.
+    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param params: Name of hyperparameters from `RCNN2D` to use.
+    :param dataset: Name of dataset from `DefinedDataset` to use.
+    :param logdir: Directory in which to store the checkpoints.
+    :param ngpu: Quantity of GPUs for data creation.
+    :param debug: Generate a small dataset of 5 examples.
+    :param eager: Run the Keras model eagerly, for debugging.
+    :param config: Key-value pairs of argument names and values. `chain` will
+                   fetch a different value at each iteration from values that
+                   are tuples.
 
     Sample usage:
         from main import main
@@ -54,10 +62,10 @@ def chain(main: Callable,
                               {'ref': .0, 'vrms': .0,
                                'vint': 1., 'vdepth': .0})
         chain(main,
-              logdir="logs",
+              architecture=RCNN2D,
               params=params,
               dataset=Dataset1Dsmall(),
-              architecture=RCNN2D,
+              logdir="logs",
               ngpu=2)
     Output:
         A 3-step training with different losses.
@@ -100,10 +108,17 @@ def optimize(architecture: RCNN2D.RCNN2D,
              eager: bool = False,
              **config):
     """
-    Call `chain` for all combinations of `chain`.
+    Call `chain` for all combinations of `config`.
 
-    :param args: Key-value pairs of argument names and values that will be
-                 iterated upon.
+    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param params: Name of hyperparameters from `RCNN2D` to use.
+    :param dataset: Name of dataset from `DefinedDataset` to use.
+    :param logdir: Directory in which to store the checkpoints.
+    :param ngpu: Quantity of GPUs for data creation.
+    :param debug: Generate a small dataset of 5 examples.
+    :param eager: Run the Keras model eagerly, for debugging.
+    :param config: Key-value pairs of argument names and values that will be
+                   iterated upon.
 
     Sample usage:
         optimize(architecture=RCNN2D.RCNN2D,

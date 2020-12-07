@@ -141,6 +141,14 @@ class ArchiveRepository:
                 command_file.write("\n")
 
     def import_main(self):
+        """
+        Dynamically and safely import the current main script.
+
+        Sample usage:
+            with ArchiveRepository() as archive:
+                with archive.import_main() as main:
+                    ...
+        """
         return _ImportMain()
 
 
