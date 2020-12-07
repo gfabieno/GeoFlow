@@ -9,10 +9,12 @@ duplicated repository. Uncommitted changes are preserved.
 """
 
 import sys
+from importlib import import_module
 from os import makedirs, listdir, remove, symlink, walk, chdir, getcwd
 from os.path import join, realpath, exists, pardir
 from subprocess import run
 from copy import deepcopy
+from weakref import proxy
 
 PROJECT_NAME = "Deep_2D_velocity"
 
@@ -137,3 +139,19 @@ class ArchiveRepository:
             for line in lines:
                 command_file.write(line)
                 command_file.write("\n")
+
+    def import_main(self):
+        return _ImportMain()
+
+
+class _ImportMain:
+    """Dynamically import the current `main`."""
+
+    def __enter__(self):
+        self.main = import_module("main").main
+        return proxy(self.main)
+
+    def __exit__(self):
+        """Delete all references appropriately"""
+        del sys.modules["main"]
+        del self.main

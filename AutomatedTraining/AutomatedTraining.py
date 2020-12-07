@@ -13,7 +13,6 @@ to make sure modifications in the repository during training do not impact an
 ongoing training. `optimize` automatically fetches the archived main script.
 """
 
-import sys
 from copy import deepcopy
 from argparse import Namespace, ArgumentParser
 from importlib import import_module
@@ -106,15 +105,13 @@ def optimize(architecture: RCNN2D.RCNN2D,
         Two calls to `chain` with different learning rates.
     """
     with ArchiveRepository() as archive:
-        main = import_module("main").main
-        logdir = archive.model
-        tune.run(lambda config: chain(main, architecture, params, dataset,
-                                      logdir, ngpu, **config),
-                 num_samples=1,
-                 resources_per_trial={"gpu": ngpu},
-                 config=config)
-        del sys.modules["main"]
-        del main
+        with archive.import_main() as main:
+            logdir = archive.model
+            tune.run(lambda config: chain(main, architecture, params, dataset,
+                                          logdir, ngpu, **config),
+                     num_samples=1,
+                     resources_per_trial={"gpu": ngpu},
+                     config=config)
 
 
 if __name__ == "__main__":
