@@ -61,7 +61,7 @@ def chain(main: Callable,
         A 3-step training with different losses.
     """
     params = deepcopy(params)
-    for param_name, param_value in config:
+    for param_name, param_value in config.items():
         setattr(params, param_name, param_value)
 
     to_chain = {}
@@ -163,4 +163,4 @@ if __name__ == "__main__":
              dataset=args.dataset,
              logdir=args.logdir,
              ngpu=args.ngpu,
-             config=args.config)
+             config=config)
