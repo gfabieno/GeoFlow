@@ -31,7 +31,7 @@ class GeoDataset:
     model parameters.
     """
     name = "BaseDataset"
-    basepath = "Datasets"
+    basepath = os.path.abspath("Datasets")
 
     # Seed of the 1st model generated. Seeds for subsequent models are
     # incremented by 1.
