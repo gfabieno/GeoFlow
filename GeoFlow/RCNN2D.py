@@ -4,6 +4,7 @@ Build the neural network for predicting v_p in 2D and in depth.
 """
 
 import re
+from argparse import Namespace
 from os import mkdir, listdir
 from os.path import split, join, basename, isdir
 
@@ -22,11 +23,13 @@ from GeoFlow.Losses import ref_loss, v_compound_loss
 WEIGHTS_NAME = "{epoch:04d}.ckpt"
 
 
-class Hyperparameters:
+class Hyperparameters(Namespace):
     def __init__(self):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
+        super().__init__()
+
         # Checkpoint directory from which to restore the model. Defaults to the
         # last checkpoint in `args.logdir`.
         self.restore_from = None
