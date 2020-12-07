@@ -240,7 +240,7 @@ class RCNN2D:
 
     def restore(self, path=None):
         if path is None:
-            filename = find_latest_checkpoint(path)
+            filename = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
             filename = split(path)[-1]
             current_epoch = int(filename[:4])
