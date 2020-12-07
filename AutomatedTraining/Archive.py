@@ -14,7 +14,6 @@ from os.path import join, realpath, exists, pardir
 from subprocess import run
 from copy import deepcopy
 
-LOGS_ROOT_DIRECTORY = "logs"
 PROJECT_NAME = "Deep_2D_velocity"
 
 
@@ -24,7 +23,7 @@ class ArchiveRepository:
 
     `ArchiveRepository` can be used with the `with` statement. Upon entering,
     the current repository is copied to a unique subdirectory of
-    `LOGS_ROOT_DIRECTORY` and a `model` directory is also created at the same
+    `self.logs_directory` and a `model` directory is also created at the same
     path. The current working directory is set as the one containing the copied
     code. Upon exiting, the previous working directory is recovered.
 
@@ -33,7 +32,8 @@ class ArchiveRepository:
             ...
     """
 
-    def __init__(self):
+    def __init__(self, logs_directory):
+        self.logs_directory = logs_directory
         (self.logs, self.model,
          self.code, self.prototype) = self.create_directory_tree()
 
@@ -65,7 +65,7 @@ class ArchiveRepository:
         current_message = current_message.stdout.strip("\n")
         current_commit = " ".join([current_commit, current_message])
         current_commit = current_commit.replace(" ", "_")
-        logs_dir = join(LOGS_ROOT_DIRECTORY, current_branch, current_commit)
+        logs_dir = join(self.logs_directory, current_branch, current_commit)
         logs_dir = realpath(logs_dir)
         if exists(logs_dir):
             contents = listdir(logs_dir)
