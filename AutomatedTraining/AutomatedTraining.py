@@ -105,7 +105,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
     Output:
         Two calls to `chain` with different learning rates.
     """
-    with ArchiveRepository() as archive:
+    with ArchiveRepository(logdir) as archive:
         with archive.import_main() as main:
             logdir = archive.model
             tune.run(lambda config: chain(main, architecture, params, dataset,
