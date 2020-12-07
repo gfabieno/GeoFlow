@@ -194,9 +194,44 @@ def drop_useless(hyperparams: Hyperparameters):
 
 
 if __name__ == "__main__":
-    from Cases_define import *
+    parser = ArgumentParser()
+    parser.add_argument("--architecture",
+                        type=str,
+                        default="RCNN2D",
+                        help="Name of the architecture from `RCNN2D` to use.")
+    parser.add_argument("--params",
+                        type=str,
+                        default="Hyperparameters",
+                        help="Name of hyperparameters from `RCNN2D` to use.")
+    parser.add_argument("--dataset",
+                        type=str,
+                        default="Dataset1Dsmall",
+                        help="Name of dataset from `DefinedDataset` to use.")
+    parser.add_argument("--logdir",
+                        type=str,
+                        default="./logs",
+                        help="Directory in which to store the checkpoints.")
+    parser.add_argument("--ngpu",
+                        type=int,
+                        default=1,
+                        help="Quantity of GPUs for data creation.")
+    parser.add_argument("--debug",
+                        action='store_true',
+                        help="Generate a small dataset of 5 examples.")
+    args = parser.parse_args()
 
-    optimize(params=Hyperparameters(),
-             dataset=Dataset1Dsmall(),
-             architecture=RCNN2D,
-             ngpu=2)
+    args.architecture = getattr(RCNN2D, args.architecture)
+    dataset_module = import_module("DefinedDataset." + args.dataset)
+    args.dataset = getattr(dataset_module, args.dataset)()
+    args.params = getattr(RCNN2D, args.params)()
+
+    if args.debug:
+        args.dataset.trainsize = 5
+        args.dataset.validatesize = 0
+        args.dataset.testsize = 5
+
+    optimize(architecture=args.architecture,
+             params=args.params,
+             dataset=args.dataset,
+             logdir=args.logdir,
+             ngpu=args.ngpu)
