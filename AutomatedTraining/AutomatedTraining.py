@@ -139,7 +139,7 @@ if __name__ == "__main__":
     parser.add_argument("--debug",
                         action='store_true',
                         help="Generate a small dataset of 5 examples.")
-    args = parser.parse_args()
+    args, config = parser.parse_known_args()
 
     args.architecture = getattr(RCNN2D, args.architecture)
     dataset_module = import_module("DefinedDataset." + args.dataset)
@@ -155,4 +155,5 @@ if __name__ == "__main__":
              params=args.params,
              dataset=args.dataset,
              logdir=args.logdir,
-             ngpu=args.ngpu)
+             ngpu=args.ngpu,
+             config=args.config)
