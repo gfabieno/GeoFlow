@@ -96,21 +96,22 @@ You'll probably need to defined your own stratigraphy for your synthetic dataset
 you need to override the `build_stratigraphy` method in <u>your</u> new class from your script.
 
     DatasetExample.py
-        import ...
-        
-        class NewModel(EarthModel):
-            def build_stratigraphy(self):
-                ...
+```python
+class NewModel(EarthModel):
+    def build_stratigraphy(self):
+        ...
+```
 
 ### Step 3 - Override `set_rec_src` from [Aquisition](GeoFlow/SeismicGenerator.py)
 You can also change the number of receivers, their spacing and the source position. To do so, 
 you need to override the `set_rec_src` method in <u>your</u> new class from your script.
     
     DatasetExample.py
-    
-        class NewAquisition(Aquisition):
-            def set_rec_src(self):
-                ...
+```python    
+class NewAquisition(Aquisition):
+    def set_rec_src(self):
+        ...
+```
 
 ### Step 4 - Override `set_dataset` from [GeoDataset](GeoFlow/GeoDataset.py)
 Finally you need to override the `set_dataset` method in <u>your</u> new class from your script.
@@ -119,21 +120,22 @@ parameters. In this method you will also define the inputs and outputs to save i
 hdf5 example files.
 
     DatasetExample.py
+```python    
+class DatasetExample(GeoDataset):
+    name = "DatasetExample"
     
-        class DatasetExample(GeoDataset):
-            name = "DatasetExample"
-            
-            def set_dataset(self):
-                self.trainsize = 10000
-                self.validatesize = 100
-                self.testsize = 100
-                
-                model = NewModel()
-                ...  
-                acquire = NewAquisition(model=model)
-                ...
-                inputs=...
-                outputs=...
+    def set_dataset(self):
+        self.trainsize = 10000
+        self.validatesize = 100
+        self.testsize = 100
+        
+        model = NewModel()
+        ...  
+        acquire = NewAquisition(model=model)
+        ...
+        inputs=...
+        outputs=...
+```
 
 ### Step 5 - Run [main](main.py) script to create dataset
 Here is an example of how to run the main script. The debug parameter create a dataset 
