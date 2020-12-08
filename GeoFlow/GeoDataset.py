@@ -228,7 +228,7 @@ class GeoDataset:
         return inputs, outputs, filenames
 
     def plot_example(self, filename=None, toinputs=None, tooutputs=None,
-                     ims=None):
+                     plot_preds=False, ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -236,17 +236,23 @@ class GeoDataset:
                          a random example.
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
-        :param ims:      List of return values of plt.imshow to update.
+        :param plot_preds: Whether or not to plot predictions.
+        :param ims: List of return values of plt.imshow to update.
         """
 
         inputs, labels, weights, _ = self.get_example(filename=filename,
                                                       toinputs=toinputs,
                                                       tooutputs=tooutputs)
+        if plot_preds:
+            preds = self.generator.read_predictions(filename)
 
-        nplot = np.max([len(inputs), len(labels)])
+        nplot = max([len(inputs), len(labels)])
         if ims is None:
             fig, axs = plt.subplots(3, nplot, figsize=[16, 8], squeeze=False)
-            ims = [None for _ in range(len(inputs)+len(labels)+len(weights))]
+            qty_ims = len(inputs) + len(labels) + len(weights)
+            if plot_preds:
+                qty_ims += len(preds)
+            ims = [None for _ in range(qty_ims)]
         else:
             fig = None
             axs = np.zeros((3, nplot))
@@ -267,10 +273,17 @@ class GeoDataset:
                                              axs[2, ii],
                                              im=ims[n])
             n += 1
+        if plot_preds:
+            for ii, name in enumerate(preds):
+                ims[n] = self.outputs[name].plot(preds[name],
+                                                 axs[2, ii],
+                                                 im=ims[n])
+                n += 1
 
         return fig, axs, ims
 
-    def animate(self, phase='train', toinputs=None, tooutputs=None):
+    def animate(self, phase='train', toinputs=None, tooutputs=None,
+                plot_preds=False):
         """
         Produce an animation of a dataset.
 
@@ -280,17 +293,21 @@ class GeoDataset:
                       `"validate"`.
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
+        :param plot_preds: Whether or not to plot predictions.
         """
         fig, axs, ims = self.plot_example(toinputs=toinputs,
-                                          tooutputs=tooutputs)
+                                          tooutputs=tooutputs,
+                                          plot_preds=plot_preds)
         plt.tight_layout()
 
         def init():
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
+            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims,
+                              plot_preds=plot_preds)
             return ims
 
         def animate(_):
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
+            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims,
+                              plot_preds=plot_preds)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,
