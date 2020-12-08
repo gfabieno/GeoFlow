@@ -80,6 +80,14 @@ class DatasetGenerator:
         return inputs, labels, weights
 
     def read_predictions(self, filename: str):
+        """
+        Read one example's predictions from hdf5 file.
+
+        :param filename: Name of the file.
+
+        :returns:
+                preds: A dictionary of predictions' name-values pairs.
+        """
         directory, filename = os.path.split(filename)
         filename = os.path.join(directory, "pred", filename)
         with h5.File(filename, "r") as file:
