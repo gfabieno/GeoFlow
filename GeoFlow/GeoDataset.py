@@ -250,16 +250,18 @@ class GeoDataset:
         if plot_preds:
             preds = self.generator.read_predictions(filename)
 
+        nrows = 4 if plot_preds else 3
         nplot = max([len(inputs), len(labels)])
         if ims is None:
-            fig, axs = plt.subplots(3, nplot, figsize=[16, 8], squeeze=False)
+            fig, axs = plt.subplots(nrows, nplot, figsize=[16, 8],
+                                    squeeze=False)
             qty_ims = len(inputs) + len(labels) + len(weights)
             if plot_preds:
                 qty_ims += len(preds)
             ims = [None for _ in range(qty_ims)]
         else:
             fig = None
-            axs = np.zeros((3, nplot))
+            axs = np.zeros((nrows, nplot))
 
         n = 0
         for ii, name in enumerate(inputs):
@@ -280,7 +282,7 @@ class GeoDataset:
         if plot_preds:
             for ii, name in enumerate(preds):
                 ims[n] = self.outputs[name].plot(preds[name],
-                                                 axs[2, ii],
+                                                 axs[3, ii],
                                                  im=ims[n])
                 n += 1
 
