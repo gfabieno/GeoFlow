@@ -139,7 +139,7 @@ hdf5 example files.
 Here is an example of how to run the main script. The debug parameter create a dataset 
 of only 5 examples.
 
-    python main.py --dataset DatasetExample --plot True --debug True
+    python main.py --dataset DatasetExample --plot --debug
 
     
     
