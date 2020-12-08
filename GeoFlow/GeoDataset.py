@@ -230,22 +230,26 @@ class GeoDataset:
 
         return inputs, outputs, filenames
 
-    def plot_example(self, filename=None, toinputs=None, tooutputs=None,
-                     plot_preds=False, ims=None):
+    def plot_example(self, filename=None, phase='train', toinputs=None,
+                     tooutputs=None, plot_preds=False, ims=None):
         """
         Plot the data and the labels of an example.
 
         :param filename: If provided, get the example in filename. If None, get
-                         a random example.
+                         a random example for a file list provided by phase.
+        :param phase: Either "train", "test" or "validate". Get an example from
+                      the "phase" dataset.
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
         :param ims: List of return values of plt.imshow to update.
         """
 
-        inputs, labels, weights, _ = self.get_example(filename=filename,
-                                                      toinputs=toinputs,
-                                                      tooutputs=tooutputs)
+        (inputs, labels,
+         weights, filename) = self.get_example(filename=filename,
+                                               phase=phase,
+                                               toinputs=toinputs,
+                                               tooutputs=tooutputs)
         if plot_preds:
             preds = self.generator.read_predictions(filename)
 
@@ -298,18 +302,21 @@ class GeoDataset:
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
         """
-        fig, axs, ims = self.plot_example(toinputs=toinputs,
+        fig, axs, ims = self.plot_example(phase=phase,
+                                          toinputs=toinputs,
                                           tooutputs=tooutputs,
                                           plot_preds=plot_preds)
         plt.tight_layout()
 
         def init():
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims,
+            self.plot_example(phase=phase, toinputs=toinputs,
+                              tooutputs=tooutputs, ims=ims,
                               plot_preds=plot_preds)
             return ims
 
         def animate(_):
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims,
+            self.plot_example(phase=phase, toinputs=toinputs,
+                              tooutputs=tooutputs, ims=ims,
                               plot_preds=plot_preds)
             return ims
 
