@@ -349,9 +349,6 @@ class RCNN2D:
                             del savefile[lbl]
                         savefile[lbl] = out[i]
 
-    def animated_predictions(self):
-        raise NotImplementedError
-
 
 def broadcast_weights(loaded_weights, current_weights):
     """

@@ -39,7 +39,7 @@ def main(args, use_tune=False):
         if args.training == 3:
             architecture.launch_testing()
             if args.plot:
-                architecture.animated_predictions()
+                dataset.animate(plot_preds=True)
 
 
 if __name__ == "__main__":
