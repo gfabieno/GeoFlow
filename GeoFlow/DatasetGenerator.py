@@ -83,7 +83,7 @@ class DatasetGenerator:
 
     def read_predictions(self, filename: str):
         directory, filename = os.path.split(filename)
-        filename = os.path.join(directory, filename, "pred")
+        filename = os.path.join(directory, "pred", filename)
         _, preds, _ = self.read(filename)
         return preds
 
