@@ -73,12 +73,10 @@ class DatasetGenerator:
                 labels: A dictionary of labels' name-values pairs.
                 weights: A dictionary of weights' name-values pairs.
         """
-        file = h5.File(filename, "r")
-        inputs = {key: file[key][:] for key in self.inputs}
-        labels = {key: file[key][:] for key in self.outputs}
-        weights = {key: file[key+"_w"][:] for key in self.outputs}
-        file.close()
-
+        with h5.File(filename, "r") as file:
+            inputs = {key: file[key][:] for key in self.inputs}
+            labels = {key: file[key][:] for key in self.outputs}
+            weights = {key: file[key+"_w"][:] for key in self.outputs}
         return inputs, labels, weights
 
     def read_predictions(self, filename: str):
