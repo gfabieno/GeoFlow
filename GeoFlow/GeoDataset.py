@@ -352,6 +352,7 @@ class GeoDataset:
         tfdataset = tfdataset.map(tf_fun,
                                   num_parallel_calls=num_parallel_calls,
                                   deterministic=False)
-        tfdataset = tfdataset.repeat()
-        tfdataset = tfdataset.batch(batch_size=batch_size)
+        if phase in ["train", "validation"]:
+            tfdataset = tfdataset.repeat()
+        tfdataset = tfdataset.batch(batch_size=batch_size, drop_remainder=True)
         return tfdataset
