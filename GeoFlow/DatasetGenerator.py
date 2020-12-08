@@ -84,7 +84,8 @@ class DatasetGenerator:
     def read_predictions(self, filename: str):
         directory, filename = os.path.split(filename)
         filename = os.path.join(directory, "pred", filename)
-        _, preds, _ = self.read(filename)
+        with h5.File(filename, "r") as file:
+            preds = {key: file[key][:] for key in self.outputs}
         return preds
 
     def write(self, exampleid, savedir, inputs, labels, weights,
