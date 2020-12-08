@@ -14,13 +14,16 @@ from typing import List
 
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+from matplotlib import animation
 
 from GeoFlow.DatasetGenerator import DatasetGenerator
 from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.EarthModel import EarthModel
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
+
+mpl.use('Agg')
 
 
 class GeoDataset:
