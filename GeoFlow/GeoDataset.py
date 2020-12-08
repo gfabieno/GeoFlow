@@ -23,7 +23,7 @@ from GeoFlow.SeismicGenerator import Acquisition
 from GeoFlow.EarthModel import EarthModel
 from GeoFlow.GraphIO import Reftime, Vrms, Vint, Vdepth, ShotGather
 
-mpl.use('Agg')
+mpl.use('TkAgg')
 
 
 class GeoDataset:
