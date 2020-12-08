@@ -22,7 +22,7 @@ from ray.tune.integration.keras import TuneReportCheckpointCallback
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
 
-WEIGHTS_NAME = "{epoch:04d}"
+WEIGHTS_NAME = "checkpoint_{epoch}"
 
 
 class Hyperparameters(Namespace):
@@ -243,11 +243,10 @@ class RCNN2D:
             filename = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
             filename = split(path)[-1]
-            current_epoch = int(filename[:4])
+            current_epoch = int(filename[-4:])
             self.load_weights(filename)
         else:
             current_epoch = 0
-
         return current_epoch
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
@@ -306,8 +305,7 @@ class RCNN2D:
                                           save_freq='epoch')
             callbacks = [tensorboard, checkpoints]
         else:
-            filename = WEIGHTS_NAME.format(epoch=self.current_epoch)
-            tune_report = TuneReportCheckpointCallback(filename=filename,
+            tune_report = TuneReportCheckpointCallback(filename='.',
                                                        frequency=1)
             callbacks = [tune_report]
         self.fit(self.tfdataset,
@@ -560,11 +558,11 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
 
 def find_latest_checkpoint(logdir):
-    expr = re.compile(r"[0-9]{4}")
-    checkpoints = [f for f in listdir(logdir) if expr.match(f)]
+    expr = re.compile(r"checkpoint_[0-9]*")
+    checkpoints = [f.split("_")[-1] for f in listdir(logdir) if expr.match(f)]
+    checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
-        checkpoints.sort()
-        restore_from = checkpoints[-1]
+        restore_from = str(max(checkpoints))
         restore_from = join(logdir, restore_from)
     else:
         restore_from = None

@@ -14,6 +14,7 @@ modifications in the repository during training do not impact an ongoing
 training. `optimize` automatically fetches the archived main script.
 """
 
+from os.path import split
 from copy import deepcopy
 from argparse import Namespace, ArgumentParser
 from importlib import import_module
@@ -94,9 +95,8 @@ def chain(main: Callable,
         for param_name, param_value in to_chain.items():
             setattr(current_params, param_name, param_value[segment])
         if use_tune:
-            if segment > 0:
-                with tune.checkpoint_dir(step=segment-1) as checkpoint_dir:
-                    logdir = checkpoint_dir
+            with tune.checkpoint_dir(step=0) as checkpoint_dir:
+                logdir, _ = split(checkpoint_dir)
         args = Namespace(architecture=architecture, params=current_params,
                          dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
                          plot=False, debug=debug, eager=eager)
