@@ -57,8 +57,9 @@ Refer to [`STYLEGUIDE.md`](https://github.com/gfabieno/Deep_2D_velocity/blob/mas
 
 ### Package structure
 
-This repository is organized in the following fashion. From highest level to
-lowest:
+This repository is organized in the following fashion. 
+
+![alt text](images/package_structure.jpg "GeoFlow structure")
 
 *   The file [Dataset2Dtest.py](main.py) shows an example of how to generate
 a training set, and train a NN with it. This is the starting point.
