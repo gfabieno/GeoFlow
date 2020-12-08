@@ -334,6 +334,7 @@ class RCNN2D:
 
         for data, _ in self.tfdataset:
             evaluated = self.predict(data,
+                                     batch_size=self.params.batch_size,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
             for lbl, out in evaluated.items():
