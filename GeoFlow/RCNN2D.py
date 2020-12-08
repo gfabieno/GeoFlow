@@ -336,18 +336,18 @@ class RCNN2D:
             evaluated = self.predict(data,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
-            for i, (lbl, out) in enumerate(zip(self.tooutputs, evaluated)):
+            for lbl, out in evaluated.items():
                 if lbl != 'ref':
-                    evaluated[i] = out[..., 0]
+                    evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
                 example = join(savepath, basename(example))
                 with h5.File(example, "w") as savefile:
-                    for j, el in enumerate(self.tooutputs):
-                        if el in savefile.keys():
-                            del savefile[el]
-                        savefile[el] = evaluated[j][i, :]
+                    for lbl, out in evaluated.items():
+                        if lbl in savefile.keys():
+                            del savefile[lbl]
+                        savefile[lbl] = out[i]
 
     def animated_predictions(self):
         raise NotImplementedError
