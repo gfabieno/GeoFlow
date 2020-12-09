@@ -3,7 +3,7 @@
 import numpy as np
 from GeoFlow import GeoDataset
 from GeoFlow import Acquisition
-from GeoFlow import Vsdepth, ShotGather, Dispersion
+from GeoFlow import Vpdepth, Vsdepth, ShotGather, Dispersion
 from GeoFlow import EarthModel
 from ModelGenerator import (Property,
                             Lithology,
@@ -143,17 +143,22 @@ class PermafrostModel(EarthModel):
                              prob_deform_change=0.4)
 
         water = Sequence(lithologies=[lithologies["Water"]],
-                         thick_min=50, thick_max=150)
-        unfrozen = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
-                            deform=deform)
-        permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
+                         thick_min=20, thick_max=40)
+        unfrozen1 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
+                             deform=deform, thick_min=8, thick_max=20)
+        Permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
                                            lithologies["Frozen Sands2"],
-                                           lithologies["Partially Frozen Silts"],
-                                           lithologies["Unfrozen sediments"],
-                                           lithologies["Hydrates"]],
-                              ordered=False, deform=deform)
-
-        sequences = [water, unfrozen, permafrost, unfrozen]
+                                           lithologies["Partially Frozen Silts"]
+                                           ],
+                              ordered=False, deform=deform,
+                              thick_min=80, thick_max=240)
+        unfrozen2 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
+                             deform=deform, thick_min=8, thick_max=40)
+        Hydrates = Sequence(lithologies=[lithologies["Hydrates"]],
+                            deform=deform, thick_min=8, thick_max=80)
+        unfrozen3 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
+                             deform=deform, thick_min=8)
+        sequences = [water, unfrozen1, Permafrost, unfrozen2, Hydrates, unfrozen3]
         strati = Stratigraphy(sequences=sequences)
 
         properties = strati.properties()
@@ -161,13 +166,14 @@ class PermafrostModel(EarthModel):
         vmax = 0
         for seq in sequences:
             for lith in seq:
-                if vmin > lith.vp.min / lith.vpvs.max:
+                if lith.vpvs.max == 0: vmin = 0
+                elif vmin > lith.vp.min / lith.vpvs.max:
                     vmin = lith.vp.min / lith.vpvs.max
-                if vmax < lith.vp.max / lith.vpvs.min:
+                if lith.vpvs.min!=0 and vmax < lith.vp.max / lith.vpvs.min:
                     vmax = lith.vp.max / lith.vpvs.min
         properties["vs"] = [vmin, vmax]
 
-        return strati
+        return strati, properties
 
     def generate_model(self, seed=None):
 
@@ -277,12 +283,9 @@ class DatasetPermafrost(GeoDataset):
         model.dip_max = 0
         model.ddip_max = 0
 
-        model.layer_num_min = 3
-        model.layer_dh_min = 20
+        model.layer_num_min = 10
+        model.layer_dh_min = 5
         # model.layer_dh_max = 20
-
-        # TODO That won't work anymore.
-        model.Dispersion = True
 
         acquire = AcquisitionPermafrost(model=model)
         acquire.peak_freq = 40
@@ -297,17 +300,17 @@ class DatasetPermafrost(GeoDataset):
         acquire.receiver_depth = 12.5
         # acquire.rectype = 1
 
-        # label = LabelGenerator(model=model, acquire=acquire)
-        # TODO write GraphInput and GraphOutput for dispersion.
-        # label = PermafrostLabelGenerator(model=model, acquire=acquire)
-        # label.identify_direct = False
-        # label.train_on_shots = True
-        # label.label_names = ('vp','vs')
-        # label.weight_names = ['tweight', 'dweight']
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire),
                   Dispersion.name: Dispersion(model=model, acquire=acquire,
                                               cmax=5000, cmin=1000)}
-        outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
+        outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire),
+                   Vpdepth.name: Vpdepth(model=model, acquire=acquire)}
+
+        for name in inputs:
+            inputs[name].train_on_shots = True
+        for name in outputs:
+            outputs[name].train_on_shots = True
+            outputs[name].identify_direct = False
 
         return model, acquire, inputs, outputs
 
