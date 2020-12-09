@@ -303,7 +303,10 @@ class Vsdepth(Reftime):
 
     def preprocess(self, label, weight):
         # TODO find a way to get vs min and max
-        label, weight = super().preprocess(label, weight)
+        # label, weight = super().preprocess(label, weight)
+        indx = int(label.shape[1]//2)
+        label = label[:, indx]
+        weight = weight[:, indx]
         vmin, vmax = self.model.properties["vs"]
         label = (label - vmin) / (vmax - vmin)
         return label, weight
@@ -311,6 +314,17 @@ class Vsdepth(Reftime):
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
         return label * (vmax - vmin) + vmin
+
+class Vpdepth(Vdepth):
+    name = "vpdepth"
+
+    def preprocess(self, label, weight):
+        indx = int(label.shape[1]//2)
+        label = label[:,indx]
+        weight = weight[:,indx]
+        vmin, vmax = self.model.properties["vp"]
+        label = (label-vmin) / (vmax - vmin)
+        return label, weight
 
 
 # TODO Fix the plotting as it was before for multiple shot case (2D)
@@ -376,7 +390,7 @@ class GraphInput:
         return data
 
 
-# TODO Jefferson complete that
+# TODO Jefferson complete that. Done!!
 class Dispersion(GraphInput):
     name = "dispersion"
 
@@ -387,8 +401,12 @@ class Dispersion(GraphInput):
 
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()
-        dt = self.acquire.dt
-        d = dispersion_curve(data, self.acquire.re)
+        dt = self.acquire.dt * self.acquire.resampling
+        d,fr,c = dispersion_curve(data, rec_pos[0], dt, src_pos[0,0], minc=1000, maxc=5000)
+        f = fr.reshape(fr.size)
+        d = d[:, f > 0];    f = f[f > 0]
+        d = d[:, f < 150];  f = f[f < 150]
+        d = abs(d)
         return d
 
 
