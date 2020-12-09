@@ -329,9 +329,9 @@ class RCNN2D:
 
     def launch_testing(self):
         # Save the predictions to a subfolder that has the name of the network.
-        savepath = join(self.dataset.datatest, type(self).__name__)
-        if not isdir(savepath):
-            mkdir(savepath)
+        savedir = join(self.dataset.datatest, type(self).__name__)
+        if not isdir(savedir):
+            mkdir(savedir)
 
         for data, _ in self.tfdataset:
             evaluated = self.predict(data,
@@ -344,12 +344,9 @@ class RCNN2D:
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
-                example = join(savepath, basename(example))
-                with h5.File(example, "w") as savefile:
-                    for lbl, out in evaluated.items():
-                        if lbl in savefile.keys():
-                            del savefile[lbl]
-                        savefile[lbl] = out[i]
+                exampleid = int(example.split("_")[-1])
+                self.dataset.generator.write_predictions(exampleid, savedir,
+                                                         evaluated)
 
 
 def broadcast_weights(loaded_weights, current_weights):

@@ -123,6 +123,26 @@ class DatasetGenerator:
             file[name+"_w"] = weights[name]
         file.close()
 
+    def write_predictions(self, exampleid, savedir, preds, filename=None):
+        """
+        :param exampleid: The example ID number.
+        :param savedir The directory in which to save the example.
+        :param inputs: A dicitonary of graph inputs' name-values pairs.
+        :param labels: A dicitonary of graph labels' name-values pairs.
+        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param filename: If provided, save the example in filename.
+        """
+        if filename is None:
+            filename = os.path.join(savedir, "example_%d" % exampleid)
+        else:
+            filename = os.path.join(savedir, filename)
+
+        with h5.File(filename, "w") as file:
+            for name in preds:
+                if name in file.keys():
+                    del file[name]
+                file[name] = preds[name]
+
     def generate_dataset(self,
                          savepath: str,
                          nexamples: int,
