@@ -259,20 +259,26 @@ class GeoDataset:
         nrows = len(rows)
         ims_per_row = [sum(row[name].naxes for name in row)
                        for row in rows_meta]
-        ncols = max(ims_per_row)
+        qty_ims = sum(ims_per_row)
+        ncols = np.lcm.reduce(ims_per_row)
         if ims is None:
-            fig, axs = plt.subplots(nrows, ncols, figsize=[16, 8],
-                                    squeeze=False)
-            qty_ims = sum(ims_per_row)
+            fig = plt.figure(figsize=[16, 8], constrained_layout=False)
+            gs = fig.add_gridspec(nrows=nrows, ncols=ncols)
+            axs = []
+            for i, (row, ims_in_row) in enumerate(zip(rows, ims_per_row)):
+                ncols_per_im = ncols // ims_in_row
+                for j_min in range(0, ncols, ncols_per_im):
+                    ax = fig.add_subplot(gs[i, j_min:j_min+ncols_per_im])
+                    axs.append(ax)
             ims = [None for _ in range(qty_ims)]
         else:
             fig = None
-            axs = np.zeros((nrows, ncols))
+            axs = [None for _ in range(qty_ims)]
 
         n = 0
-        for i, (row, row_meta) in enumerate(zip(rows, rows_meta)):
-            for j, colname in enumerate(row):
-                ims[n] = row_meta[colname].plot(row[colname], axs[i, j],
+        for row, row_meta in zip(rows, rows_meta):
+            for colname in row:
+                ims[n] = row_meta[colname].plot(row[colname], axs[n],
                                                 im=ims[n])
                 n += 1
 
