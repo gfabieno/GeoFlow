@@ -101,7 +101,6 @@ class DatasetGenerator:
         """
         Write one example in hdf5 format.
 
-        @params:
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
         :param inputs: A dicitonary of graph inputs' name-values pairs.
@@ -114,14 +113,13 @@ class DatasetGenerator:
         else:
             filename = os.path.join(savedir, filename)
 
-        file = h5.File(filename, "w")
-        for name in inputs:
-            file[name] = inputs[name]
-        for name in labels:
-            file[name] = labels[name]
-        for name in weights:
-            file[name+"_w"] = weights[name]
-        file.close()
+        with h5.File(filename, "w") as file:
+            for name in inputs:
+                file[name] = inputs[name]
+            for name in labels:
+                file[name] = labels[name]
+            for name in weights:
+                file[name+"_w"] = weights[name]
 
     def write_predictions(self, exampleid, savedir, preds, filename=None):
         """
