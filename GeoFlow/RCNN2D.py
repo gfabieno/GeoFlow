@@ -6,9 +6,8 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import split, join, basename, isdir
+from os.path import split, join, isdir
 
-import h5py as h5
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
