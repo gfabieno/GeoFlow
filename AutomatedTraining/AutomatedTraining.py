@@ -28,7 +28,7 @@ from GeoFlow.GeoDataset import GeoDataset
 
 
 def chain(main: Callable,
-          architecture: RCNN2D.RCNN2D,
+          nn: RCNN2D.RCNN2D,
           params: Namespace,
           dataset: GeoDataset,
           logdir: str = "./logs",
@@ -42,7 +42,7 @@ def chain(main: Callable,
 
     :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
-    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param nn: Name of the architecture from `RCNN2D` to use.
     :param params: Name of hyperparameters from `RCNN2D` to use.
     :param dataset: Name of dataset from `DefinedDataset` to use.
     :param logdir: Directory in which to store the checkpoints.
@@ -64,7 +64,7 @@ def chain(main: Callable,
                               {'ref': .0, 'vrms': .0,
                                'vint': 1., 'vdepth': .0})
         chain(main,
-              architecture=RCNN2D,
+              nn=RCNN2D,
               params=params,
               dataset=Dataset1Dsmall(),
               logdir="logs",
@@ -97,13 +97,13 @@ def chain(main: Callable,
         if use_tune:
             with tune.checkpoint_dir(step=0) as checkpoint_dir:
                 logdir, _ = split(checkpoint_dir)
-        args = Namespace(architecture=architecture, params=current_params,
+        args = Namespace(nn=nn, params=current_params,
                          dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
                          plot=False, debug=debug, eager=eager)
         main(args, use_tune)
 
 
-def optimize(architecture: RCNN2D.RCNN2D,
+def optimize(nn: RCNN2D.RCNN2D,
              params: Namespace,
              dataset: GeoDataset,
              logdir: str = "./logs",
@@ -114,7 +114,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
     """
     Call `chain` for all combinations of `config`.
 
-    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param nn: Name of the architecture from `RCNN2D` to use.
     :param params: Name of hyperparameters from `RCNN2D` to use.
     :param dataset: Name of dataset from `DefinedDataset` to use.
     :param logdir: Directory in which to store the checkpoints.
@@ -125,7 +125,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
                    iterated upon.
 
     Sample usage:
-        optimize(architecture=RCNN2D.RCNN2D,
+        optimize(nn=RCNN2D.RCNN2D,
                  params=Hyperparameters(),
                  dataset=Dataset1Dsmall(),
                  lr=[.0008, .0002])
@@ -141,7 +141,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
                 if isinstance(value, list):
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
-            tune.run(lambda config: chain(main, architecture, params, dataset,
+            tune.run(lambda config: chain(main, nn, params, dataset,
                                           logdir, ngpu, debug, eager,
                                           use_tune=True, **config),
                      num_samples=1,
@@ -152,7 +152,7 @@ def optimize(architecture: RCNN2D.RCNN2D,
 
 if __name__ == "__main__":
     parser = ArgumentParser()
-    parser.add_argument("--architecture",
+    parser.add_argument("--nn",
                         type=str,
                         default="RCNN2D",
                         help="Name of the architecture from `RCNN2D` to use.")
@@ -181,7 +181,7 @@ if __name__ == "__main__":
     args, config = parser.parse_known_args()
     config = {name[2:]: eval(value) for name, value
               in zip(config[::2], config[1::2])}
-    args.architecture = getattr(RCNN2D, args.architecture)
+    args.nn = getattr(RCNN2D, args.nn)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
     args.params = getattr(RCNN2D, args.params)()
@@ -190,7 +190,7 @@ if __name__ == "__main__":
         config["epochs"] = 1
         config["steps_per_epoch"] = 5
 
-    optimize(architecture=args.architecture,
+    optimize(nn=args.nn,
              params=args.params,
              dataset=args.dataset,
              logdir=args.logdir,
