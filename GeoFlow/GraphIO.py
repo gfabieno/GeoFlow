@@ -439,8 +439,14 @@ class ShotGather(GraphInput):
         self.mute_nearoffset_max = mute_nearoffset_max
         self.random_time_scaling = random_time_scaling
 
-        self.is_1d = self.acquire.singleshot
-        self.naxes = 1 if self.is_1d else 2
+    @property
+    def is_1d(self):
+        return self.acquire.singleshot
+
+    @property
+    def naxes(self):
+        return 1 if self.is_1d else 2
+
 
     # TODO Handle 2D case.
     def preprocess(self, data, labels):
