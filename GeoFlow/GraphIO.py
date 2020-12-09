@@ -19,8 +19,12 @@ from GeoFlow.SeismicUtilities import (smooth_velocity_wavelength,
 class GraphOutput:
     """
     Generate the output, label and weight of a network.
+
+    :param naxes: The quantity of figures required by this output.
+    :type naxes: int
     """
     name = "Baseoutput"
+    naxes = 1
 
     def __init__(self, model: EarthModel, acquire: Acquisition):
         """
@@ -316,6 +320,7 @@ class Vsdepth(Reftime):
 # TODO Fix the plotting as it was before for multiple shot case (2D)
 class GraphInput:
     name = "BaseInput"
+    naxes = 1
 
     def __init__(self, acquire: Acquisition, model: EarthModel):
         self.acquire = acquire
@@ -434,6 +439,9 @@ class ShotGather(GraphInput):
         self.mute_nearoffset = mute_nearoffset
         self.mute_nearoffset_max = mute_nearoffset_max
         self.random_time_scaling = random_time_scaling
+
+        self.is_1d = self.acquire.singleshot
+        self.naxes = 1 if self.is_1d else 2
 
     # TODO Handle 2D case.
     def preprocess(self, data, labels):
