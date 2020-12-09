@@ -447,6 +447,26 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
+    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
+             clip=0.1, ims=None):
+        if self.is_1d:
+            return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
+        else:
+            first_shot_gather = data[:, :, 0]
+            [first_shot_gather] = super().plot(first_shot_gather, [axs[0]],
+                                               cmap, vmin, vmax, clip,
+                                               [ims[0]])
+
+            src_pos, rec_pos = self.acquire.set_rec_src()
+            src_pos = src_pos[0, :, None]
+            rec_pos = rec_pos[0].reshape([len(src_pos), -1])
+            closest_rec = np.argmin(np.abs(src_pos-rec_pos), axis=1)
+            zero_offset_gather = data[:, closest_rec, range(len(rec_pos))]
+            [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
+                                                cmap, vmin, vmax, clip,
+                                                [ims[1]])
+
+            return first_shot_gather, zero_offset_gather
 
     # TODO Handle 2D case.
     def preprocess(self, data, labels):
