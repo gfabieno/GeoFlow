@@ -50,9 +50,9 @@ class GraphOutput:
         :param ax: The axis on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
-                     `-clip * max` of data.
+                     `-clip * np.amax(data)`.
         :param vmax: Maximum value of the colormap. If None, defaults to
-                     `clip * max` of data.
+                     `clip * np.amax(data)`.
         :param clip: Clipping of the data.
         :param im: If provided, the image data is updated.
 
@@ -60,7 +60,7 @@ class GraphOutput:
             im: Return value of `ax.imshow`.
         """
         if vmax is None:
-            vmax = np.max(data) * clip
+            vmax = np.amax(data) * clip
         if vmin is None:
             vmin = -vmax
 
@@ -334,9 +334,9 @@ class GraphInput:
         :param ax: The axis on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
-                     `-clip * max(data)`.
+                     `-clip * np.amax(data)`.
         :param vmax: Maximum value of the colormap. If None, defaults to
-                     `clip * max(data)`.
+                     `clip * np.amax(data)`.
         :param clip: Clipping of the data.
         :param im: If provided, the image data is updated.
 
@@ -344,7 +344,7 @@ class GraphInput:
            im: Return value of `ax.imshow`.
         """
         if vmax is None:
-            vmax = np.max(data) * clip
+            vmax = np.amax(data) * clip
         if vmin is None:
             vmin = -vmax
 
