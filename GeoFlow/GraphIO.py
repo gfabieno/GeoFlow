@@ -317,7 +317,6 @@ class Vsdepth(Reftime):
         return label * (vmax - vmin) + vmin
 
 
-# TODO Fix the plotting as it was before for multiple shot case (2D)
 class GraphInput:
     name = "BaseInput"
     naxes = 1
@@ -334,16 +333,16 @@ class GraphInput:
         :param data: The data to plot.
         :param ax: The axis on which to plot.
         :param cmap: The colormap.
-        :param vmin: Minimum value of the colormap. If None, default to
-                     -clip * max of data.
-        :param vmax: Maximum value of the colormap. If None, default to
-                     clip * max of data.
+        :param vmin: Minimum value of the colormap. If None, defaults to
+                     `-clip * max(data)`.
+        :param vmax: Maximum value of the colormap. If None, defaults to
+                     `clip * max(data)`.
         :param clip: Clipping of the data.
         :param im: If provided, the image data is updated.
 
         :return:
-           im:     return value of ax.imshow
-       """
+           im: Return value of `ax.imshow`.
+        """
         if vmax is None:
             vmax = np.max(data) * clip
         if vmin is None:
