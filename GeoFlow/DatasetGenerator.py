@@ -79,17 +79,19 @@ class DatasetGenerator:
             weights = {key: file[key+"_w"][:] for key in self.outputs}
         return inputs, labels, weights
 
-    def read_predictions(self, filename: str):
+    def read_predictions(self, filename: str, nn_name: str):
         """
         Read one example's predictions from hdf5 file.
 
         :param filename: Name of the file.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
 
         :returns:
                 preds: A dictionary of predictions' name-values pairs.
         """
         directory, filename = os.path.split(filename)
-        filename = os.path.join(directory, "pred", filename)
+        filename = os.path.join(directory, nn_name, filename)
         with h5.File(filename, "r") as file:
             preds = {key: file[key][:] for key in self.outputs}
         return preds

@@ -328,7 +328,8 @@ class RCNN2D:
         return losses, losses_weights
 
     def launch_testing(self):
-        savepath = join(self.dataset.datatest, "pred")
+        # Save the predictions to a subfolder that has the name of the network.
+        savepath = join(self.dataset.datatest, type(self).__name__)
         if not isdir(savepath):
             mkdir(savepath)
 

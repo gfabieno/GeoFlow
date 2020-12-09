@@ -228,7 +228,7 @@ class GeoDataset:
         return inputs, outputs, filenames
 
     def plot_example(self, filename=None, phase='train', toinputs=None,
-                     tooutputs=None, plot_preds=False, ims=None):
+                     tooutputs=None, plot_preds=False, nn_name=None, ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -239,6 +239,8 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
         :param ims: List of return values of plt.imshow to update.
         """
 
@@ -248,7 +250,7 @@ class GeoDataset:
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
         if plot_preds:
-            preds = self.generator.read_predictions(filename)
+            preds = self.generator.read_predictions(filename, nn_name)
 
         nrows = 4 if plot_preds else 3
         nplot = max([len(inputs), len(labels)])
@@ -289,7 +291,7 @@ class GeoDataset:
         return fig, axs, ims
 
     def animate(self, phase='train', toinputs=None, tooutputs=None,
-                plot_preds=False):
+                plot_preds=False, nn_name=None):
         """
         Produce an animation of a dataset.
 
@@ -300,23 +302,26 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
         """
         fig, axs, ims = self.plot_example(phase=phase,
                                           toinputs=toinputs,
                                           tooutputs=tooutputs,
-                                          plot_preds=plot_preds)
+                                          plot_preds=plot_preds,
+                                          nn_name=nn_name)
         plt.tight_layout()
 
         def init():
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds)
+                              plot_preds=plot_preds, nn_name=nn_name)
             return ims
 
         def animate(_):
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds)
+                              plot_preds=plot_preds, nn_name=nn_name)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,

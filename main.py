@@ -39,7 +39,8 @@ def main(args, use_tune=False):
         if args.training == 3:
             nn.launch_testing()
             if args.plot:
-                dataset.animate(phase='test', plot_preds=True)
+                nn_name = type(nn).__name__
+                dataset.animate(phase='test', plot_preds=True, nn_name=nn_name)
 
 
 if __name__ == "__main__":
