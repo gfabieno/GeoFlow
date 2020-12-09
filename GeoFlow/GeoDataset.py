@@ -249,43 +249,31 @@ class GeoDataset:
                                                phase=phase,
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
+        rows = [inputs, labels, weights]
+        rows_meta = [self.inputs, self.outputs, self.outputs]
         if plot_preds:
             preds = self.generator.read_predictions(filename, nn_name)
+            rows.append(preds)
+            rows_meta.append(self.outputs)
 
-        nrows = 4 if plot_preds else 3
-        nplot = max([len(inputs), len(labels)])
+        nrows = len(rows)
+        ims_per_row = [sum(row[name].naxes for name in row)
+                       for row in rows_meta]
+        ncols = max(ims_per_row)
         if ims is None:
-            fig, axs = plt.subplots(nrows, nplot, figsize=[16, 8],
+            fig, axs = plt.subplots(nrows, ncols, figsize=[16, 8],
                                     squeeze=False)
-            qty_ims = len(inputs) + len(labels) + len(weights)
-            if plot_preds:
-                qty_ims += len(preds)
+            qty_ims = sum(ims_per_row)
             ims = [None for _ in range(qty_ims)]
         else:
             fig = None
-            axs = np.zeros((nrows, nplot))
+            axs = np.zeros((nrows, ncols))
 
         n = 0
-        for ii, name in enumerate(inputs):
-            ims[n] = self.inputs[name].plot(inputs[name],
-                                            axs[0, ii],
-                                            im=ims[n])
-            n += 1
-        for ii, name in enumerate(labels):
-            ims[n] = self.outputs[name].plot(labels[name],
-                                             axs[1, ii],
-                                             im=ims[n])
-            n += 1
-        for ii, name in enumerate(weights):
-            ims[n] = self.outputs[name].plot(weights[name],
-                                             axs[2, ii],
-                                             im=ims[n])
-            n += 1
-        if plot_preds:
-            for ii, name in enumerate(preds):
-                ims[n] = self.outputs[name].plot(preds[name],
-                                                 axs[3, ii],
-                                                 im=ims[n])
+        for i, (row, row_meta) in enumerate(zip(rows, rows_meta)):
+            for j, colname in enumerate(row):
+                ims[n] = row_meta[colname].plot(row[colname], axs[i, j],
+                                                im=ims[n])
                 n += 1
 
         return fig, axs, ims
