@@ -25,19 +25,19 @@ def main(args, use_tune=False):
 
     if args.training != 0:
         phase = "train" if args.training in [1, 2] else "test"
-        architecture = args.architecture(dataset=dataset,
-                                         phase=phase,
-                                         params=args.params,
-                                         checkpoint_dir=args.logdir)
+        nn = args.nn(dataset=dataset,
+                     phase=phase,
+                     params=args.params,
+                     checkpoint_dir=args.logdir)
 
         # Train model.
         if args.training in [1, 2]:
-            architecture.setup_training(run_eagerly=args.eager)
-            architecture.launch_training(use_tune)
+            nn.setup_training(run_eagerly=args.eager)
+            nn.launch_training(use_tune)
 
         # Test model.
         if args.training == 3:
-            architecture.launch_testing()
+            nn.launch_testing()
             if args.plot:
                 dataset.animate(phase='test', plot_preds=True)
 
@@ -50,10 +50,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # Add arguments to parse for training
-    parser.add_argument("--architecture",
+    parser.add_argument("--nn",
                         type=str,
                         default="RCNN2D",
-                        help="Name of the architecture from `RCNN2D` to use.")
+                        help="Name of the neural net from `RCNN2D` to use.")
     parser.add_argument("--params",
                         type=str,
                         default="Hyperparameters",
@@ -86,7 +86,7 @@ if __name__ == "__main__":
                         help="Run the Keras model eagerly, for debugging.")
 
     args = parser.parse_args()
-    args.architecture = getattr(RCNN2D, args.architecture)
+    args.nn = getattr(RCNN2D, args.nn)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
     args.params = getattr(RCNN2D, args.params)()
