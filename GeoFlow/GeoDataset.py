@@ -278,9 +278,15 @@ class GeoDataset:
         n = 0
         for row, row_meta in zip(rows, rows_meta):
             for colname in row:
-                ims[n] = row_meta[colname].plot(row[colname], axs[n],
-                                                im=ims[n])
-                n += 1
+                naxes = row_meta[colname].naxes
+                input_ims = ims[n:n+naxes]
+                input_axs = axs[n:n+naxes]
+                output_ims = row_meta[colname].plot(row[colname],
+                                                    axs=input_axs,
+                                                    ims=input_ims)
+                for im in output_ims:
+                    ims[n] = im
+                    n += 1
 
         return fig, axs, ims
 

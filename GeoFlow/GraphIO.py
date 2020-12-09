@@ -41,23 +41,22 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, ax=None, cmap=plt.get_cmap('hot'), vmin=0,
-             vmax=1, clip=1, im=None):
+    def plot(self, data, axs=[None], cmap=plt.get_cmap('hot'), vmin=0,
+             vmax=1, clip=1, ims=[None]):
         """
         Plot the output.
 
         :param data: The data to plot.
-        :param ax: The axis on which to plot.
+        :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
                      `-clip * np.amax(data)`.
         :param vmax: Maximum value of the colormap. If None, defaults to
                      `clip * np.amax(data)`.
         :param clip: Clipping of the data.
-        :param im: If provided, the image data is updated.
+        :param ims: If provided, the images' data is updated.
 
-        :return:
-            im: Return value of `ax.imshow`.
+        :return: Return values of each `ax.imshow`.
         """
         if vmax is None:
             vmax = np.amax(data) * clip
@@ -65,20 +64,21 @@ class GraphOutput:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
-        if im is None:
-            im = ax.imshow(data,
-                           interpolation='bilinear',
-                           cmap=cmap,
-                           vmin=vmin, vmax=vmax,
-                           aspect='auto')
-            ax.set_title("Output: %s" % self.name,
-                         fontsize=16, fontweight='bold')
-            _ = ax.get_position().get_points().flatten()
-            plt.colorbar(im, ax=ax)
-        else:
-            im.set_array(data)
+        for i, (im, ax) in enumerate(zip(ims, axs)):
+            if im is None:
+                ims[i] = ax.imshow(data,
+                                   interpolation='bilinear',
+                                   cmap=cmap,
+                                   vmin=vmin, vmax=vmax,
+                                   aspect='auto')
+                ax.set_title("Output: %s" % self.name,
+                             fontsize=16, fontweight='bold')
+                _ = ax.get_position().get_points().flatten()
+                plt.colorbar(ims[i], ax=ax)
+            else:
+                im.set_array(data)
 
-        return im
+        return ims
 
     def generate(self, props):
         """
@@ -325,23 +325,22 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, ax, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.1, im=None):
+    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
+             clip=0.1, ims=[None]):
         """
         Plot this input using default values.
 
         :param data: The data to plot.
-        :param ax: The axis on which to plot.
+        :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
                      `-clip * np.amax(data)`.
         :param vmax: Maximum value of the colormap. If None, defaults to
                      `clip * np.amax(data)`.
         :param clip: Clipping of the data.
-        :param im: If provided, the image data is updated.
+        :param ims: If provided, the images' data is updated.
 
-        :return:
-           im: Return value of `ax.imshow`.
+        :return: Return values of each `ax.imshow`.
         """
         if vmax is None:
             vmax = np.amax(data) * clip
@@ -349,18 +348,19 @@ class GraphInput:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
-        if im is None:
-            im = ax.imshow(data,
-                           interpolation='bilinear',
-                           cmap=cmap,
-                           vmin=vmin, vmax=vmax,
-                           aspect='auto')
-            ax.set_title("Input: %s" % self.name,
-                         fontsize=16, fontweight='bold')
-        else:
-            im.set_array(data)
+        for i, (im, ax) in enumerate(zip(ims, axs)):
+            if im is None:
+                ims[i] = ax.imshow(data,
+                                   interpolation='bilinear',
+                                   cmap=cmap,
+                                   vmin=vmin, vmax=vmax,
+                                   aspect='auto')
+                ax.set_title("Input: %s" % self.name,
+                             fontsize=16, fontweight='bold')
+            else:
+                im.set_array(data)
 
-        return im
+        return ims
 
     def generate(self, data):
         """
