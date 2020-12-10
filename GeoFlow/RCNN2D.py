@@ -4,29 +4,34 @@ Build the neural network for predicting v_p in 2D and in depth.
 """
 
 import re
+from argparse import Namespace
 from os import mkdir, listdir
 from os.path import split, join, basename, isdir
 
 import h5py as h5
 import numpy as np
 import tensorflow as tf
-from tensorflow.keras import Model, Sequential, callbacks, optimizers
+from tensorflow.keras import Model, Sequential, optimizers
+from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
                                       reshape, cumsum, arange)
+from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
 
-WEIGHTS_NAME = "{epoch:04d}.ckpt"
+WEIGHTS_NAME = "checkpoint_{epoch}"
 
 
-class Hyperparameters:
+class Hyperparameters(Namespace):
     def __init__(self):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
+        super().__init__()
+
         # Checkpoint directory from which to restore the model. Defaults to the
         # last checkpoint in `args.logdir`.
         self.restore_from = None
@@ -235,14 +240,13 @@ class RCNN2D:
 
     def restore(self, path=None):
         if path is None:
-            filename = find_latest_checkpoint(path)
+            filename = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
             filename = split(path)[-1]
-            current_epoch = int(filename[:4])
+            current_epoch = int(filename[-4:])
             self.load_weights(filename)
         else:
             current_epoch = 0
-
         return current_epoch
 
     def load_weights(self, filepath, by_name=True, skip_mismatch=False):
@@ -277,7 +281,7 @@ class RCNN2D:
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def launch_training(self, run_eagerly=False):
+    def setup_training(self, run_eagerly=False):
         losses, losses_weights = self.build_losses()
 
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
@@ -290,16 +294,23 @@ class RCNN2D:
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
 
+    def launch_training(self, use_tune=False):
         epochs = self.params.epochs + self.current_epoch
 
-        tensorboard = callbacks.TensorBoard(log_dir=self.checkpoint_dir,
-                                            profile_batch=0)
-        checkpoints = callbacks.ModelCheckpoint(join(self.checkpoint_dir,
-                                                     WEIGHTS_NAME),
-                                                save_freq='epoch')
+        if not use_tune:
+            tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
+                                      profile_batch=0)
+            checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
+                                               WEIGHTS_NAME),
+                                          save_freq='epoch')
+            callbacks = [tensorboard, checkpoints]
+        else:
+            tune_report = TuneReportCheckpointCallback(filename='.',
+                                                       frequency=1)
+            callbacks = [tune_report]
         self.fit(self.tfdataset,
                  epochs=epochs,
-                 callbacks=[tensorboard, checkpoints],
+                 callbacks=callbacks,
                  initial_epoch=self.current_epoch,
                  steps_per_epoch=self.params.steps_per_epoch,
                  max_queue_size=10,
@@ -547,11 +558,11 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
 
 
 def find_latest_checkpoint(logdir):
-    expr = re.compile(r"[0-9]{4}\.ckpt")
-    checkpoints = [f for f in listdir(logdir) if expr.match(f)]
+    expr = re.compile(r"checkpoint_[0-9]*")
+    checkpoints = [f.split("_")[-1] for f in listdir(logdir) if expr.match(f)]
+    checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
-        checkpoints.sort()
-        restore_from = checkpoints[-1]
+        restore_from = str(max(checkpoints))
         restore_from = join(logdir, restore_from)
     else:
         restore_from = None

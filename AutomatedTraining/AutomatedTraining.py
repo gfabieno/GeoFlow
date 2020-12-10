@@ -6,234 +6,195 @@ This module allows chaining multiple calls to a `main` script such as
 `..main.main` through `chain` and lauching `chain` with different combinations
 of hyperparameters through `optimize`. To use different combinations of
 architecture hyperparameters (`GeoFlow.RCNN2D.Hyperparameters`) in launching
-a main script, the combinations must be placed in a list beforehand through
-`generate_variations`. `optimize` processes all combinations of items from
-arguments that are lists. This module leverages `automated_training.archive`
-to make sure modifications in the repository during training do not impact an
-ongoing training. `optimize` automatically fetches the archived main script.
+a main script, the alterations to the base hyperparameters must be fed to
+`optimize` as key-value pairs of hyperparameter names and lists possible
+values. `optimize` processes all combinations of items from arguments that are
+lists. This module leverages `automated_training.archive` to make sure
+modifications in the repository during training do not impact an ongoing
+training. `optimize` automatically fetches the archived main script.
 """
 
-import sys
+from os.path import split
 from copy import deepcopy
-from argparse import Namespace
-from itertools import product
+from argparse import Namespace, ArgumentParser
 from importlib import import_module
+from typing import Callable
 
-import numpy as np
+from ray import tune
 
-from archive import ArchiveRepository
-from GeoFlow.RCNN2D import Hyperparameters
+from .Archive import ArchiveRepository
+from GeoFlow import RCNN2D
+from GeoFlow.GeoDataset import GeoDataset
 
 
-def chain(main, **args):
+def chain(main: Callable,
+          architecture: RCNN2D.RCNN2D,
+          params: Namespace,
+          dataset: GeoDataset,
+          logdir: str = "./logs",
+          ngpu: int = 1,
+          debug: bool = False,
+          eager: bool = False,
+          use_tune: bool = False,
+          **config):
     """
-    Call `main` a succession of times as implied by `args`.
+    Call `main` a succession of times as implied by `config`.
 
     :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
-    :param args: Key-value pairs of argument names and values. `chain` will
-                 fetch a different value at each iteration from values that are
-                 tuples.
+    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param params: Name of hyperparameters from `RCNN2D` to use.
+    :param dataset: Name of dataset from `DefinedDataset` to use.
+    :param logdir: Directory in which to store the checkpoints.
+    :param ngpu: Quantity of GPUs for data creation.
+    :param debug: Generate a small dataset of 5 examples.
+    :param eager: Run the Keras model eagerly, for debugging.
+    :param use_tune: Whether to use `ray[tune]` or not.
+    :param config: Key-value pairs of argument names and values. `chain` will
+                   fetch a different value at each iteration from values that
+                   are tuples.
 
     Sample usage:
         from main import main
+        params = Hyperparameters()
+        params.loss_scales = ({'ref': .5, 'vrms': .5,
+                               'vint': .0, 'vdepth': .0},
+                              {'ref': .0, 'vrms': .7,
+                               'vint': .3, 'vdepth': .0},
+                              {'ref': .0, 'vrms': .0,
+                               'vint': 1., 'vdepth': .0})
         chain(main,
+              architecture=RCNN2D,
+              params=params,
+              dataset=Dataset1Dsmall(),
               logdir="logs",
-              params=Hyperparameters(),
-              case=Case1Dsmall(),
-              epochs=(100, 100, 50),
-              steps=20,
-              lr=.0008,
-              beta_1=.9,
-              beta_2=.98,
-              eps=1e-5,
-              batchsize=4,
-              loss_ref=(.5, .0, .0),
-              loss_vrms=(.5, .7, .0),
-              loss_vint=(.0, .3, 1.),
-              loss_vdepth=(.0, .0, .0),
-              nmodel=1,
-              ngpu=2,
-              noise=0,
-              plot=0,
-              no_weights=False,
-              restore_from=None)
+              ngpu=2)
     Output:
-        A 3-step training with different quantities of epochs and losses.
+        A 3-step training with different losses.
     """
-    if "training" in args.keys():
-        raise ValueError("Using `chain` implies training.")
-    hyperparams = args["params"]
-    if isinstance(hyperparams.freeze_to, tuple):
-        args["params"] = generate_variations(hyperparams,
-                                             freeze_to=hyperparams.freeze_to)
-        args["params"] = tuple(args["params"])
-    parameters = {key: value
-                  for key, value in args.items()
-                  if isinstance(value, tuple)}
-    if parameters:
-        qty_segments = max([len(sequence) for sequence in parameters.values()])
+    params = deepcopy(params)
+    for param_name, param_value in config.items():
+        setattr(params, param_name, param_value)
+
+    to_chain = {}
+    for param_name, param_value in params.__dict__.items():
+        if isinstance(param_value, tuple):
+            to_chain[param_name] = param_value
+
+    if to_chain:
+        qties_segments = [len(param) for param in to_chain.values()]
+        qty_segments = qties_segments[0]
+        is_equal_length = all([qty == qty_segments for qty in qties_segments])
+        assert is_equal_length, ("Some hyperparameter sequence has a "
+                                 "different length.")
     else:
         qty_segments = 1
-    constants = {key: [value]*qty_segments
-                 for key, value in args.items()
-                 if not isinstance(value, tuple)}
-    parameters.update(constants)
-    keys = parameters.keys()
-    values = parameters.values()
-    try:
-        for current_values in zip(*values):
-            current_parameters = {key: value for key, value
-                                  in zip(keys, current_values)}
-            args = Namespace(training=1, **current_parameters)
-            main(args)
-    except Exception as exception:
-        print("Could not do or finish training:")
-        print(exception)
+
+    for segment in range(qty_segments):
+        current_params = deepcopy(params)
+        for param_name, param_value in to_chain.items():
+            setattr(current_params, param_name, param_value[segment])
+        if use_tune:
+            with tune.checkpoint_dir(step=0) as checkpoint_dir:
+                logdir, _ = split(checkpoint_dir)
+        args = Namespace(architecture=architecture, params=current_params,
+                         dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
+                         plot=False, debug=debug, eager=eager)
+        main(args, use_tune)
 
 
-def optimize(**args):
+def optimize(architecture: RCNN2D.RCNN2D,
+             params: Namespace,
+             dataset: GeoDataset,
+             logdir: str = "./logs",
+             ngpu: int = 1,
+             debug: bool = False,
+             eager: bool = False,
+             **config):
     """
-    Call `chain` for all combinations of `args`.
+    Call `chain` for all combinations of `config`.
 
-    :param args: Key-value pairs of argument names and values. Values
-                 that are lists will be iterated upon.
+    :param architecture: Name of the architecture from `RCNN2D` to use.
+    :param params: Name of hyperparameters from `RCNN2D` to use.
+    :param dataset: Name of dataset from `DefinedDataset` to use.
+    :param logdir: Directory in which to store the checkpoints.
+    :param ngpu: Quantity of GPUs for data creation.
+    :param debug: Generate a small dataset of 5 examples.
+    :param eager: Run the Keras model eagerly, for debugging.
+    :param config: Key-value pairs of argument names and values that will be
+                   iterated upon.
 
     Sample usage:
-        optimize(params=Hyperparameters(),
-                 case=Case1Dsmall(),
-                 epochs=(100, 100, 50),
-                 steps=20,
-                 lr=[.0008, .0002],
-                 beta_1=.9,
-                 beta_2=.98,
-                 eps=1e-5,
-                 batchsize=4,
-                 loss_ref=(.5, .0, .0),
-                 loss_vrms=(.5, .7, .0),
-                 loss_vint=(.0, .3, 1.),
-                 loss_vdepth=(.0, .0, .0),
-                 nmodel=1,
-                 ngpu=2,
-                 noise=0,
-                 plot=0,
-                 no_weights=False,
-                 restore_from=None)
+        optimize(architecture=RCNN2D.RCNN2D,
+                 params=Hyperparameters(),
+                 dataset=Dataset1Dsmall(),
+                 lr=[.0008, .0002])
     Output:
         Two calls to `chain` with different learning rates.
     """
-    if "logdir" in args.keys():
-        raise ValueError("`optimize` manages checkpoint directories by "
-                         "itself.")
-    if "training" in args.keys():
-        raise ValueError("Using `optimize` implies training.")
-    parameters = {key: value
-                  for key, value in args.items()
-                  if isinstance(value, list)}
-    constants = {key: [value]
-                 for key, value in args.items()
-                 if not isinstance(value, list)}
-    parameters.update(constants)
-    keys = parameters.keys()
-    values = parameters.values()
-    for current_values in product(*values):
-        current_parameters = {key: value for key, value
-                              in zip(keys, current_values)}
-        with ArchiveRepository() as archive:
-            archive.write(str(current_parameters))
-            main = import_module("main").main
-            chain(main, logdir=archive.model, **current_parameters)
-            del sys.modules["main"]
-            del main
+    with ArchiveRepository(logdir) as archive:
+        with archive.import_main() as main:
+            logdir = archive.model
 
-
-def generate_variations(base_params, **variations):
-    """
-    Generate variations of an `Hyperparameters` object.
-
-    :param base_params: A base `Hyperparameters` object.
-    :param variations: Values with which to overwrite the attributes of
-                       `base_params` with. The keys are attribute names and the
-                       values will be iterated upon using a cartesian product.
-
-    Sample usage:
-        hyperparams = Hyperparameters()
-        generate_variations(hyperparams, rcnn_kernel=[[15, 3, 1],
-                                                      [15, 3, 3]])
-    Output:
-        A list of two `Hyperparameters` objects with different `rcnn_kernel`
-        attributes.
-    """
-    hyperparams = []
-    keys = variations.keys()
-    values = variations.values()
-    for current_values in product(*values):
-        current_hyperparams = deepcopy(base_params)
-        for key, value in zip(keys, current_values):
-            setattr(current_hyperparams, key, value)
-        hyperparams.append(current_hyperparams)
-    return hyperparams
-
-
-def drop_useless(hyperparams):
-    """
-    Drop useless hyperparameters combinations.
-
-    Useless hyperparameters combinations have diltations in dimensions of
-    length 1.
-
-    :param hyperparams: A list of `Hyperparameters` objects.
-
-    Sample usage:
-        hyperparams = Hyperparameters()
-        hyperparams.rcnn_kernel = [15, 3, 1]
-        hyperparams.dilation = [1, 1, 2]
-        drop_useless([hyperparams])
-    Output:
-        An empty list.
-    """
-    to_keep = np.ones(len(hyperparams), dtype=bool)
-    for i, p in enumerate(hyperparams):
-        is_dilation_useful = True
-        for key, value in p.__dict__.items():
-            if value is None or "dilation" not in key:
-                continue
-            value = np.array(value)
-            if (value != 1).any():
-                attrib = key.split("_")[0]
-                s_or_not = "s" if key[-1] == "s" else ""
-                attrib = attrib + "_kernel" + s_or_not
-                idx_dilation = np.nonzero(value != 1)
-                idx_dilation = idx_dilation
-                other_value = getattr(p, attrib)
-                other_value = np.array(other_value)
-                if not (other_value[idx_dilation] != 1).all():
-                    is_dilation_useful = False
-        to_keep[i] = is_dilation_useful
-    hyperparams = np.array(hyperparams, dtype=object)
-    hyperparams = hyperparams[to_keep]
-    return list(hyperparams)
+            grid_search_config = deepcopy(config)
+            for key, value in config.items():
+                if isinstance(value, list):
+                    value = tune.grid_search(value)
+                grid_search_config[key] = value
+            tune.run(lambda config: chain(main, architecture, params, dataset,
+                                          logdir, ngpu, debug, eager,
+                                          use_tune=True, **config),
+                     num_samples=1,
+                     local_dir=logdir,
+                     resources_per_trial={"gpu": ngpu},
+                     config=grid_search_config)
 
 
 if __name__ == "__main__":
-    from Cases_define import *
+    parser = ArgumentParser()
+    parser.add_argument("--architecture",
+                        type=str,
+                        default="RCNN2D",
+                        help="Name of the architecture from `RCNN2D` to use.")
+    parser.add_argument("--params",
+                        type=str,
+                        default="Hyperparameters",
+                        help="Name of hyperparameters from `RCNN2D` to use.")
+    parser.add_argument("--dataset",
+                        type=str,
+                        default="Dataset1Dsmall",
+                        help="Name of dataset from `DefinedDataset` to use.")
+    parser.add_argument("--logdir",
+                        type=str,
+                        default="./logs",
+                        help="Directory in which to store the checkpoints.")
+    parser.add_argument("--ngpu",
+                        type=int,
+                        default=1,
+                        help="Quantity of GPUs for data creation.")
+    parser.add_argument("--debug",
+                        action='store_true',
+                        help="Generate a small dataset of 5 examples.")
+    parser.add_argument("--eager",
+                        action='store_true',
+                        help="Run the Keras model eagerly, for debugging.")
+    args, config = parser.parse_known_args()
+    config = {name[2:]: eval(value) for name, value
+              in zip(config[::2], config[1::2])}
+    args.architecture = getattr(RCNN2D, args.architecture)
+    dataset_module = import_module("DefinedDataset." + args.dataset)
+    args.dataset = getattr(dataset_module, args.dataset)()
+    args.params = getattr(RCNN2D, args.params)()
 
-    optimize(params=Hyperparameters(),
-             case=Case1Dsmall(),
-             epochs=(100, 100, 50),
-             steps=20,
-             lr=.0002,
-             beta_1=.9,
-             beta_2=.98,
-             eps=1e-5,
-             batchsize=4,
-             loss_ref=(.5, .0, .0),
-             loss_vrms=(.5, .7, .0),
-             loss_vint=(.0, .3, 1.),
-             loss_vdepth=(.0, .0, .0),
-             nmodel=1,
-             ngpu=2,
-             noise=0,
-             plot=0,
-             no_weights=False,
-             restore_from=None)
+    if args.debug:
+        config["epochs"] = 1
+        config["steps_per_epoch"] = 5
+
+    optimize(architecture=args.architecture,
+             params=args.params,
+             dataset=args.dataset,
+             logdir=args.logdir,
+             ngpu=args.ngpu,
+             debug=args.debug,
+             eager=args.eager,
+             **config)
