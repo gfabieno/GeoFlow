@@ -508,7 +508,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         cmps: Position in x of each cmp.
     """
     if binsize is None:
-        binsize = src_pos[0, 1] - src_pos[0, 0]
+        binsize = np.abs(src_pos[0, 1] - src_pos[0, 0])
 
     sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
@@ -532,7 +532,8 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         ind2 = np.argmax(cmps > lastcmp)
         data_cmp = data_cmp[:, ind1:ind2]
         ncmps = unique_cmps.shape[0]
-        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
+        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], ncmps, maxfold])
+        data_cmp = np.swapaxes(data_cmp, 1, 2)
 
     return data_cmp, unique_cmps
 
