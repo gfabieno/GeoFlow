@@ -435,7 +435,6 @@ class ShotGather(GraphInput):
         self.mute_nearoffset_max = mute_nearoffset_max
         self.random_time_scaling = random_time_scaling
 
-    # TODO Handle 2D case.
     def preprocess(self, data, labels):
         # Add random noises to the data.
         if self.random_time_scaling:
