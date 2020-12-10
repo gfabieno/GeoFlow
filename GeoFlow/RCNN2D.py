@@ -6,9 +6,8 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import split, join, basename, isdir
+from os.path import split, join, isdir
 
-import h5py as h5
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
@@ -328,29 +327,25 @@ class RCNN2D:
         return losses, losses_weights
 
     def launch_testing(self):
-        savepath = join(self.dataset.datatest, "pred")
-        if not isdir(savepath):
-            mkdir(savepath)
+        # Save the predictions to a subfolder that has the name of the network.
+        savedir = join(self.dataset.datatest, type(self).__name__)
+        if not isdir(savedir):
+            mkdir(savedir)
 
         for data, _ in self.tfdataset:
             evaluated = self.predict(data,
+                                     batch_size=self.params.batch_size,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
-            for i, (lbl, out) in enumerate(zip(self.tooutputs, evaluated)):
+            for lbl, out in evaluated.items():
                 if lbl != 'ref':
-                    evaluated[i] = out[..., 0]
+                    evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
-                example = join(savepath, basename(example))
-                with h5.File(example, "w") as savefile:
-                    for j, el in enumerate(self.tooutputs):
-                        if el in savefile.keys():
-                            del savefile[el]
-                        savefile[el] = evaluated[j][i, :]
-
-    def animated_predictions(self):
-        raise NotImplementedError
+                exampleid = int(example.split("_")[-1])
+                self.dataset.generator.write_predictions(exampleid, savedir,
+                                                         evaluated)
 
 
 def broadcast_weights(loaded_weights, current_weights):
