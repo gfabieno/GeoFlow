@@ -131,7 +131,7 @@ class RCNN2D(Model):
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             self.inputs = self.build_inputs()
-            self.outputs = self.build_network(self.inputs)
+            self.build_network(self.inputs)
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
@@ -185,8 +185,8 @@ class RCNN2D(Model):
         if params.freeze_to in ['vrms', 'vint', 'vdepth']:
             self.rnn['vrms'].trainable = False
 
+        input_shape = self.rnn['vrms'].output_shape
         if params.use_cnn:
-            input_shape = self.rnn['vrms'].output_shape
             self.cnn['vrms'] = Conv2D(params.cnn_filters, params.cnn_kernel,
                                       dilation_rate=params.cnn_dilation,
                                       padding='same',
@@ -195,11 +195,8 @@ class RCNN2D(Model):
                                       name="cnn_vrms")
             if params.freeze_to in ['vrms', 'vint', 'vdepth']:
                 self.cnn['vrms'].trainable = False
+            input_shape = input_shape[:-1] + (params.cnn_filters,)
 
-        if params.use_cnn:
-            input_shape = self.cnn['vrms'].output_shape
-        else:
-            input_shape = self.rnn['vrms'].output_shape
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
@@ -212,8 +209,8 @@ class RCNN2D(Model):
         if params.freeze_to in ['vint', 'vdepth']:
             self.rnn['vint'].trainable = False
 
+        input_shape = self.rnn['vint'].output_shape
         if params.use_cnn:
-            input_shape = self.rnn['vint'].output_shape
             self.cnn['vint'] = Conv2D(params.cnn_filters, params.cnn_kernel,
                                       dilation_rate=params.cnn_dilation,
                                       padding='same',
@@ -222,17 +219,14 @@ class RCNN2D(Model):
                                       name="cnn_vint")
             if params.freeze_to in ['vint', 'vdepth']:
                 self.cnn['vint'].trainable = False
+            input_shape = input_shape[:-1] + (params.cnn_filters,)
 
-        if params.use_cnn:
-            input_shape = self.cnn['vint'].output_shape
-        else:
-            input_shape = self.rnn['vint'].output_shape
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="vint")
 
-        vint_shape = self.decoder['vint'].output_shape[1:]
+        vint_shape = input_shape[1:-1] + (1,)
         self.time_to_depth = build_time_to_depth_converter(self.dataset,
                                                            vint_shape,
                                                            batch_size,
@@ -260,11 +254,9 @@ class RCNN2D(Model):
         if params.use_cnn:
             data_stream = self.cnn['vint'](data_stream)
 
-        outputs['vint'] = self.rnn['vint'](data_stream)
-
-        vint = outputs['vint']
-        vdepth = self.time_to_depth(vint)
-        outputs['vdepth'] = vdepth
+        data_stream = self.rnn['vint'](data_stream)
+        outputs['vint'] = self.decoder['vint'](data_stream)
+        outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
         return {out: outputs[out] for out in self.tooutputs}
 
