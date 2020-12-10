@@ -54,6 +54,7 @@ Imports should be grouped in the following order:
 1. Standard library imports.
 2. Related third party imports.
 3. Local application/library specific imports.
+
 You should put a blank line between each group of imports.
 
 If operators with different priorities are used, consider adding whitespace around the operators with the lowest priority(ies). Use your own judgment; however, never use more than one space, and always have the same amount of whitespace on both sides of a binary operator, as in
