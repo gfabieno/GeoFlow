@@ -116,20 +116,20 @@ class RCNN2D(Model):
         :type : Hyperparameters
         :param batch_size: Quantity of examples in a batch.
         """
-        super().__init__()
-        self.dataset = dataset
-        self.params = params
-        self.checkpoint_dir = checkpoint_dir
-        self.phase = phase
-
-        batch_size = self.params.batch_size
-        self.tfdataset = self.dataset.tfdataset(phase=self.phase,
-                                                tooutputs=self.tooutputs,
-                                                toinputs=self.toinputs,
-                                                batch_size=batch_size)
-
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
+            super().__init__()
+            self.dataset = dataset
+            self.params = params
+            self.checkpoint_dir = checkpoint_dir
+            self.phase = phase
+
+            batch_size = self.params.batch_size
+            self.tfdataset = self.dataset.tfdataset(phase=self.phase,
+                                                    tooutputs=self.tooutputs,
+                                                    toinputs=self.toinputs,
+                                                    batch_size=batch_size)
+
             self.inputs = self.build_inputs()
             self.build_network(self.inputs)
             self.current_epoch = self.restore(self.params.restore_from)
