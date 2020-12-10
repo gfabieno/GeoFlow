@@ -97,7 +97,7 @@ class Hyperparameters(Namespace):
         return str(self)
 
 
-class RCNN2D:
+class RCNN2D(Model):
     """
     Combine a recursive CNN and LSTMs to predict 2D v_p velocity.
     """
@@ -116,6 +116,7 @@ class RCNN2D:
         :type : Hyperparameters
         :param batch_size: Quantity of examples in a batch.
         """
+        super().__init__()
         self.dataset = dataset
         self.params = params
         self.checkpoint_dir = checkpoint_dir
@@ -134,18 +135,6 @@ class RCNN2D:
             self.model = Model(inputs=self.inputs,
                                outputs=self.outputs,
                                name="RCNN2D")
-
-            # `RCNN2D` has the same interface as a keras `Model`, but
-            # subclassing is avoided by using the functional API. This is
-            # necessary for model intelligibility.
-            self.compile = self.model.compile
-            self.fit = self.model.fit
-            self.predict = self.model.predict
-            self.set_weights = self.model.set_weights
-            self.get_weights = self.model.get_weights
-            self.layers = self.model.layers
-            self.get_layer = self.model.get_layer
-
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
@@ -162,77 +151,98 @@ class RCNN2D:
     def build_network(self):
         params = self.params
 
-        outputs = {}
+        self.decoder = {}
+        self.rnn = {}
+        self.cnn = {}
 
-        encoder = build_encoder(kernels=params.encoder_kernels,
-                                dilation_rates=params.encoder_dilations,
-                                qties_filters=params.encoder_filters)
+        self.encoder = build_encoder(kernels=params.encoder_kernels,
+                                     dilation_rates=params.encoder_dilations,
+                                     qties_filters=params.encoder_filters)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            encoder.trainable = False
-        data_stream = encoder(self.inputs["shotgather"])
+            self.encoder['ref'].trainable = False
 
-        time_rcnn = build_rcnn(reps=7,
+        self.rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
                                qty_filters=params.rcnn_filters,
                                dilation_rate=params.rcnn_dilation,
-                               input_shape=data_stream.shape,
+                               input_shape=self.rcnn.output.shape,
                                batch_size=params.batch_size,
                                name="time_rcnn")
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            time_rcnn.trainable = False
-        data_stream = time_rcnn(data_stream)
+            self.time_rcnn.trainable = False
 
+        self.decoder['ref'] = Conv2D(2, params.decode_ref_kernel,
+                                     padding='same', name="ref")
+
+        shape_after_pooling = self.time_rcnn.output.shape[[0, 1, 3]]
+        self.rnn['vrms'] = build_rnn(units=200,
+                                     input_shape=shape_after_pooling,
+                                     batch_size=params.batch_size,
+                                     name="rnn_vrms")
+        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
+            self.rnn['vrms'].trainable = False
+
+        if params.use_cnn:
+            self.cnn['vrms'] = Conv2D(params.cnn_filters, params.cnn_kernel,
+                                      dilation_rate=params.cnn_dilation,
+                                      padding='same',
+                                      name="cnn_vrms")
+            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
+                self.cnn['vrms'].trainable = False
+
+        self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      name="vrms")
+
+        self.rnn['vint'] = build_rnn(units=200,
+                                     input_shape=self.rnn['vrms'].output.shape,
+                                     batch_size=params.batch_size,
+                                     name="rnn_vint")
+        if params.freeze_to in ['vint', 'vdepth']:
+            self.rnn['vint'].trainable = False
+
+        if params.use_cnn:
+            self.cnn['vint'] = Conv2D(params.cnn_filters, params.cnn_kernel,
+                                      dilation_rate=params.cnn_dilation,
+                                      padding='same',
+                                      name="cnn_vint")
+            if params.freeze_to in ['vint', 'vdepth']:
+                self.cnn['vint'].trainable = False
+
+        self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      name="vint")
+
+        vint_shape = self.decoder['vint'].output.shape[1:]
+        self.time_to_depth = build_time_to_depth_converter(self.dataset,
+                                                           vint_shape,
+                                                           params.batch_size,
+                                                           name="vdepth")
+
+    def call(self):
+        params = self.params
+
+        outputs = {}
+
+        data_stream = self.encoder(self.inputs["shotgather"])
+        data_stream = self.time_rcnn(data_stream)
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
-        conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
-                         name="ref")
-        outputs['ref'] = conv_2d(data_stream)
+        outputs['ref'] = self.decoder['ref'](data_stream)
 
-        rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=params.batch_size, name="rnn_vrms")
-        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-            rnn_vrms.trainable = False
-        data_stream = rnn_vrms(data_stream)
-
+        data_stream = self.rnn['vrms'](data_stream)
         if params.use_cnn:
-            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
-                             dilation_rate=params.cnn_dilation,
-                             padding='same',
-                             name="cnn_vrms")
-            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-                conv_2d.trainable = False
-            data_stream = conv_2d(data_stream)
+            data_stream = self.cnn['vrms'](data_stream)
 
-        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                         name="vrms")
-        outputs['vrms'] = conv_2d(data_stream)
+        outputs['vrms'] = self.decoder['vrms'](data_stream)
 
-        rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=params.batch_size, name="rnn_vint")
-        if params.freeze_to in ['vint', 'vdepth']:
-            rnn_vint.trainable = False
-        data_stream = rnn_vint(data_stream)
-
+        data_stream = self.rnn['vint'](data_stream)
         if params.use_cnn:
-            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
-                             dilation_rate=params.cnn_dilation,
-                             padding='same',
-                             name="cnn_vint")
-            if params.freeze_to in ['vint', 'vdepth']:
-                conv_2d.trainable = False
-            data_stream = conv_2d(data_stream)
+            data_stream = self.cnn['vint'](data_stream)
 
-        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                         name="vint")
-        outputs['vint'] = conv_2d(data_stream)
+        outputs['vint'] = self.cnn['vint'](data_stream)
 
         vint = outputs['vint']
-        time_to_depth = build_time_to_depth_converter(self.dataset,
-                                                      vint.shape[1:],
-                                                      params.batch_size,
-                                                      name="vdepth")
-        vdepth = time_to_depth(vint)
+        vdepth = self.time_to_depth(vint)
         outputs['vdepth'] = vdepth
 
         return {out: outputs[out] for out in self.tooutputs}
