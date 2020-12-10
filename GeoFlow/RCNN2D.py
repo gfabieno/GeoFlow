@@ -15,7 +15,7 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange, gather)
+                                      reshape, cumsum, arange)
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
