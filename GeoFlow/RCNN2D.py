@@ -112,9 +112,15 @@ class RCNN2D(Model):
         """
         Build and restore the network.
 
+        :param dataset: The dataset used for input data and labels.
+        :type dataset: GeoDataset
+        :param phase: Either "train", "test" or "validate". Get examples from
+                      the `phase` subdataset.
+        :type phase: str
         :param params: A grouping of hyperparameters.
-        :type : Hyperparameters
-        :param batch_size: Quantity of examples in a batch.
+        :type params: Hyperparameters
+        :param checkpoint_dir: The root folder for checkpoints.
+        :type checkpoint_dir: str
         """
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
@@ -135,6 +141,11 @@ class RCNN2D(Model):
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
+        """
+        Build input layers.
+
+        :return: A dictionary of inputs' name-layer pairs.
+        """
         inputs, _, _, _ = self.dataset.get_example(toinputs=self.toinputs)
         shot_gather = inputs["shotgather"]
         shotgather = Input(shape=shot_gather.shape,
@@ -145,7 +156,13 @@ class RCNN2D(Model):
                          dtype=tf.string)
         return {"shotgather": shotgather, "filename": filename}
 
-    def build_network(self, inputs):
+    def build_network(self, inputs: dict):
+        """
+        Build the subnetworks of the model.
+
+        :param inputs: The inputs' name-layer pairs.
+        :type inputs: dict
+        """
         params = self.params
         batch_size = self.params.batch_size
 
@@ -232,7 +249,15 @@ class RCNN2D(Model):
                                                            batch_size,
                                                            name="vdepth")
 
-    def call(self, inputs):
+    def call(self, inputs: dict):
+        """
+        Apply the neural network to an input tensor.
+
+        This is required from subclassing `tf.keras.Model`.
+
+        :param inputs: The inputs' name-layer pairs.
+        :type inputs: dict
+        """
         params = self.params
 
         outputs = {}
@@ -260,7 +285,16 @@ class RCNN2D(Model):
 
         return {out: outputs[out] for out in self.tooutputs}
 
-    def restore(self, path=None):
+    def restore(self, path: str = None):
+        """
+        Restore a checkpoint of the model.
+
+        :param path: The path of the checkpoint to load. Defaults to the latest
+                     checkpoint in `self.checkpoint_dir`.
+        :type path: str
+
+        :return: The current epoch number.
+        """
         if path is None:
             filename = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
@@ -271,7 +305,8 @@ class RCNN2D(Model):
             current_epoch = 0
         return current_epoch
 
-    def load_weights(self, filepath, by_name=True, skip_mismatch=False):
+    def load_weights(self, filepath: str, by_name: bool = True,
+                     skip_mismatch: bool = False):
         """
         Load weights into the model and broadcast 1D to 2D correctly.
 
@@ -303,7 +338,13 @@ class RCNN2D(Model):
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def setup_training(self, run_eagerly=False):
+    def setup_training(self, run_eagerly: bool = False):
+        """
+        Setup `Model` prior to fitting.
+
+        :param run_eagerly: Whether to run the model in eager mode or not.
+        :type run_eagerly: bool
+        """
         losses, losses_weights = self.build_losses()
 
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
@@ -316,7 +357,14 @@ class RCNN2D(Model):
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
 
-    def launch_training(self, use_tune=False):
+    def launch_training(self, use_tune: bool = False):
+        """
+        Fit the model to the dataset.
+
+        :param use_tune: Whether `ray[tune]` is used in training or not. This
+                         modifies the way callbacks and checkpoints are logged.
+        :param use_tune: bool
+        """
         epochs = self.params.epochs + self.current_epoch
 
         if not use_tune:
@@ -339,6 +387,9 @@ class RCNN2D(Model):
                  use_multiprocessing=False)
 
     def build_losses(self):
+        """
+        Initialize the losses used for training.
+        """
         losses, losses_weights = {}, {}
         for lbl in self.tooutputs:
             if lbl == 'ref':
@@ -350,6 +401,12 @@ class RCNN2D(Model):
         return losses, losses_weights
 
     def launch_testing(self):
+        """
+        Test the model on the current dataset.
+
+        Predictions are saved to a subfolder that has the name of the network
+        within the subdataset's directory.
+        """
         # Save the predictions to a subfolder that has the name of the network.
         savedir = join(self.dataset.datatest, type(self).__name__)
         if not isdir(savedir):
@@ -371,13 +428,19 @@ class RCNN2D(Model):
                                                          evaluated)
 
 
-def broadcast_weights(loaded_weights, current_weights):
+def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
     """
     Broadcast `loaded_weights` on `current_weights`.
 
     Extend the loaded weights along one missing dimension and rescale the
     weights to account for the duplication. This is equivalent to using an
     average in the missing dimension.
+
+    :param loaded_weights: The weights of the recovered checkpoint.
+    :type loaded_weights: np.ndarray
+    :param current_weights: The current weights of the model, which will be
+                            overridden.
+    :type current_weights: np.ndarray
     """
     for i, (current, loaded) in enumerate(zip(current_weights,
                                               loaded_weights)):
@@ -493,7 +556,11 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     return rnn
 
 
-def assert_broadcastable(arr1, arr2, message=None):
+def assert_broadcastable(arr1: np.ndarray, arr2: np.ndarray,
+                         message: str = None):
+    """
+    Assert that two arrays can be broadcasted together.
+    """
     try:
         np.broadcast(arr1, arr2)
     except ValueError:
@@ -502,7 +569,13 @@ def assert_broadcastable(arr1, arr2, message=None):
         raise AssertionError(message)
 
 
-def find_latest_checkpoint(logdir):
+def find_latest_checkpoint(logdir: str):
+    """
+    Find the latest checkpoint that matches `"checkpoint_[0-9]*"`.
+
+    :param logdir: The directory in which to search for the checkpoints.
+    :type logdir: str
+    """
     expr = re.compile(r"checkpoint_[0-9]*")
     checkpoints = [f.split("_")[-1] for f in listdir(logdir) if expr.match(f)]
     checkpoints = [int(f) for f in checkpoints]
