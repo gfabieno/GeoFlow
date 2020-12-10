@@ -232,12 +232,12 @@ class RCNN2D(Model):
                                                            batch_size,
                                                            name="vdepth")
 
-    def call(self, data_stream):
+    def call(self, inputs):
         params = self.params
 
         outputs = {}
 
-        data_stream = self.encoder(self.inputs["shotgather"])
+        data_stream = self.encoder(inputs["shotgather"])
         data_stream = self.rcnn(data_stream)
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
