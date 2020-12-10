@@ -448,7 +448,7 @@ class ShotGather(GraphInput):
         return 1 if self.is_1d else 2
 
     def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.1, ims=None):
+             clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
         else:
@@ -458,10 +458,12 @@ class ShotGather(GraphInput):
                                                [ims[0]])
 
             src_pos, rec_pos = self.acquire.set_rec_src()
-            src_pos = src_pos[0, :, None]
-            rec_pos = rec_pos[0].reshape([len(src_pos), -1])
-            closest_rec = np.argmin(np.abs(src_pos-rec_pos), axis=1)
-            zero_offset_gather = data[:, closest_rec, range(len(rec_pos))]
+            offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
+                      for ii in range(rec_pos.shape[1])]
+            minoffset = np.min(offset) + np.abs(rec_pos[0, 0]-rec_pos[0, 1])/2
+            zero_offset_gather = np.transpose(data, axes=[0, 2, 1, 3])
+            zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0], -1])
+            zero_offset_gather = zero_offset_gather[:, offset < minoffset]
             [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
                                                 cmap, vmin, vmax, clip,
                                                 [ims[1]])
