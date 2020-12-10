@@ -11,14 +11,14 @@ REQUIREMENTS = ["numpy",
                 "scipy",
                 "matplotlib",
                 "h5py",
+                "ray[tune]",
                 GITHUB_REQUIREMENT.format(author="gfabieno",
                                           name="SeisCL",
                                           version="eef941d4e31b5fa0dc7823e491e"
                                                   "0575ad1e1f423"),
                 GITHUB_REQUIREMENT.format(author="gfabieno",
                                           name="ModelGenerator",
-                                          version="a01cbb93d67a6c859ea6ac67ea5"
-                                                  "5361208b66e7c")]
+                                          version="v0.1.1")]
 
 setup(name="GeoFlow",
       version="0.0.1",

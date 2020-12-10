@@ -19,8 +19,12 @@ from GeoFlow.SeismicUtilities import (smooth_velocity_wavelength,
 class GraphOutput:
     """
     Generate the output, label and weight of a network.
+
+    :param naxes: The quantity of figures required by this output.
+    :type naxes: int
     """
     name = "Baseoutput"
+    naxes = 1
 
     def __init__(self, model: EarthModel, acquire: Acquisition):
         """
@@ -37,44 +41,44 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, ax=None, cmap=plt.get_cmap('hot'), vmin=0,
-             vmax=1, clip=1, im=None):
+    def plot(self, data, axs=[None], cmap=plt.get_cmap('hot'), vmin=0,
+             vmax=1, clip=1, ims=[None]):
         """
         Plot the output.
 
         :param data: The data to plot.
-        :param ax: The axis on which to plot.
+        :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
-                     `-clip * max` of data.
+                     `-clip * np.amax(data)`.
         :param vmax: Maximum value of the colormap. If None, defaults to
-                     `clip * max` of data.
+                     `clip * np.amax(data)`.
         :param clip: Clipping of the data.
-        :param im: If provided, the image data is updated.
+        :param ims: If provided, the images' data is updated.
 
-        :return:
-            im: Return value of `ax.imshow`.
+        :return: Return values of each `ax.imshow`.
         """
         if vmax is None:
-            vmax = np.max(data) * clip
+            vmax = np.amax(data) * clip
         if vmin is None:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
-        if im is None:
-            im = ax.imshow(data,
-                           interpolation='bilinear',
-                           cmap=cmap,
-                           vmin=vmin, vmax=vmax,
-                           aspect='auto')
-            ax.set_title("Output: %s" % self.name,
-                         fontsize=16, fontweight='bold')
-            _ = ax.get_position().get_points().flatten()
-            plt.colorbar(im, ax=ax)
-        else:
-            im.set_array(data)
+        for i, (im, ax) in enumerate(zip(ims, axs)):
+            if im is None:
+                ims[i] = ax.imshow(data,
+                                   interpolation='bilinear',
+                                   cmap=cmap,
+                                   vmin=vmin, vmax=vmax,
+                                   aspect='auto')
+                ax.set_title("Output: %s" % self.name,
+                             fontsize=16, fontweight='bold')
+                _ = ax.get_position().get_points().flatten()
+                plt.colorbar(ims[i], ax=ax)
+            else:
+                im.set_array(data)
 
-        return im
+        return ims
 
     def generate(self, props):
         """
@@ -313,50 +317,50 @@ class Vsdepth(Reftime):
         return label * (vmax - vmin) + vmin
 
 
-# TODO Fix the plotting as it was before for multiple shot case (2D)
 class GraphInput:
     name = "BaseInput"
+    naxes = 1
 
     def __init__(self, acquire: Acquisition, model: EarthModel):
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, ax, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.1, im=None):
+    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
+             clip=0.1, ims=[None]):
         """
         Plot this input using default values.
 
         :param data: The data to plot.
-        :param ax: The axis on which to plot.
+        :param axs: The axes on which to plot.
         :param cmap: The colormap.
-        :param vmin: Minimum value of the colormap. If None, default to
-                     -clip * max of data.
-        :param vmax: Maximum value of the colormap. If None, default to
-                     clip * max of data.
+        :param vmin: Minimum value of the colormap. If None, defaults to
+                     `-clip * np.amax(data)`.
+        :param vmax: Maximum value of the colormap. If None, defaults to
+                     `clip * np.amax(data)`.
         :param clip: Clipping of the data.
-        :param im: If provided, the image data is updated.
+        :param ims: If provided, the images' data is updated.
 
-        :return:
-           im:     return value of ax.imshow
-       """
+        :return: Return values of each `ax.imshow`.
+        """
         if vmax is None:
-            vmax = np.max(data) * clip
+            vmax = np.amax(data) * clip
         if vmin is None:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
-        if im is None:
-            im = ax.imshow(data,
-                           interpolation='bilinear',
-                           cmap=cmap,
-                           vmin=vmin, vmax=vmax,
-                           aspect='auto')
-            ax.set_title("Input: %s" % self.name,
-                         fontsize=16, fontweight='bold')
-        else:
-            im.set_array(data)
+        for i, (im, ax) in enumerate(zip(ims, axs)):
+            if im is None:
+                ims[i] = ax.imshow(data,
+                                   interpolation='bilinear',
+                                   cmap=cmap,
+                                   vmin=vmin, vmax=vmax,
+                                   aspect='auto')
+                ax.set_title("Input: %s" % self.name,
+                             fontsize=16, fontweight='bold')
+            else:
+                im.set_array(data)
 
-        return im
+        return ims
 
     def generate(self, data):
         """
@@ -434,6 +438,37 @@ class ShotGather(GraphInput):
         self.mute_nearoffset = mute_nearoffset
         self.mute_nearoffset_max = mute_nearoffset_max
         self.random_time_scaling = random_time_scaling
+
+    @property
+    def is_1d(self):
+        return self.acquire.singleshot
+
+    @property
+    def naxes(self):
+        return 1 if self.is_1d else 2
+
+    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
+             clip=0.05, ims=None):
+        if self.is_1d:
+            return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
+        else:
+            first_shot_gather = data[:, :, 0]
+            [first_shot_gather] = super().plot(first_shot_gather, [axs[0]],
+                                               cmap, vmin, vmax, clip,
+                                               [ims[0]])
+
+            src_pos, rec_pos = self.acquire.set_rec_src()
+            offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
+                      for ii in range(rec_pos.shape[1])]
+            minoffset = np.min(offset) + np.abs(rec_pos[0, 0]-rec_pos[0, 1])/2
+            zero_offset_gather = np.transpose(data, axes=[0, 2, 1, 3])
+            zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0], -1])
+            zero_offset_gather = zero_offset_gather[:, offset < minoffset]
+            [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
+                                                cmap, vmin, vmax, clip,
+                                                [ims[1]])
+
+            return first_shot_gather, zero_offset_gather
 
     def preprocess(self, data, labels):
         # Add random noises to the data.

@@ -14,8 +14,8 @@ from typing import List
 
 import tensorflow as tf
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+from matplotlib import pyplot as plt
+from matplotlib import animation
 
 from GeoFlow.DatasetGenerator import DatasetGenerator
 from GeoFlow.SeismicGenerator import Acquisition
@@ -31,7 +31,7 @@ class GeoDataset:
     model parameters.
     """
     name = "BaseDataset"
-    basepath = "Datasets"
+    basepath = os.path.abspath("Datasets")
 
     # Seed of the 1st model generated. Seeds for subsequent models are
     # incremented by 1.
@@ -227,50 +227,71 @@ class GeoDataset:
 
         return inputs, outputs, filenames
 
-    def plot_example(self, filename=None, toinputs=None, tooutputs=None,
-                     ims=None):
+    def plot_example(self, filename=None, phase='train', toinputs=None,
+                     tooutputs=None, plot_preds=False, nn_name=None, ims=None):
         """
         Plot the data and the labels of an example.
 
         :param filename: If provided, get the example in filename. If None, get
-                         a random example.
+                         a random example for a file list provided by phase.
+        :param phase: Either "train", "test" or "validate". Get an example from
+                      the "phase" dataset.
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
-        :param ims:      List of return values of plt.imshow to update.
+        :param plot_preds: Whether or not to plot predictions.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
+        :param ims: List of return values of plt.imshow to update.
         """
 
-        inputs, labels, weights, _ = self.get_example(filename=filename,
-                                                      toinputs=toinputs,
-                                                      tooutputs=tooutputs)
+        (inputs, labels,
+         weights, filename) = self.get_example(filename=filename,
+                                               phase=phase,
+                                               toinputs=toinputs,
+                                               tooutputs=tooutputs)
+        rows = [inputs, labels, weights]
+        rows_meta = [self.inputs, self.outputs, self.outputs]
+        if plot_preds:
+            preds = self.generator.read_predictions(filename, nn_name)
+            rows.append(preds)
+            rows_meta.append(self.outputs)
 
-        nplot = np.max([len(inputs), len(labels)])
+        nrows = len(rows)
+        ims_per_row = [sum(row[name].naxes for name in row)
+                       for row in rows_meta]
+        qty_ims = sum(ims_per_row)
+        ncols = np.lcm.reduce(ims_per_row)
         if ims is None:
-            fig, axs = plt.subplots(3, nplot, figsize=[16, 8], squeeze=False)
-            ims = [None for _ in range(len(inputs)+len(labels)+len(weights))]
+            fig = plt.figure(figsize=[16, 8], constrained_layout=False)
+            gs = fig.add_gridspec(nrows=nrows, ncols=ncols)
+            axs = []
+            for i, (row, ims_in_row) in enumerate(zip(rows, ims_per_row)):
+                ncols_per_im = ncols // ims_in_row
+                for j_min in range(0, ncols, ncols_per_im):
+                    ax = fig.add_subplot(gs[i, j_min:j_min+ncols_per_im])
+                    axs.append(ax)
+            ims = [None for _ in range(qty_ims)]
         else:
             fig = None
-            axs = np.zeros((3, nplot))
+            axs = [None for _ in range(qty_ims)]
 
         n = 0
-        for ii, name in enumerate(inputs):
-            ims[n] = self.inputs[name].plot(inputs[name],
-                                            axs[0, ii],
-                                            im=ims[n])
-            n += 1
-        for ii, name in enumerate(labels):
-            ims[n] = self.outputs[name].plot(labels[name],
-                                             axs[1, ii],
-                                             im=ims[n])
-            n += 1
-        for ii, name in enumerate(weights):
-            ims[n] = self.outputs[name].plot(weights[name],
-                                             axs[2, ii],
-                                             im=ims[n])
-            n += 1
+        for row, row_meta in zip(rows, rows_meta):
+            for colname in row:
+                naxes = row_meta[colname].naxes
+                input_ims = ims[n:n+naxes]
+                input_axs = axs[n:n+naxes]
+                output_ims = row_meta[colname].plot(row[colname],
+                                                    axs=input_axs,
+                                                    ims=input_ims)
+                for im in output_ims:
+                    ims[n] = im
+                    n += 1
 
         return fig, axs, ims
 
-    def animate(self, phase='train', toinputs=None, tooutputs=None):
+    def animate(self, phase='train', toinputs=None, tooutputs=None,
+                plot_preds=False, nn_name=None):
         """
         Produce an animation of a dataset.
 
@@ -280,17 +301,27 @@ class GeoDataset:
                       `"validate"`.
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
+        :param plot_preds: Whether or not to plot predictions.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
         """
-        fig, axs, ims = self.plot_example(toinputs=toinputs,
-                                          tooutputs=tooutputs)
+        fig, axs, ims = self.plot_example(phase=phase,
+                                          toinputs=toinputs,
+                                          tooutputs=tooutputs,
+                                          plot_preds=plot_preds,
+                                          nn_name=nn_name)
         plt.tight_layout()
 
         def init():
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
+            self.plot_example(phase=phase, toinputs=toinputs,
+                              tooutputs=tooutputs, ims=ims,
+                              plot_preds=plot_preds, nn_name=nn_name)
             return ims
 
         def animate(_):
-            self.plot_example(toinputs=toinputs, tooutputs=tooutputs, ims=ims)
+            self.plot_example(phase=phase, toinputs=toinputs,
+                              tooutputs=tooutputs, ims=ims,
+                              plot_preds=plot_preds, nn_name=nn_name)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,
@@ -352,6 +383,7 @@ class GeoDataset:
         tfdataset = tfdataset.map(tf_fun,
                                   num_parallel_calls=num_parallel_calls,
                                   deterministic=False)
-        tfdataset = tfdataset.repeat()
-        tfdataset = tfdataset.batch(batch_size=batch_size)
+        if phase in ["train", "validation"]:
+            tfdataset = tfdataset.repeat()
+        tfdataset = tfdataset.batch(batch_size=batch_size, drop_remainder=True)
         return tfdataset

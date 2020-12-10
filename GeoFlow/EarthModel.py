@@ -153,9 +153,12 @@ class MarineModel(EarthModel):
                                  prob_deform_change=self.prob_deform_change)
         else:
             deform = None
-        waterseq = Sequence(lithologies=[water], ordered=False, nmax=1,
+        waterseq = Sequence(lithologies=[water], ordered=False,
                             thick_min=self.thick0min,
-                            thick_max=self.thick0max)
+                            thick_max=self.thick0max,
+                            nmin=1)
+        self.thick0min = int(self.water_dmin / self.dh)
+        self.thick0max = int(self.water_dmax / self.dh)
         rocseq = Sequence(lithologies=[roc], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[waterseq, rocseq])
         properties = strati.properties()
