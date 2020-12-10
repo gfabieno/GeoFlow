@@ -15,7 +15,7 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange)
+                                      reshape, cumsum, arange, gather)
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
@@ -131,10 +131,7 @@ class RCNN2D(Model):
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             self.inputs = self.build_inputs()
-            self.outputs = self.build_network()
-            self.model = Model(inputs=self.inputs,
-                               outputs=self.outputs,
-                               name="RCNN2D")
+            self.outputs = self.build_network(self.inputs)
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self):
@@ -148,8 +145,9 @@ class RCNN2D(Model):
                          dtype=tf.string)
         return {"shotgather": shotgather, "filename": filename}
 
-    def build_network(self):
+    def build_network(self, inputs):
         params = self.params
+        batch_size = self.params.batch_size
 
         self.decoder = {}
         self.rnn = {}
@@ -157,7 +155,9 @@ class RCNN2D(Model):
 
         self.encoder = build_encoder(kernels=params.encoder_kernels,
                                      dilation_rates=params.encoder_dilations,
-                                     qties_filters=params.encoder_filters)
+                                     qties_filters=params.encoder_filters,
+                                     input_shape=inputs['shotgather'].shape,
+                                     batch_size=batch_size)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.encoder['ref'].trainable = False
 
@@ -165,56 +165,77 @@ class RCNN2D(Model):
                                kernel=params.rcnn_kernel,
                                qty_filters=params.rcnn_filters,
                                dilation_rate=params.rcnn_dilation,
-                               input_shape=self.encoder.output.shape,
-                               batch_size=params.batch_size,
+                               input_shape=self.encoder.output_shape,
+                               batch_size=batch_size,
                                name="time_rcnn")
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
         self.decoder['ref'] = Conv2D(2, params.decode_ref_kernel,
-                                     padding='same', name="ref")
+                                     padding='same',
+                                     input_shape=self.rcnn.output_shape,
+                                     batch_size=batch_size, name="ref")
 
-        shape_after_pooling = self.rcnn.output.shape[[0, 1, 3]]
+        shape_before_pooling = np.array(self.rcnn.output_shape)
+        shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
         self.rnn['vrms'] = build_rnn(units=200,
                                      input_shape=shape_after_pooling,
-                                     batch_size=params.batch_size,
+                                     batch_size=batch_size,
                                      name="rnn_vrms")
         if params.freeze_to in ['vrms', 'vint', 'vdepth']:
             self.rnn['vrms'].trainable = False
 
         if params.use_cnn:
+            input_shape = self.rnn['vrms'].output_shape
             self.cnn['vrms'] = Conv2D(params.cnn_filters, params.cnn_kernel,
                                       dilation_rate=params.cnn_dilation,
                                       padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
                                       name="cnn_vrms")
             if params.freeze_to in ['vrms', 'vint', 'vdepth']:
                 self.cnn['vrms'].trainable = False
 
+        if params.use_cnn:
+            input_shape = self.cnn['vrms'].output_shape
+        else:
+            input_shape = self.rnn['vrms'].output_shape
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
                                       name="vrms")
 
         self.rnn['vint'] = build_rnn(units=200,
-                                     input_shape=self.rnn['vrms'].output.shape,
-                                     batch_size=params.batch_size,
+                                     input_shape=input_shape,
+                                     batch_size=batch_size,
                                      name="rnn_vint")
         if params.freeze_to in ['vint', 'vdepth']:
             self.rnn['vint'].trainable = False
 
         if params.use_cnn:
+            input_shape = self.rnn['vint'].output_shape
             self.cnn['vint'] = Conv2D(params.cnn_filters, params.cnn_kernel,
                                       dilation_rate=params.cnn_dilation,
                                       padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
                                       name="cnn_vint")
             if params.freeze_to in ['vint', 'vdepth']:
                 self.cnn['vint'].trainable = False
 
+        if params.use_cnn:
+            input_shape = self.cnn['vint'].output_shape
+        else:
+            input_shape = self.rnn['vint'].output_shape
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
                                       name="vint")
 
-        vint_shape = self.decoder['vint'].output.shape[1:]
+        vint_shape = self.decoder['vint'].output_shape[1:]
         self.time_to_depth = build_time_to_depth_converter(self.dataset,
                                                            vint_shape,
-                                                           params.batch_size,
+                                                           batch_size,
                                                            name="vdepth")
 
     def call(self):
@@ -393,18 +414,26 @@ def broadcast_weights(loaded_weights, current_weights):
     return current_weights
 
 
-def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
+def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
+                  batch_size, input_dtype=tf.float32, name="encoder"):
     """
     Build the encoder head, a series of CNNs.
 
     :param kernels: Kernel shapes of each convolution.
     :param qties_filters: Quantity of filters of each CNN.
     :param diltation_rates: Dilation rate in each dimension of each CNN.
+    :param input_shape: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
     :param name: Name of the produced Keras model.
 
     :return: A Keras model.
     """
+    input_shape = input_shape[1:]
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
+
     encoder = Sequential(name=name)
+    encoder.add(input)
     for kernel, qty_filters, dilation_rate in zip(kernels, qties_filters,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
@@ -430,8 +459,7 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
     :return: A Keras model.
     """
     input_shape = input_shape[1:]
-    input = Input(shape=input_shape, batch_size=batch_size,
-                  dtype=input_dtype)
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
 
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
@@ -458,8 +486,7 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     :return: A Keras model.
     """
     input_shape = input_shape[1:]
-    input = Input(shape=input_shape, batch_size=batch_size,
-                  dtype=input_dtype)
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     data_stream = Permute((2, 1, 3))(input)
     batches, shots, timesteps, filter_dim = data_stream.get_shape()
     data_stream = reshape(data_stream,
