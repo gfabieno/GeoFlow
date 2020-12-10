@@ -14,12 +14,12 @@ from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
-from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange)
+from tensorflow.keras.backend import max as reduce_max, reshape
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
+from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 
 WEIGHTS_NAME = "checkpoint_{epoch}"
 
@@ -500,85 +500,6 @@ def assert_broadcastable(arr1, arr2, message=None):
         if message is None:
             message = "Arrays are not compatible for broadcasting."
         raise AssertionError(message)
-
-
-def build_time_to_depth_converter(case, input_shape, batch_size,
-                                  input_dtype=tf.float32,
-                                  name="time_to_depth_converter"):
-    """
-    Build a time to depth conversion model in Keras.
-
-    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
-                 `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
-                 case are used.
-    :param input_size: The shape of the expected input.
-    :param batch_size: Quantity of examples in a batch.
-    :param input_dtype: Data type of the input.
-    :param name: Name of the produced Keras model.
-
-    :return: A Keras model.
-    """
-    vmax = case.model.vp_max
-    vmin = case.model.vp_min
-    dh = case.model.dh
-    dt = case.acquire.dt
-    resampling = case.acquire.resampling
-    tdelay = case.acquire.tdelay
-    tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
-    nz = case.model.NZ
-    source_depth = case.acquire.source_depth
-    max_depth = nz - int(source_depth / dh)
-
-    vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
-    actual_vint = vint*(vmax-vmin) + vmin
-    # Convert to unitless quantity of grid cells.
-    depth_intervals = actual_vint * dt * resampling / (dh*2)
-    paddings = [[0, 0], [1, 0], [0, 0], [0, 0]]
-    depth_intervals = tf.pad(depth_intervals, paddings, "CONSTANT")
-    depths = cumsum(depth_intervals, axis=1)
-    depth_delay = reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
-                             keepdims=True)
-    depths -= depth_delay
-    target_depths = arange(max_depth, dtype=tf.float32)
-    vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
-
-    time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)
-    return time_to_depth_converter
-
-
-def interp_nearest(x, x_ref, y_ref, axis=0):
-    """Perform 1D nearest neighbors interpolation in TensorFlow.
-
-    :param x: Positions of the new sampled data points. Has one dimension.
-    :param x_ref: Reference data points. `x_ref` has a first dimension of
-                  arbitrary length. Other dimensions are treated independently.
-    :param y_ref: Reference data points. `y_ref` has the same shape as `x_ref`.
-    :param axis: Dimension along which interpolation is executed.
-    """
-    new_dims = iter([axis, 0])
-    # Create a list where `axis` and `0` are interchanged.
-    permutation = [dim if dim not in [axis, 0] else next(new_dims)
-                   for dim in range(tf.rank(x_ref))]
-    x_ref = tf.transpose(x_ref, permutation)
-    y_ref = tf.transpose(y_ref, permutation)
-
-    x_ref = tf.expand_dims(x_ref, axis=0)
-    while tf.rank(x) != tf.rank(x_ref):
-        x = tf.expand_dims(x, axis=-1)
-    distances = tf.abs(x_ref-x)
-    nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
-
-    grid = tf.meshgrid(*[tf.range(dim) for dim in nearest_neighbor.shape],
-                       indexing="ij")
-    nearest_neighbor = tf.reshape(nearest_neighbor, [-1])
-    grid = [tf.reshape(t, [-1]) for t in grid[1:]]
-    idx = [nearest_neighbor, *grid]
-    idx = tf.transpose(idx, (1, 0))
-    y = tf.gather_nd(y_ref, idx)
-    y = tf.reshape(y, [-1, *y_ref.shape[1:]])
-
-    y = tf.transpose(y, permutation)
-    return y
 
 
 def find_latest_checkpoint(logdir):
