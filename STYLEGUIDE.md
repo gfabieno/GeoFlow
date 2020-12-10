@@ -3,7 +3,7 @@
 ## Project-specific style conventions
 
 Hanging indents should be at the same level as the opening parenthesis, bracket or brace, as in
-```
+```python
 parser.add_argument("--case",
                     type=str,
                     default="Case1Dsmall",
@@ -15,7 +15,7 @@ Identifiers must be descriptive and short enough to maintain ease-of-use.
 Module names should be written in `CamelCase`, as opposed to PEP 8 conventions.
 
 Use docstring conventions of PEP 257. Docstrings should follow the reStructuredText format. Have the docstring title on the line following the opening quotes. Have the indentation at the same level as the opening and closing quotes. Always use the appropriate capitalization and punctuation in all parts of the docstrings. Here is a template for docstrings:
-```
+```python
 """
 Describe the contents in a short, descriptive, one-line title.
 
@@ -33,7 +33,7 @@ items of the docstring.
 """
 ```
 If there is multiple outputs, use this alternative `:return:`:
-```
+```python
 :return:
     first_output: Describe the first output.
     second_output: Describe the second output, and so on.
@@ -54,10 +54,11 @@ Imports should be grouped in the following order:
 1. Standard library imports.
 2. Related third party imports.
 3. Local application/library specific imports.
+
 You should put a blank line between each group of imports.
 
 If operators with different priorities are used, consider adding whitespace around the operators with the lowest priority(ies). Use your own judgment; however, never use more than one space, and always have the same amount of whitespace on both sides of a binary operator, as in
-```
+```python
 i = i + 1
 submitted += 1
 x = x*2 - 1
@@ -66,7 +67,7 @@ c = (a+b) * (a-b)
 ```
 
 Docstring titles and commit message titles should start with an infinitive verb, for instance
-```
+```python
 """
 Generate a complete dataset.
 """
@@ -75,13 +76,13 @@ or
 ```Merge pull request```
 
 Commit messages should follow [these guidelines](https://chris.beams.io/posts/git-commit/):
-    1. Separate subject from body with a blank line
-    2. Limit the subject line to 50 characters
-    3. Capitalize the subject line
-    4. Do not end the subject line with a period
-    5. Use the imperative mood in the subject line
-    6. Wrap the body at 72 characters
-    7. Use the body to explain what and why vs. how
+1. Separate subject from body with a blank line
+2. Limit the subject line to 50 characters
+3. Capitalize the subject line
+4. Do not end the subject line with a period
+5. Use the imperative mood in the subject line
+6. Wrap the body at 72 characters
+7. Use the body to explain what and why vs. how
 Most often, a descriptive title is sufficient. Use the following template if your commit needs more extensive description:
 ```
 Summarize changes in around 50 characters or less
