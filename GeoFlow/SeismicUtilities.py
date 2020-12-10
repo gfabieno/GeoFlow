@@ -140,6 +140,9 @@ def mask_batch(batch, mask_fraction, mask_time_frac):
 
 
 def top_mute(data, vp0, wind_length, offsets, dt, tdelay):
+    assert (vp0 == vp0[0]).all(), ("Muting is not implemented for velocity "
+                                   "models with varying surface velocities.")
+    vp0 = vp0[0]
     taper = np.arange(wind_length)
     taper = np.sin(np.pi * taper / (2 * wind_length - 1)) ** 2
     nt = data.shape[0]
