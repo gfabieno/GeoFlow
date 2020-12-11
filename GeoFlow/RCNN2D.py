@@ -154,7 +154,9 @@ class RCNN2D(Model):
         filename = Input(shape=[1],
                          batch_size=self.params.batch_size,
                          dtype=tf.string)
-        return {"shotgather": shotgather, "filename": filename}
+        inputs = {"shotgather": shotgather, "filename": filename}
+        self._set_inputs(inputs)
+        return inputs
 
     def build_network(self, inputs: dict):
         """
