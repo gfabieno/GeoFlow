@@ -530,3 +530,8 @@ class Dispersion(GraphInput):
         return data
 
 
+    def plot(self, *args, **kwargs):
+
+        kwargs["clip"] = 1.0
+        kwargs["cmap"] = plt.get_cmap('hot')
+        return super().plot(*args, **kwargs)
