@@ -15,6 +15,8 @@ def main(args, use_tune=False):
         dataset.testsize = 5
 
         args.params.batch_size = 2
+        args.params.epochs = 2
+        args.params.steps_per_epoch = 1
 
     # Generate the dataset.
     if args.training in [0, 2]:
