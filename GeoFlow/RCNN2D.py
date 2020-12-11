@@ -374,7 +374,8 @@ class RCNN2D(Model):
                                       profile_batch=0)
             checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
                                                WEIGHTS_NAME),
-                                          save_freq='epoch')
+                                          save_freq='epoch',
+                                          save_weights_only=False)
             callbacks = [tensorboard, checkpoints]
         else:
             tune_report = TuneReportCheckpointCallback(filename='.',
