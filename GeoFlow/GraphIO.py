@@ -390,26 +390,6 @@ class GraphInput:
         return data
 
 
-# TODO Jefferson complete that. Done!!
-class Dispersion(GraphInput):
-    name = "dispersion"
-
-    def __init__(self, acquire: Acquisition, model: EarthModel, cmax , cmin):
-        self.acquire = acquire
-        self.model = model
-        self.cmax, self.cmin = cmax, cmin
-
-    def generate(self, data):
-        src_pos, rec_pos = self.acquire.set_rec_src()
-        dt = self.acquire.dt * self.acquire.resampling
-        d,fr,c = dispersion_curve(data, rec_pos[0], dt, src_pos[0,0], minc=1000, maxc=5000)
-        f = fr.reshape(fr.size)
-        d = d[:, f > 0];    f = f[f > 0]
-        d = d[:, f < 150];  f = f[f < 150]
-        d = abs(d)
-        return d
-
-
 class ShotGather(GraphInput):
     name = "shotgather"
 
@@ -485,3 +465,33 @@ class ShotGather(GraphInput):
         data = np.expand_dims(data, axis=-1)
 
         return data
+
+
+# TODO Jefferson complete that. Done!!
+class Dispersion(GraphInput):
+    name = "dispersion"
+
+    def __init__(self, acquire: Acquisition, model: EarthModel, cmax , cmin):
+        self.acquire = acquire
+        self.model = model
+        self.cmax, self.cmin = cmax, cmin
+
+    def generate(self, data):
+        src_pos, rec_pos = self.acquire.set_rec_src()
+        dt = self.acquire.dt * self.acquire.resampling
+        d,fr,c = dispersion_curve(data, rec_pos[0], dt, src_pos[0,0], minc=self.cmax, maxc=self.cmin)
+        f = fr.reshape(fr.size)
+        d = d[:, f > 0];    f = f[f > 0]
+        d = d[:, f < 100];  f = f[f < 100]
+        d = abs(d)
+        d = (d-d.min())/(d.max()-d.min())
+        return d
+
+    def preprocess(self, data, labels):
+        src_pos_all, rec_pos_all = self.acquire.set_rec_src()
+        data = np.reshape(data, [data.shape[0], src_pos_all.shape[1], -1])
+        data = data.swapaxes(1, 2)
+        data = np.expand_dims(data, axis=-1)
+        return data
+
+
