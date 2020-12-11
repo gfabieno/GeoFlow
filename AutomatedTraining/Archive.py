@@ -9,12 +9,13 @@ duplicated repository. Uncommitted changes are preserved.
 """
 
 import sys
+from importlib import import_module
 from os import makedirs, listdir, remove, symlink, walk, chdir, getcwd
 from os.path import join, realpath, exists, pardir
 from subprocess import run
 from copy import deepcopy
+from weakref import proxy
 
-LOGS_ROOT_DIRECTORY = "logs"
 PROJECT_NAME = "Deep_2D_velocity"
 
 
@@ -24,7 +25,7 @@ class ArchiveRepository:
 
     `ArchiveRepository` can be used with the `with` statement. Upon entering,
     the current repository is copied to a unique subdirectory of
-    `LOGS_ROOT_DIRECTORY` and a `model` directory is also created at the same
+    `self.logs_directory` and a `model` directory is also created at the same
     path. The current working directory is set as the one containing the copied
     code. Upon exiting, the previous working directory is recovered.
 
@@ -33,7 +34,8 @@ class ArchiveRepository:
             ...
     """
 
-    def __init__(self):
+    def __init__(self, logs_directory):
+        self.logs_directory = logs_directory
         (self.logs, self.model,
          self.code, self.prototype) = self.create_directory_tree()
 
@@ -65,7 +67,7 @@ class ArchiveRepository:
         current_message = current_message.stdout.strip("\n")
         current_commit = " ".join([current_commit, current_message])
         current_commit = current_commit.replace(" ", "_")
-        logs_dir = join(LOGS_ROOT_DIRECTORY, current_branch, current_commit)
+        logs_dir = join(self.logs_directory, current_branch, current_commit)
         logs_dir = realpath(logs_dir)
         if exists(logs_dir):
             contents = listdir(logs_dir)
@@ -137,3 +139,27 @@ class ArchiveRepository:
             for line in lines:
                 command_file.write(line)
                 command_file.write("\n")
+
+    def import_main(self):
+        """
+        Dynamically and safely import the current main script.
+
+        Sample usage:
+            with ArchiveRepository() as archive:
+                with archive.import_main() as main:
+                    ...
+        """
+        return _ImportMain()
+
+
+class _ImportMain:
+    """Dynamically import the current `main`."""
+
+    def __enter__(self):
+        self.main = import_module("main").main
+        return proxy(self.main)
+
+    def __exit__(self, exc_type, exc_value, tb):
+        """Delete all references appropriately"""
+        del sys.modules["main"]
+        del self.main

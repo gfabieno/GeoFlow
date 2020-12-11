@@ -73,20 +73,34 @@ class DatasetGenerator:
                 labels: A dictionary of labels' name-values pairs.
                 weights: A dictionary of weights' name-values pairs.
         """
-        file = h5.File(filename, "r")
-        inputs = {key: file[key][:] for key in self.inputs}
-        labels = {key: file[key][:] for key in self.outputs}
-        weights = {key: file[key+"_w"][:] for key in self.outputs}
-        file.close()
-
+        with h5.File(filename, "r") as file:
+            inputs = {key: file[key][:] for key in self.inputs}
+            labels = {key: file[key][:] for key in self.outputs}
+            weights = {key: file[key+"_w"][:] for key in self.outputs}
         return inputs, labels, weights
+
+    def read_predictions(self, filename: str, nn_name: str):
+        """
+        Read one example's predictions from hdf5 file.
+
+        :param filename: Name of the file.
+        :param nn_name: Name of the network that generated the results. This is
+                        used as the prediction directory's name.
+
+        :returns:
+                preds: A dictionary of predictions' name-values pairs.
+        """
+        directory, filename = os.path.split(filename)
+        filename = os.path.join(directory, nn_name, filename)
+        with h5.File(filename, "r") as file:
+            preds = {key: file[key][:] for key in self.outputs}
+        return preds
 
     def write(self, exampleid, savedir, inputs, labels, weights,
               filename=None):
         """
         Write one example in hdf5 format.
 
-        @params:
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
         :param inputs: A dicitonary of graph inputs' name-values pairs.
@@ -99,14 +113,33 @@ class DatasetGenerator:
         else:
             filename = os.path.join(savedir, filename)
 
-        file = h5.File(filename, "w")
-        for name in inputs:
-            file[name] = inputs[name]
-        for name in labels:
-            file[name] = labels[name]
-        for name in weights:
-            file[name+"_w"] = weights[name]
-        file.close()
+        with h5.File(filename, "w") as file:
+            for name in inputs:
+                file[name] = inputs[name]
+            for name in labels:
+                file[name] = labels[name]
+            for name in weights:
+                file[name+"_w"] = weights[name]
+
+    def write_predictions(self, exampleid, savedir, preds, filename=None):
+        """
+        :param exampleid: The example ID number.
+        :param savedir The directory in which to save the example.
+        :param inputs: A dicitonary of graph inputs' name-values pairs.
+        :param labels: A dicitonary of graph labels' name-values pairs.
+        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param filename: If provided, save the example in filename.
+        """
+        if filename is None:
+            filename = os.path.join(savedir, "example_%d" % exampleid)
+        else:
+            filename = os.path.join(savedir, filename)
+
+        with h5.File(filename, "w") as file:
+            for name in preds:
+                if name in file.keys():
+                    del file[name]
+                file[name] = preds[name]
 
     def generate_dataset(self,
                          savepath: str,
