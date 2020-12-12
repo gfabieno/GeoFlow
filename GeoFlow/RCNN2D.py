@@ -6,7 +6,7 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import split, join, isdir
+from os.path import join, isdir
 
 import numpy as np
 import tensorflow as tf
@@ -300,8 +300,9 @@ class RCNN2D(Model):
         if path is None:
             filename = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
-            filename = split(path)[-1]
-            current_epoch = int(filename[-4:])
+            current_epoch = filename.split("_")[-1].split(".")[0]
+            current_epoch = filename
+            current_epoch = int(current_epoch)
             self.load_weights(filename)
         else:
             current_epoch = 0
@@ -580,7 +581,8 @@ def find_latest_checkpoint(logdir: str):
     :type logdir: str
     """
     expr = re.compile(r"checkpoint_[0-9]*")
-    checkpoints = [f.split("_")[-1] for f in listdir(logdir) if expr.match(f)]
+    checkpoints = [f.split("_")[-1].split(".")[0]
+                   for f in listdir(logdir) if expr.match(f)]
     checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
         restore_from = str(max(checkpoints))
