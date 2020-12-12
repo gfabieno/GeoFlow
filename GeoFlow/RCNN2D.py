@@ -370,18 +370,13 @@ class RCNN2D(Model):
         """
         epochs = self.params.epochs + self.current_epoch
 
-        if not use_tune:
-            tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
-                                      profile_batch=0)
-            checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
-                                               WEIGHTS_NAME),
-                                          save_freq='epoch',
-                                          save_weights_only=False)
-            callbacks = [tensorboard, checkpoints]
-        else:
-            tune_report = TuneReportCheckpointCallback(filename='.',
-                                                       frequency=1)
-            callbacks = [tune_report]
+        tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
+                                  profile_batch=0)
+        checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
+                                           WEIGHTS_NAME),
+                                      save_freq='epoch',
+                                      save_weights_only=False)
+        callbacks = [tensorboard, checkpoints]
         self.fit(self.tfdataset,
                  epochs=epochs,
                  callbacks=callbacks,
