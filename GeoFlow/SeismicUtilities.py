@@ -643,13 +643,11 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
         freq: Vector of frequencies.
         c: Vector of evaluated velocities.
     """
-    # data = np.pad(data, [(500, 500), (0, 0)])
     freq = np.fft.fftfreq(np.size(data, 0), dt)
     c = np.linspace(minc, maxc, 201)[:-1]
     c = c[1:]
     data_fft = np.fft.fft(data, axis=0)
     data_fft_norm = data_fft / (np.abs(data_fft) + epsilon*np.abs(data_fft).max())
-    # A = np.zeros((len(freq), len(c)), dtype=complex)
     a2 = np.zeros((len(freq), len(c)), dtype=complex)
     freq = np.reshape(freq, [-1, 1])
     x = np.abs(gx-sx)

@@ -1,11 +1,7 @@
-# import os
 import tensorflow as tf
 import numpy as np
-# from Cases_define import *
 from importlib import import_module
 
-# case = eval('Case_Permafrost')()
-# case.generate_dataset(ngpu=1)
 dataset_module = import_module("DefinedDataset.DatasetPermafrost")
 dataset = getattr(dataset_module, "DatasetPermafrost")()
 dataset.generate_dataset(ngpu=1)
@@ -39,7 +35,6 @@ def build_cnn_model():
         tf.keras.layers.MaxPool2D(pool_size=(2,2)),
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(400, activation=tf.nn.softmax),
-        # tf.keras.layers.Dense(800, activation=tf.nn.softmax),
         tf.keras.layers.Reshape(target_shape=(-1,400,1))
     ])
     return cnn_network
@@ -50,7 +45,6 @@ print(cnn_model.summary())
 
 cnn_model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=1e-3),
                   loss='sparse_categorical_crossentropy',
-                  # loss=tf.losses.SparseCategoricalCrossentropy,
                   metrics=['accuracy'])
 cnn_model.fit(inputs, labels, batch_size=batch_size, epochs=5)
 
