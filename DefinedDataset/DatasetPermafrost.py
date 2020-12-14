@@ -119,10 +119,10 @@ class PermafrostModel(EarthModel):
                          thick_min=20, thick_max=40)
         unfrozen1 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8, thick_max=20)
-        lithologies = [lithologies["Partially Frozen Silts"],
-                       lithologies["Frozen Sands2"],
-                       lithologies["Partially Frozen Silts"]]
-        permafrost = Sequence(lithologies=lithologies,
+        lithologies_permafrost = [lithologies["Partially Frozen Silts"],
+                                  lithologies["Frozen Sands2"],
+                                  lithologies["Partially Frozen Silts"]]
+        permafrost = Sequence(lithologies=lithologies_permafrost,
                               ordered=False, deform=deform,
                               thick_min=80, thick_max=240)
         unfrozen2 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
