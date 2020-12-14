@@ -146,7 +146,7 @@ class PermafrostModel(EarthModel):
                          thick_min=20, thick_max=40)
         unfrozen1 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8, thick_max=20)
-        Permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
+        permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
                                            lithologies["Frozen Sands2"],
                                            lithologies["Partially Frozen Silts"]
                                            ],
@@ -154,11 +154,11 @@ class PermafrostModel(EarthModel):
                               thick_min=80, thick_max=240)
         unfrozen2 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8, thick_max=40)
-        Hydrates = Sequence(lithologies=[lithologies["Hydrates"]],
+        hydrates = Sequence(lithologies=[lithologies["Hydrates"]],
                             deform=deform, thick_min=8, thick_max=80)
         unfrozen3 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8)
-        sequences = [water, unfrozen1, Permafrost, unfrozen2, Hydrates, unfrozen3]
+        sequences = [water, unfrozen1, permafrost, unfrozen2, hydrates, unfrozen3]
         strati = Stratigraphy(sequences=sequences)
 
         properties = strati.properties()
@@ -177,16 +177,16 @@ class PermafrostModel(EarthModel):
 
     def generate_model(self, seed=None):
 
-        props2D, layerids, layers = super().generate_model(seed=seed)
-        tempvpvs = props2D["vpvs"]
-        tempvp = props2D["vp"]
+        props2d, layerids, layers = super().generate_model(seed=seed)
+        tempvpvs = props2d["vpvs"]
+        tempvp = props2d["vp"]
         tempvs = tempvp*0
         mask = tempvpvs != 0
         tempvs[mask] = tempvp[mask] / tempvpvs[mask]
-        props2D["vs"] = tempvs
+        props2d["vs"] = tempvs
         # props2D["vs"] = props2D["vp"] / props2D["vpvs"]
 
-        return props2D, layerids, layers
+        return props2d, layerids, layers
 
 class AcquisitionPermafrost(Acquisition):
     """
@@ -217,14 +217,14 @@ class AcquisitionPermafrost(Acquisition):
                             np.full_like(sx, self.sourcetype)], axis=0)
 
         # Add receivers
-        if self.gmin:
-            gmin = self.gmin
-        else:
-            gmin = self.Npad
-        if self.gmax:
-            gmax = self.gmax
-        else:
-            gmax = self.model.NX - self.Npad
+        # if self.gmin:
+        #     gmin = self.gmin
+        # else:
+        #     gmin = self.Npad
+        # if self.gmax:
+        #     gmax = self.gmax
+        # else:
+        #     gmax = self.model.NX - self.Npad
 
         gx0 = np.arange(offmin, offmax, self.dg*self.model.dh)
         gx = np.concatenate([s - gx0 for s in sx], axis = 0)
@@ -268,9 +268,9 @@ class DatasetPermafrost(GeoDataset):
         model = PermafrostModel()
 
         model.dh = dh = 2.5
-        Nshots = 1
+        nshots = 1
         dshots = 50
-        length = Nshots*dshots + 1682
+        length = nshots*dshots + 1682
         z = 1000
         model.NX = int(length/dh)
         model.NZ = int(z/dh)
@@ -292,7 +292,7 @@ class DatasetPermafrost(GeoDataset):
         # acquire.sourcetype = 2
         acquire.dt = dt = 2e-4
         acquire.NT = int(2/dt)
-        acquire.dg = dg = 5  # 5*dh = 12.5 m
+        acquire.dg = 5  # 5*dh = 12.5 m
         # acquire.gmin = int(100 / dh)
         # acquire.gmax = int(acquire.gmin*dg)
         acquire.fs = True

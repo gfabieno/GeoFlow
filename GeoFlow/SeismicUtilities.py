@@ -636,6 +636,7 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     :param sx: Source position.
     :param minc: Minimum phase velocity value to be evaluated.
     :param maxc: Maximum phase velocity value to be evaluated.
+    :param epsilon: damping parameter
 
     :return:
         A: The transformed dispersion data.
@@ -649,13 +650,13 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     data_fft = np.fft.fft(data, axis=0)
     data_fft_norm = data_fft / (np.abs(data_fft) + epsilon*np.abs(data_fft).max())
     # A = np.zeros((len(freq), len(c)), dtype=complex)
-    A2 = np.zeros((len(freq), len(c)), dtype=complex)
+    a2 = np.zeros((len(freq), len(c)), dtype=complex)
     freq = np.reshape(freq, [-1, 1])
     x = np.abs(gx-sx)
     x -= np.min(x)
     x = np.reshape(x, [1, -1])
     for i in range(len(c)):
         delta = 2 * np.pi * freq * x / c[i]
-        A2[:, i] = np.sum(np.exp(1j*delta) * data_fft_norm, axis=1)
-    A = np.transpose(A2)
-    return A, freq, c
+        a2[:, i] = np.sum(np.exp(1j*delta) * data_fft_norm, axis=1)
+    a = np.transpose(a2)
+    return a, freq, c

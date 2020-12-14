@@ -502,7 +502,6 @@ class ShotGather(GraphInput):
         return data
 
 
-# TODO Jefferson complete that. Done!!
 class Dispersion(GraphInput):
     name = "dispersion"
 
@@ -517,7 +516,7 @@ class Dispersion(GraphInput):
         d,fr,c = dispersion_curve(data, rec_pos[0], dt, src_pos[0,0], minc=self.cmax, maxc=self.cmin)
         f = fr.reshape(fr.size)
         d = d[:, f > 0];    f = f[f > 0]
-        d = d[:, f < 100];  f = f[f < 100]
+        d = d[:, f < 100] #;  f = f[f < 100]
         d = abs(d)
         d = (d-d.min())/(d.max()-d.min())
         return d
