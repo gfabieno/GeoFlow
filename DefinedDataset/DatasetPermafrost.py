@@ -26,36 +26,35 @@ class PermafrostModel(EarthModel):
         q = Property("q", vmin=1000, vmax=1000)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Unfrozen sediments"  # Buckingham 1996, Fig 11
+        name = "Unfrozen sediments"  # Buckingham 1996, Fig 11.
         vp = Property("vp", vmin=1700, vmax=1700, texture=200)
         vpvs = Property("vpvs", vmin=4.25, vmax=4.25, texture=1.52)
         rho = Property("rho", vmin=1900, vmax=1900, texture=150)
         q = Property("q", vmin=50, vmax=50, texture=30)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Frozen Sands"  # Matsushima 2016, fig 13c @ 6C Dou 2016
+        name = "Frozen Sands"  # Matsushima 2016, fig 13c @ 6C Dou 2016.
         vp = Property("vp", vmin=3700, vmax=3700, texture=200)
         vpvs = Property("vpvs", vmin=2.31, vmax=2.31, texture=0.42)
         rho = Property("rho", vmin=1900, vmax=1900, texture=150)
         q = Property("q", vmin=60, vmax=60, texture=30)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Partially Frozen Sands"  # Matsushima 2016, fig 13c @ 3C
+        name = "Partially Frozen Sands"  # Matsushima 2016, fig 13c @ 3C.
         vp = Property("vp", vmin=3700, vmax=3700, texture=200)
         vpvs = Property("vpvs", vmin=2.78, vmax=2.78, texture=0.28)
         rho = Property("rho", vmin=1900, vmax=1900, texture=150)
         q = Property("q", vmin=10, vmax=10, texture=3.5)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Frozen Silts"  # Dou 2016, Fig 9, # Buckingham 1996, Fig 11
+        name = "Frozen Silts"  # Dou 2016, Fig 9, # Buckingham 1996, Fig 11.
         vp = Property("vp", vmin=3400, vmax=3400, texture=300)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.29)
         rho = Property("rho", vmin=1900, vmax=1900, texture=150)
         q = Property("q", vmin=45, vmax=45, texture=31.5)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        # Dou 2016, Fig 9
-        # Buckingham 1996, Fig 11
+        # Dou 2016, Fig 9; Buckingham 1996, Fig 11.
         name = "Partially Frozen Silts"
         vp = Property("vp", vmin=2200, vmax=2200, texture=450)
         vpvs = Property("vpvs", vmin=2.78, vmax=2.78, texture=0.94)
@@ -63,7 +62,7 @@ class PermafrostModel(EarthModel):
         q = Property("q", vmin=20, vmax=20, texture=10)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        # Dou 2016, Fig 9, #Buckingham 1996, Fig 11
+        # Dou 2016, Fig 9; Buckingham 1996, Fig 11.
         name = "Partially Frozen Silts2"
         vp = Property("vp", vmin=1950, vmax=1950, texture=550)
         vpvs = Property("vpvs", vmin=3, vmax=3, texture=1.3)
@@ -71,31 +70,31 @@ class PermafrostModel(EarthModel):
         q = Property("q", vmin=25, vmax=25, texture=5)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Frozen Shale"  # Bellefleur 2007, Figure 3 zone 2
-        # IOE Taglu D-43
+        name = "Frozen Shale"  # Bellefleur 2007, Figure 3 zone 2.
+        # IOE Taglu D-43.
         vp = Property("vp", vmin=3000, vmax=3000, texture=950)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.87)
-        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # King, 1976.
         q = Property("q", vmin=100, vmax=100, texture=30)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Iperk"  # Bellefleur 2007, Figure 3 zone 2
-        # IOE Taglu D-43
+        name = "Iperk"  # Bellefleur 2007, Figure 3 zone 2.
+        # IOE Taglu D-43.
         vp = Property("vp", vmin=4000, vmax=4000, texture=1500)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.7)
-        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # King, 1976.
         q = Property("q", vmin=100, vmax=100, texture=30)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        name = "Unfrozen Shale"  # Bellefleur 2007, Figure 3 zone 2
+        name = "Unfrozen Shale"  # Bellefleur 2007, Figure 3 zone 2.
         # IOE Taglu D-43
         vp = Property("vp", vmin=2200, vmax=2200, texture=200)
         vpvs = Property("vpvs", vmin=1.8, vmax=1.8, texture=0.3)
-        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # king, 1976
+        rho = Property("rho", vmin=2300, vmax=2300, texture=175)  # King, 1976.
         q = Property("q", vmin=70, vmax=100, texture=20)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        # Modified from Matsushima 2016, fig 13c @ 6C Dou 2016
+        # Modified from Matsushima 2016, fig 13c @ 6C Dou 2016.
         name = "Frozen Sands2"
         vp = Property("vp", vmin=2600, vmax=2600, texture=300)
         vpvs = Property("vpvs", vmin=2.6, vmax=2.6, texture=0.6)
@@ -103,8 +102,8 @@ class PermafrostModel(EarthModel):
         q = Property("q", vmin=25, vmax=25, texture=10)
         lithologies[name] = Lithology(name=name, properties=[vp, vpvs, rho, q])
 
-        # Modified from Partially frozen Silts Dou 2016, Fig 9,
-        # Buckingham 1996, Fig 11
+        # Modified from Partially frozen Silts Dou 2016, Fig 9.
+        # Buckingham 1996, Fig 11.
         name = "Hydrates"
         vp = Property("vp", vmin=2200, vmax=2200, texture=450)
         vpvs = Property("vpvs", vmin=2.78, vmax=2.78, texture=0.94)
