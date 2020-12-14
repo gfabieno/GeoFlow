@@ -1,14 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from GeoFlow import GeoDataset
 from GeoFlow import Acquisition
 from GeoFlow import Vpdepth, Vsdepth, ShotGather, Dispersion
 from GeoFlow import EarthModel
-from ModelGenerator import (Property,
-                            Lithology,
-                            Deformation,
-                            Sequence,
+from ModelGenerator import (Property, Lithology, Deformation, Sequence,
                             Stratigraphy)
 
 
@@ -121,10 +119,10 @@ class PermafrostModel(EarthModel):
                          thick_min=20, thick_max=40)
         unfrozen1 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8, thick_max=20)
-        permafrost = Sequence(lithologies=[lithologies["Partially Frozen Silts"],
-                                           lithologies["Frozen Sands2"],
-                                           lithologies["Partially Frozen Silts"]
-                                           ],
+        lithologies = [lithologies["Partially Frozen Silts"],
+                       lithologies["Frozen Sands2"],
+                       lithologies["Partially Frozen Silts"]]
+        permafrost = Sequence(lithologies=lithologies,
                               ordered=False, deform=deform,
                               thick_min=80, thick_max=240)
         unfrozen2 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
@@ -133,7 +131,8 @@ class PermafrostModel(EarthModel):
                             deform=deform, thick_min=8, thick_max=80)
         unfrozen3 = Sequence(lithologies=[lithologies["Unfrozen sediments"]],
                              deform=deform, thick_min=8)
-        sequences = [water, unfrozen1, permafrost, unfrozen2, hydrates, unfrozen3]
+        sequences = [water, unfrozen1, permafrost, unfrozen2, hydrates,
+                     unfrozen3]
         strati = Stratigraphy(sequences=sequences)
 
         properties = strati.properties()
@@ -141,10 +140,11 @@ class PermafrostModel(EarthModel):
         vmax = 0
         for seq in sequences:
             for lith in seq:
-                if lith.vpvs.max == 0: vmin = 0
+                if lith.vpvs.max == 0:
+                    vmin = 0
                 elif vmin > lith.vp.min / lith.vpvs.max:
                     vmin = lith.vp.min / lith.vpvs.max
-                if lith.vpvs.min!=0 and vmax < lith.vp.max / lith.vpvs.min:
+                if lith.vpvs.min != 0 and vmax < lith.vp.max/lith.vpvs.min:
                     vmax = lith.vp.max / lith.vpvs.min
         properties["vs"] = [vmin, vmax]
 
@@ -162,6 +162,7 @@ class PermafrostModel(EarthModel):
 
         return props2d, layerids, layers
 
+
 class AcquisitionPermafrost(Acquisition):
     """
     Fix the survey geometry for the ARAC05 survey on the Beaufort Sea.
@@ -169,13 +170,13 @@ class AcquisitionPermafrost(Acquisition):
 
     def set_rec_src(self):
         # Source and receiver positions.
-        offmin = 182        # in meters
-        offmax = offmin + 120*self.dg*self.model.dh   # in meters
+        offmin = 182  # In meters.
+        offmax = offmin + 120*self.dg*self.model.dh  # In meters.
         if self.singleshot:
-            # Add just one source at the right (offmax)
+            # Add just one source at the right (offmax).
             sx = np.arange(self.Npad + offmax, 1 + self.Npad + offmax)
         else:
-            # Compute several sources
+            # Compute several sources.
             l1 = self.Npad + 1
             l2 = self.model.NX - self.Npad
             sx = np.arange(l1, l2, self.ds) * self.model.dh
@@ -186,11 +187,11 @@ class AcquisitionPermafrost(Acquisition):
                             np.zeros_like(sx),
                             sz,
                             sid,
-                            np.full_like(sx, self.sourcetype)], axis=0)
-
+                            np.full_like(sx, self.sourcetype)],
+                           axis=0)
 
         gx0 = np.arange(offmin, offmax, self.dg*self.model.dh)
-        gx = np.concatenate([s - gx0 for s in sx], axis = 0)
+        gx = np.concatenate([s - gx0 for s in sx], axis=0)
 
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
         gz = np.full_like(gx, self.receiver_depth)
@@ -203,9 +204,11 @@ class AcquisitionPermafrost(Acquisition):
                             gid,
                             np.full_like(gx, 2),
                             np.zeros_like(gx),
-                            np.zeros_like(gx)], axis=0,)
+                            np.zeros_like(gx)],
+                           axis=0)
 
         return src_pos, rec_pos
+
 
 class DatasetPermafrost(GeoDataset):
     name = "DatasetPermafrost"
@@ -233,12 +236,10 @@ class DatasetPermafrost(GeoDataset):
         dshots = 50
         length = nshots*dshots + 1682
         z = 1000
-        model.NX = int(length/dh)
-        model.NZ = int(z/dh)
-
-        model.marine = False  # ??
+        model.NX = int(length / dh)
+        model.NZ = int(z / dh)
         model.texture_xrange = 3
-        model.texture_zrange = 1.95 * model.NZ/2
+        model.texture_zrange = 1.95 * model.NZ / 2
 
         model.dip_0 = True
         model.dip_max = 0
@@ -250,8 +251,8 @@ class DatasetPermafrost(GeoDataset):
         acquire = AcquisitionPermafrost(model=model)
         acquire.peak_freq = 40
         acquire.dt = dt = 2e-4
-        acquire.NT = int(2/dt)
-        acquire.dg = 5  # 5*dh = 12.5 m
+        acquire.NT = int(2 / dt)
+        acquire.dg = 5  # 5 * dh = 12.5 m.
         acquire.fs = True
         acquire.source_depth = 12.5
         acquire.receiver_depth = 12.5
@@ -269,6 +270,7 @@ class DatasetPermafrost(GeoDataset):
             outputs[name].identify_direct = False
 
         return model, acquire, inputs, outputs
+
 
 if __name__ == "__main__":
     dataset = DatasetPermafrost()

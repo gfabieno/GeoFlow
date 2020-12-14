@@ -505,7 +505,7 @@ class ShotGather(GraphInput):
 class Dispersion(GraphInput):
     name = "dispersion"
 
-    def __init__(self, acquire: Acquisition, model: EarthModel, cmax , cmin):
+    def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin):
         self.acquire = acquire
         self.model = model
         self.cmax, self.cmin = cmax, cmin
@@ -513,12 +513,13 @@ class Dispersion(GraphInput):
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()
         dt = self.acquire.dt * self.acquire.resampling
-        d,fr,c = dispersion_curve(data, rec_pos[0], dt, src_pos[0,0], minc=self.cmax, maxc=self.cmin)
+        d, fr, c = dispersion_curve(data, rec_pos[0], dt, src_pos[0, 0],
+                                    minc=self.cmax, maxc=self.cmin)
         f = fr.reshape(fr.size)
-        d = d[:, f > 0];    f = f[f > 0]
-        d = d[:, f < 100] #;  f = f[f < 100]
+        mask = (f > 0) & (f < 100)
+        d = d[:, mask]
         d = abs(d)
-        d = (d-d.min())/(d.max()-d.min())
+        d = (d-d.min()) / (d.max()-d.min())
         return d
 
     def preprocess(self, data, labels):
@@ -528,9 +529,7 @@ class Dispersion(GraphInput):
         data = np.expand_dims(data, axis=-1)
         return data
 
-
     def plot(self, *args, **kwargs):
-
         kwargs["clip"] = 1.0
         kwargs["cmap"] = plt.get_cmap('hot')
         return super().plot(*args, **kwargs)
