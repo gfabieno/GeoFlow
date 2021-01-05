@@ -40,7 +40,7 @@ class Hyperparameters(Namespace):
         # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
         # Quantity of examples per batch.
-        self.batch_size = 50
+        self.batch_size = 10
 
         # The learning rate.
         self.learning_rate = 8E-4
@@ -410,6 +410,9 @@ class RCNN2D(Model):
         savedir = join(self.dataset.datatest, type(self).__name__)
         if not isdir(savedir):
             mkdir(savedir)
+        if self.dataset.testsize % self.params.batch_size != 0:
+            raise ValueError("Your batch size must be a divisor of your "
+                             "dataset length.")
 
         for data, _ in self.tfdataset:
             evaluated = self.predict(data,
