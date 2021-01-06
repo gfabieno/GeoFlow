@@ -6,7 +6,7 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import join, isdir
+from os.path import join, isdir, split
 
 import numpy as np
 import tensorflow as tf
@@ -15,7 +15,6 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import max as reduce_max, reshape
-from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
@@ -298,12 +297,12 @@ class RCNN2D(Model):
         :return: The current epoch number.
         """
         if path is None:
-            filename = find_latest_checkpoint(self.checkpoint_dir)
+            path = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
+            _, filename = split(path)
             current_epoch = filename.split("_")[-1].split(".")[0]
-            current_epoch = filename
             current_epoch = int(current_epoch)
-            self.load_weights(filename)
+            self.load_weights(path)
         else:
             current_epoch = 0
         return current_epoch
@@ -584,7 +583,7 @@ def find_latest_checkpoint(logdir: str):
     checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
         restore_from = str(max(checkpoints))
-        restore_from = join(logdir, restore_from)
+        restore_from = join(logdir, f"checkpoint_{restore_from}")
     else:
         restore_from = None
     return restore_from
