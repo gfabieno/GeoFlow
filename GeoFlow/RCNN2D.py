@@ -419,14 +419,18 @@ class RCNN2D(Model):
                                      max_queue_size=10,
                                      use_multiprocessing=False)
             for lbl, out in evaluated.items():
-                if lbl != 'ref':
+                if lbl == 'ref':
+                    evaluated[lbl] = out[..., 1]
+                else:
                     evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
                 exampleid = int(example.split("_")[-1])
+                example_evaluated = {lbl: out[i]
+                                     for lbl, out in evaluated.items()}
                 self.dataset.generator.write_predictions(exampleid, savedir,
-                                                         evaluated)
+                                                         example_evaluated)
 
 
 def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
