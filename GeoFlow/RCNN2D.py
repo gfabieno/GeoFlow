@@ -177,7 +177,7 @@ class RCNN2D(Model):
                                      input_shape=inputs['shotgather'].shape,
                                      batch_size=batch_size)
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            self.encoder['ref'].trainable = False
+            self.encoder.trainable = False
 
         self.rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
