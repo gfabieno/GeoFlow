@@ -144,6 +144,9 @@ def mask_batch(batch, mask_fraction, mask_time_frac):
 
 
 def top_mute(data, vp0, wind_length, offsets, dt, tdelay):
+    assert (vp0 == vp0[0]).all(), ("Muting is not implemented for velocity "
+                                   "models with varying surface velocities.")
+    vp0 = vp0[0]
     taper = np.arange(wind_length)
     taper = np.sin(np.pi * taper / (2 * wind_length - 1)) ** 2
     nt = data.shape[0]
@@ -528,7 +531,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         cmps: Position in x of each cmp.
     """
     if binsize is None:
-        binsize = src_pos[0, 1] - src_pos[0, 0]
+        binsize = np.abs(src_pos[0, 1] - src_pos[0, 0])
 
     sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
@@ -552,7 +555,8 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
         ind2 = np.argmax(cmps > lastcmp)
         data_cmp = data_cmp[:, ind1:ind2]
         ncmps = unique_cmps.shape[0]
-        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], maxfold, ncmps])
+        data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], ncmps, maxfold])
+        data_cmp = np.swapaxes(data_cmp, 1, 2)
 
     return data_cmp, unique_cmps
 
