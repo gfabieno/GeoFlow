@@ -23,6 +23,17 @@ from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 WEIGHTS_NAME = "checkpoint_{epoch}"
 
 
+class ModelCheckpoint(ModelCheckpoint):
+    """Allow saving whole model, and not just weights.
+
+    This workaround is provided by
+    github.com/tensorflow/tensorflow/issues/42741#issuecomment-706534711.
+    """
+
+    def set_model(self, model):
+        self.model = model
+
+
 class Hyperparameters(Namespace):
     def __init__(self):
         """
