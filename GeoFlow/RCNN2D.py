@@ -373,6 +373,8 @@ class RCNN2D(Model):
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
         """
+        if use_tune:
+            self.current_epoch += 1
         epochs = self.params.epochs + self.current_epoch
 
         if not use_tune:
