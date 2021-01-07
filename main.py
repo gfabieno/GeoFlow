@@ -27,22 +27,29 @@ def main(args, use_tune=False):
 
     if args.training != 0:
         phase = "train" if args.training in [1, 2] else "test"
+        inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
+        inputs = inputs[args.nn.toinputs[0]]  # Multi-inputs not handled.
         nn = args.nn(dataset=dataset,
-                     phase=phase,
+                     input_shape=inputs.shape,
                      params=args.params,
-                     checkpoint_dir=args.logdir)
+                     checkpoint_dir=args.logdir,
+                     run_eagerly=args.eager)
+        tfdataset = dataset.tfdataset(phase=phase,
+                                      tooutputs=nn.tooutputs,
+                                      toinputs=nn.toinputs,
+                                      batch_size=args.params.batch_size)
 
         # Train model.
         if args.training in [1, 2]:
-            nn.setup_training(run_eagerly=args.eager)
-            nn.launch_training(use_tune)
+            nn.launch_training(tfdataset, use_tune)
 
         # Test model.
         if args.training == 3:
-            nn.launch_testing()
+            nn.launch_testing(tfdataset)
             if args.plot:
                 nn_name = type(nn).__name__
-                dataset.animate(phase='test', plot_preds=True, nn_name=nn_name)
+                dataset.animate(phase='test', plot_preds=True,
+                                nn_name=nn_name)
 
 
 if __name__ == "__main__":

@@ -115,50 +115,44 @@ class RCNN2D(Model):
     toinputs = ["shotgather"]
 
     def __init__(self,
-                 dataset: GeoDataset,
-                 phase: str,
+                 input_shape: tuple,
                  params: Hyperparameters,
-                 checkpoint_dir: str):
+                 dataset: GeoDataset,
+                 checkpoint_dir: str,
+                 run_eagerly: bool = False):
         """
         Build and restore the network.
 
-        :param dataset: The dataset used for input data and labels.
-        :type dataset: GeoDataset
-        :param phase: Either "train", "test" or "validate". Get examples from
-                      the `phase` subdataset.
-        :type phase: str
+        :param input_shape: The shape of a single example from the input data.
+        :type input_shape: tuple
         :param params: A grouping of hyperparameters.
         :type params: Hyperparameters
+        :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+                        `tdelay`, `nz`, `source_depth` and `receiver_depth` of
+                        the dataset are used for time to depth conversion.
         :param checkpoint_dir: The root folder for checkpoints.
         :type checkpoint_dir: str
+        :param run_eagerly: Whether to run the model in eager mode or not.
+        :type run_eagerly: bool
         """
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
             super().__init__()
-            self.dataset = dataset
             self.params = params
+            self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
-            self.phase = phase
-
-            batch_size = self.params.batch_size
-            self.tfdataset = self.dataset.tfdataset(phase=self.phase,
-                                                    tooutputs=self.tooutputs,
-                                                    toinputs=self.toinputs,
-                                                    batch_size=batch_size)
-
-            self.inputs = self.build_inputs()
+            self.inputs = self.build_inputs(input_shape)
             self.build_network(self.inputs)
+            self.setup_training(run_eagerly)
             self.current_epoch = self.restore(self.params.restore_from)
 
-    def build_inputs(self):
+    def build_inputs(self, input_shape):
         """
         Build input layers.
 
         :return: A dictionary of inputs' name-layer pairs.
         """
-        inputs, _, _, _ = self.dataset.get_example(toinputs=self.toinputs)
-        shot_gather = inputs["shotgather"]
-        shotgather = Input(shape=shot_gather.shape,
+        shotgather = Input(shape=input_shape,
                            batch_size=self.params.batch_size,
                            dtype=tf.float32)
         filename = Input(shape=[1],
@@ -370,7 +364,7 @@ class RCNN2D(Model):
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
 
-    def launch_training(self, use_tune: bool = False):
+    def launch_training(self, dataset, use_tune: bool = False):
         """
         Fit the model to the dataset.
 
@@ -387,7 +381,7 @@ class RCNN2D(Model):
                                       save_freq='epoch',
                                       save_weights_only=False)
         callbacks = [tensorboard, checkpoints]
-        self.fit(self.tfdataset,
+        self.fit(dataset,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,
@@ -409,7 +403,7 @@ class RCNN2D(Model):
 
         return losses, losses_weights
 
-    def launch_testing(self):
+    def launch_testing(self, dataset):
         """
         Test the model on the current dataset.
 
@@ -424,7 +418,7 @@ class RCNN2D(Model):
             raise ValueError("Your batch size must be a divisor of your "
                              "dataset length.")
 
-        for data, _ in self.tfdataset:
+        for data, _ in dataset:
             evaluated = self.predict(data,
                                      batch_size=self.params.batch_size,
                                      max_queue_size=10,
