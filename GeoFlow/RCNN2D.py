@@ -15,6 +15,7 @@ from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import max as reduce_max, reshape
+from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
@@ -374,13 +375,18 @@ class RCNN2D(Model):
         """
         epochs = self.params.epochs + self.current_epoch
 
-        tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
-                                  profile_batch=0)
-        checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
-                                           WEIGHTS_NAME),
-                                      save_freq='epoch',
-                                      save_weights_only=False)
-        callbacks = [tensorboard, checkpoints]
+        if not use_tune:
+            tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
+                                      profile_batch=0)
+            checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
+                                               WEIGHTS_NAME),
+                                          save_freq='epoch',
+                                          save_weights_only=False)
+            callbacks = [tensorboard, checkpoints]
+        else:
+            tune_report = TuneReportCheckpointCallback(filename='.',
+                                                       frequency=1)
+            callbacks = [tune_report]
         self.fit(dataset,
                  epochs=epochs,
                  callbacks=callbacks,
