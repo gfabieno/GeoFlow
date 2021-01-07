@@ -6,7 +6,7 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import join, isdir, split
+from os.path import join, isdir, isfile, split, exists
 
 import numpy as np
 import tensorflow as tf
@@ -587,8 +587,13 @@ def find_latest_checkpoint(logdir: str):
     :type logdir: str
     """
     expr = re.compile(r"checkpoint_[0-9]*")
-    checkpoints = [f.split("_")[-1].split(".")[0]
-                   for f in listdir(logdir) if expr.match(f)]
+    checkpoints = []
+    for file in listdir(logdir):
+        has_checkpoint_format = expr.match(file)
+        is_checkpoint = isfile(file)
+        is_model = exists(join(logdir, file, "saved_model.pb"))
+        if has_checkpoint_format and (is_checkpoint or is_model):
+            checkpoints.append(file.split("_")[-1].split(".")[0])
     checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
         restore_from = str(max(checkpoints))
