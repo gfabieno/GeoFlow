@@ -307,7 +307,10 @@ class Vsdepth(Reftime):
 
     def preprocess(self, label, weight):
         # TODO find a way to get vs min and max
-        label, weight = super().preprocess(label, weight)
+        # label, weight = super().preprocess(label, weight)
+        indx = int(label.shape[1]//2)
+        label = label[:, indx]
+        weight = weight[:, indx]
         vmin, vmax = self.model.properties["vs"]
         label = (label - vmin) / (vmax - vmin)
         return label, weight
@@ -315,6 +318,17 @@ class Vsdepth(Reftime):
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
         return label * (vmax - vmin) + vmin
+
+class Vpdepth(Vdepth):
+    name = "vpdepth"
+
+    def preprocess(self, label, weight):
+        indx = int(label.shape[1]//2)
+        label = label[:,indx]
+        weight = weight[:,indx]
+        vmin, vmax = self.model.properties["vp"]
+        label = (label-vmin) / (vmax - vmin)
+        return label, weight
 
 
 class GraphInput:
@@ -378,22 +392,6 @@ class GraphInput:
         :param data: The preprocessed data ready to be fed to the network.
        """
         return data
-
-
-# TODO Jefferson complete that
-class Dispersion(GraphInput):
-    name = "dispersion"
-
-    def __init__(self, acquire: Acquisition, model: EarthModel, cmax , cmin):
-        self.acquire = acquire
-        self.model = model
-        self.cmax, self.cmin = cmax, cmin
-
-    def generate(self, data):
-        src_pos, rec_pos = self.acquire.set_rec_src()
-        dt = self.acquire.dt
-        d = dispersion_curve(data, self.acquire.re)
-        return d
 
 
 class ShotGather(GraphInput):
@@ -507,3 +505,36 @@ class ShotGather(GraphInput):
         data /= shot_max + eps
 
         return data
+
+
+class Dispersion(GraphInput):
+    name = "dispersion"
+
+    def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin):
+        self.acquire = acquire
+        self.model = model
+        self.cmax, self.cmin = cmax, cmin
+
+    def generate(self, data):
+        src_pos, rec_pos = self.acquire.set_rec_src()
+        dt = self.acquire.dt * self.acquire.resampling
+        d, fr, c = dispersion_curve(data, rec_pos[0], dt, src_pos[0, 0],
+                                    minc=self.cmax, maxc=self.cmin)
+        f = fr.reshape(fr.size)
+        mask = (f > 0) & (f < 100)
+        d = d[:, mask]
+        d = abs(d)
+        d = (d-d.min()) / (d.max()-d.min())
+        return d
+
+    def preprocess(self, data, labels):
+        src_pos_all, rec_pos_all = self.acquire.set_rec_src()
+        data = np.reshape(data, [data.shape[0], src_pos_all.shape[1], -1])
+        data = data.swapaxes(1, 2)
+        data = np.expand_dims(data, axis=-1)
+        return data
+
+    def plot(self, *args, **kwargs):
+        kwargs["clip"] = 1.0
+        kwargs["cmap"] = plt.get_cmap('hot')
+        return super().plot(*args, **kwargs)
