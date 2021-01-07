@@ -468,7 +468,6 @@ class ShotGather(GraphInput):
 
             return first_shot_gather, zero_offset_gather
 
-    # TODO Handle 2D case.
     def preprocess(self, data, labels):
         # Add random noises to the data.
         if self.random_time_scaling:
@@ -498,6 +497,12 @@ class ShotGather(GraphInput):
             data = data.swapaxes(1, 2)
 
         data = np.expand_dims(data, axis=-1)
+
+        eps = np.finfo(np.float32).eps
+        trace_rms = np.sqrt(np.sum(data**2, axis=0, keepdims=True))
+        data /= trace_rms + eps
+        shot_max = np.amax(data, axis=(0, 1), keepdims=True)
+        data /= shot_max + eps
 
         return data
 
