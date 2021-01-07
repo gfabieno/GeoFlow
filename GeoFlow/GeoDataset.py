@@ -358,6 +358,12 @@ class GeoDataset:
         pathstr = os.path.join(phases[phase], 'example_*')
         tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
 
+        data, labels, weights, _ = self.get_example(toinputs=toinputs,
+                                                    tooutputs=tooutputs)
+        data_shape = tuple(data[el].shape for el in toinputs)
+        label_shapes = tuple((2, *labels[el].shape) for el in tooutputs)
+        shapes = data_shape + label_shapes
+
         def get_example(fname):
             data, labels, weights, _ = self.get_example(filename=fname,
                                                         toinputs=toinputs,
@@ -372,6 +378,8 @@ class GeoDataset:
             output_type = ((tf.float32,) * len(toinputs)
                            + (tf.float32,) * len(tooutputs))
             outs = tf.numpy_function(get_example, inp=[x], Tout=output_type)
+            outs = tuple(tf.reshape(out, shape)
+                         for out, shape in zip(outs, shapes))
 
             data = {el: outs[ii] for ii, el in enumerate(toinputs)}
             data["filename"] = x

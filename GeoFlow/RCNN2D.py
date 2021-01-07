@@ -6,7 +6,7 @@ Build the neural network for predicting v_p in 2D and in depth.
 import re
 from argparse import Namespace
 from os import mkdir, listdir
-from os.path import split, join, isdir
+from os.path import join, isdir, isfile, split, exists
 
 import numpy as np
 import tensorflow as tf
@@ -14,14 +14,25 @@ from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
-from tensorflow.keras.backend import (max as reduce_max, sum as reduce_sum,
-                                      reshape, cumsum, arange)
+from tensorflow.keras.backend import max as reduce_max, reshape
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
 from GeoFlow.Losses import ref_loss, v_compound_loss
+from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 
 WEIGHTS_NAME = "checkpoint_{epoch}"
+
+
+class ModelCheckpoint(ModelCheckpoint):
+    """Allow saving whole model, and not just weights.
+
+    This workaround is provided by
+    github.com/tensorflow/tensorflow/issues/42741#issuecomment-706534711.
+    """
+
+    def set_model(self, model):
+        self.model = model
 
 
 class Hyperparameters(Namespace):
@@ -40,7 +51,7 @@ class Hyperparameters(Namespace):
         # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
         # Quantity of examples per batch.
-        self.batch_size = 50
+        self.batch_size = 10
 
         # The learning rate.
         self.learning_rate = 8E-4
@@ -97,7 +108,7 @@ class Hyperparameters(Namespace):
         return str(self)
 
 
-class RCNN2D:
+class RCNN2D(Model):
     """
     Combine a recursive CNN and LSTMs to predict 2D v_p velocity.
     """
@@ -105,150 +116,205 @@ class RCNN2D:
     toinputs = ["shotgather"]
 
     def __init__(self,
-                 dataset: GeoDataset,
-                 phase: str,
+                 input_shape: tuple,
                  params: Hyperparameters,
-                 checkpoint_dir: str):
+                 dataset: GeoDataset,
+                 checkpoint_dir: str,
+                 run_eagerly: bool = False):
         """
         Build and restore the network.
 
+        :param input_shape: The shape of a single example from the input data.
+        :type input_shape: tuple
         :param params: A grouping of hyperparameters.
-        :type : Hyperparameters
-        :param batch_size: Quantity of examples in a batch.
+        :type params: Hyperparameters
+        :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+                        `tdelay`, `nz`, `source_depth` and `receiver_depth` of
+                        the dataset are used for time to depth conversion.
+        :param checkpoint_dir: The root folder for checkpoints.
+        :type checkpoint_dir: str
+        :param run_eagerly: Whether to run the model in eager mode or not.
+        :type run_eagerly: bool
         """
-        self.dataset = dataset
-        self.params = params
-        self.checkpoint_dir = checkpoint_dir
-        self.phase = phase
-
-        batch_size = self.params.batch_size
-        self.tfdataset = self.dataset.tfdataset(phase=self.phase,
-                                                tooutputs=self.tooutputs,
-                                                toinputs=self.toinputs,
-                                                batch_size=batch_size)
-
         strategy = tf.distribute.MirroredStrategy()
         with strategy.scope():
-            self.inputs = self.build_inputs()
-            self.outputs = self.build_network()
-            self.model = Model(inputs=self.inputs,
-                               outputs=self.outputs,
-                               name="RCNN2D")
-
-            # `RCNN2D` has the same interface as a keras `Model`, but
-            # subclassing is avoided by using the functional API. This is
-            # necessary for model intelligibility.
-            self.compile = self.model.compile
-            self.fit = self.model.fit
-            self.predict = self.model.predict
-            self.set_weights = self.model.set_weights
-            self.get_weights = self.model.get_weights
-            self.layers = self.model.layers
-            self.get_layer = self.model.get_layer
-
+            super().__init__()
+            self.params = params
+            self.dataset = dataset
+            self.checkpoint_dir = checkpoint_dir
+            self.inputs = self.build_inputs(input_shape)
+            self.build_network(self.inputs)
+            self.setup_training(run_eagerly)
             self.current_epoch = self.restore(self.params.restore_from)
 
-    def build_inputs(self):
-        inputs, _, _, _ = self.dataset.get_example(toinputs=self.toinputs)
-        shot_gather = inputs["shotgather"]
-        shotgather = Input(shape=shot_gather.shape,
+    def build_inputs(self, input_shape):
+        """
+        Build input layers.
+
+        :return: A dictionary of inputs' name-layer pairs.
+        """
+        shotgather = Input(shape=input_shape,
                            batch_size=self.params.batch_size,
                            dtype=tf.float32)
         filename = Input(shape=[1],
                          batch_size=self.params.batch_size,
                          dtype=tf.string)
-        return {"shotgather": shotgather, "filename": filename}
+        inputs = {"shotgather": shotgather, "filename": filename}
+        self._set_inputs(inputs)
+        return inputs
 
-    def build_network(self):
+    def build_network(self, inputs: dict):
+        """
+        Build the subnetworks of the model.
+
+        :param inputs: The inputs' name-layer pairs.
+        :type inputs: dict
+        """
+        params = self.params
+        batch_size = self.params.batch_size
+
+        self.decoder = {}
+        self.rnn = {}
+        self.cnn = {}
+
+        self.encoder = build_encoder(kernels=params.encoder_kernels,
+                                     dilation_rates=params.encoder_dilations,
+                                     qties_filters=params.encoder_filters,
+                                     input_shape=inputs['shotgather'].shape,
+                                     batch_size=batch_size)
+        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
+            self.encoder.trainable = False
+
+        self.rcnn = build_rcnn(reps=7,
+                               kernel=params.rcnn_kernel,
+                               qty_filters=params.rcnn_filters,
+                               dilation_rate=params.rcnn_dilation,
+                               input_shape=self.encoder.output_shape,
+                               batch_size=batch_size,
+                               name="time_rcnn")
+        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
+            self.rcnn.trainable = False
+
+        self.decoder['ref'] = Conv2D(2, params.decode_ref_kernel,
+                                     padding='same',
+                                     input_shape=self.rcnn.output_shape,
+                                     batch_size=batch_size, name="ref")
+
+        shape_before_pooling = np.array(self.rcnn.output_shape)
+        shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
+        self.rnn['vrms'] = build_rnn(units=200,
+                                     input_shape=shape_after_pooling,
+                                     batch_size=batch_size,
+                                     name="rnn_vrms")
+        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
+            self.rnn['vrms'].trainable = False
+
+        input_shape = self.rnn['vrms'].output_shape
+        if params.use_cnn:
+            self.cnn['vrms'] = Conv2D(params.cnn_filters, params.cnn_kernel,
+                                      dilation_rate=params.cnn_dilation,
+                                      padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
+                                      name="cnn_vrms")
+            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
+                self.cnn['vrms'].trainable = False
+            input_shape = input_shape[:-1] + (params.cnn_filters,)
+
+        self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
+                                      name="vrms")
+
+        self.rnn['vint'] = build_rnn(units=200,
+                                     input_shape=input_shape,
+                                     batch_size=batch_size,
+                                     name="rnn_vint")
+        if params.freeze_to in ['vint', 'vdepth']:
+            self.rnn['vint'].trainable = False
+
+        input_shape = self.rnn['vint'].output_shape
+        if params.use_cnn:
+            self.cnn['vint'] = Conv2D(params.cnn_filters, params.cnn_kernel,
+                                      dilation_rate=params.cnn_dilation,
+                                      padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
+                                      name="cnn_vint")
+            if params.freeze_to in ['vint', 'vdepth']:
+                self.cnn['vint'].trainable = False
+            input_shape = input_shape[:-1] + (params.cnn_filters,)
+
+        self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      input_shape=input_shape,
+                                      batch_size=batch_size,
+                                      name="vint")
+
+        vint_shape = input_shape[1:-1] + (1,)
+        self.time_to_depth = build_time_to_depth_converter(self.dataset,
+                                                           vint_shape,
+                                                           batch_size,
+                                                           name="vdepth")
+
+    def call(self, inputs: dict):
+        """
+        Apply the neural network to an input tensor.
+
+        This is required from subclassing `tf.keras.Model`.
+
+        :param inputs: The inputs' name-layer pairs.
+        :type inputs: dict
+        """
         params = self.params
 
         outputs = {}
 
-        encoder = build_encoder(kernels=params.encoder_kernels,
-                                dilation_rates=params.encoder_dilations,
-                                qties_filters=params.encoder_filters)
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            encoder.trainable = False
-        data_stream = encoder(self.inputs["shotgather"])
-
-        time_rcnn = build_rcnn(reps=7,
-                               kernel=params.rcnn_kernel,
-                               qty_filters=params.rcnn_filters,
-                               dilation_rate=params.rcnn_dilation,
-                               input_shape=data_stream.shape,
-                               batch_size=params.batch_size,
-                               name="time_rcnn")
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            time_rcnn.trainable = False
-        data_stream = time_rcnn(data_stream)
-
+        data_stream = self.encoder(inputs["shotgather"])
+        data_stream = self.rcnn(data_stream)
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
-        conv_2d = Conv2D(2, params.decode_ref_kernel, padding='same',
-                         name="ref")
-        outputs['ref'] = conv_2d(data_stream)
+        outputs['ref'] = self.decoder['ref'](data_stream)
 
-        rnn_vrms = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=params.batch_size, name="rnn_vrms")
-        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-            rnn_vrms.trainable = False
-        data_stream = rnn_vrms(data_stream)
-
+        data_stream = self.rnn['vrms'](data_stream)
         if params.use_cnn:
-            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
-                             dilation_rate=params.cnn_dilation,
-                             padding='same',
-                             name="cnn_vrms")
-            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-                conv_2d.trainable = False
-            data_stream = conv_2d(data_stream)
+            data_stream = self.cnn['vrms'](data_stream)
 
-        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                         name="vrms")
-        outputs['vrms'] = conv_2d(data_stream)
+        outputs['vrms'] = self.decoder['vrms'](data_stream)
 
-        rnn_vint = build_rnn(units=200, input_shape=data_stream.shape,
-                             batch_size=params.batch_size, name="rnn_vint")
-        if params.freeze_to in ['vint', 'vdepth']:
-            rnn_vint.trainable = False
-        data_stream = rnn_vint(data_stream)
-
+        data_stream = self.rnn['vint'](data_stream)
         if params.use_cnn:
-            conv_2d = Conv2D(params.cnn_filters, params.cnn_kernel,
-                             dilation_rate=params.cnn_dilation,
-                             padding='same',
-                             name="cnn_vint")
-            if params.freeze_to in ['vint', 'vdepth']:
-                conv_2d.trainable = False
-            data_stream = conv_2d(data_stream)
+            data_stream = self.cnn['vint'](data_stream)
 
-        conv_2d = Conv2D(1, params.decode_kernel, padding='same',
-                         name="vint")
-        outputs['vint'] = conv_2d(data_stream)
-
-        vint = outputs['vint']
-        time_to_depth = build_time_to_depth_converter(self.dataset,
-                                                      vint.shape[1:],
-                                                      params.batch_size,
-                                                      name="vdepth")
-        vdepth = time_to_depth(vint)
-        outputs['vdepth'] = vdepth
+        data_stream = self.rnn['vint'](data_stream)
+        outputs['vint'] = self.decoder['vint'](data_stream)
+        outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
         return {out: outputs[out] for out in self.tooutputs}
 
-    def restore(self, path=None):
+    def restore(self, path: str = None):
+        """
+        Restore a checkpoint of the model.
+
+        :param path: The path of the checkpoint to load. Defaults to the latest
+                     checkpoint in `self.checkpoint_dir`.
+        :type path: str
+
+        :return: The current epoch number.
+        """
         if path is None:
-            filename = find_latest_checkpoint(self.checkpoint_dir)
+            path = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
-            filename = split(path)[-1]
-            current_epoch = int(filename[-4:])
-            self.load_weights(filename)
+            _, filename = split(path)
+            current_epoch = filename.split("_")[-1].split(".")[0]
+            current_epoch = int(current_epoch)
+            self.load_weights(path)
         else:
             current_epoch = 0
         return current_epoch
 
-    def load_weights(self, filepath, by_name=True, skip_mismatch=False):
+    def load_weights(self, filepath: str, by_name: bool = True,
+                     skip_mismatch: bool = False):
         """
         Load weights into the model and broadcast 1D to 2D correctly.
 
@@ -280,7 +346,13 @@ class RCNN2D:
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def setup_training(self, run_eagerly=False):
+    def setup_training(self, run_eagerly: bool = False):
+        """
+        Setup `Model` prior to fitting.
+
+        :param run_eagerly: Whether to run the model in eager mode or not.
+        :type run_eagerly: bool
+        """
         losses, losses_weights = self.build_losses()
 
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
@@ -293,7 +365,16 @@ class RCNN2D:
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
 
-    def launch_training(self, use_tune=False):
+    def launch_training(self, dataset, use_tune: bool = False):
+        """
+        Fit the model to the dataset.
+
+        :param use_tune: Whether `ray[tune]` is used in training or not. This
+                         modifies the way callbacks and checkpoints are logged.
+        :param use_tune: bool
+        """
+        if use_tune:
+            self.current_epoch += 1
         epochs = self.params.epochs + self.current_epoch
 
         if not use_tune:
@@ -301,13 +382,14 @@ class RCNN2D:
                                       profile_batch=0)
             checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
                                                WEIGHTS_NAME),
-                                          save_freq='epoch')
+                                          save_freq='epoch',
+                                          save_weights_only=False)
             callbacks = [tensorboard, checkpoints]
         else:
             tune_report = TuneReportCheckpointCallback(filename='.',
                                                        frequency=1)
             callbacks = [tune_report]
-        self.fit(self.tfdataset,
+        self.fit(dataset,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,
@@ -316,6 +398,9 @@ class RCNN2D:
                  use_multiprocessing=False)
 
     def build_losses(self):
+        """
+        Initialize the losses used for training.
+        """
         losses, losses_weights = {}, {}
         for lbl in self.tooutputs:
             if lbl == 'ref':
@@ -326,35 +411,54 @@ class RCNN2D:
 
         return losses, losses_weights
 
-    def launch_testing(self):
+    def launch_testing(self, dataset):
+        """
+        Test the model on the current dataset.
+
+        Predictions are saved to a subfolder that has the name of the network
+        within the subdataset's directory.
+        """
         # Save the predictions to a subfolder that has the name of the network.
         savedir = join(self.dataset.datatest, type(self).__name__)
         if not isdir(savedir):
             mkdir(savedir)
+        if self.dataset.testsize % self.params.batch_size != 0:
+            raise ValueError("Your batch size must be a divisor of your "
+                             "dataset length.")
 
-        for data, _ in self.tfdataset:
+        for data, _ in dataset:
             evaluated = self.predict(data,
                                      batch_size=self.params.batch_size,
                                      max_queue_size=10,
                                      use_multiprocessing=False)
             for lbl, out in evaluated.items():
-                if lbl != 'ref':
+                if lbl == 'ref':
+                    evaluated[lbl] = out[..., 1]
+                else:
                     evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
                 exampleid = int(example.split("_")[-1])
+                example_evaluated = {lbl: out[i]
+                                     for lbl, out in evaluated.items()}
                 self.dataset.generator.write_predictions(exampleid, savedir,
-                                                         evaluated)
+                                                         example_evaluated)
 
 
-def broadcast_weights(loaded_weights, current_weights):
+def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
     """
     Broadcast `loaded_weights` on `current_weights`.
 
     Extend the loaded weights along one missing dimension and rescale the
     weights to account for the duplication. This is equivalent to using an
     average in the missing dimension.
+
+    :param loaded_weights: The weights of the recovered checkpoint.
+    :type loaded_weights: np.ndarray
+    :param current_weights: The current weights of the model, which will be
+                            overridden.
+    :type current_weights: np.ndarray
     """
     for i, (current, loaded) in enumerate(zip(current_weights,
                                               loaded_weights)):
@@ -383,18 +487,26 @@ def broadcast_weights(loaded_weights, current_weights):
     return current_weights
 
 
-def build_encoder(kernels, qties_filters, dilation_rates, name="encoder"):
+def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
+                  batch_size, input_dtype=tf.float32, name="encoder"):
     """
     Build the encoder head, a series of CNNs.
 
     :param kernels: Kernel shapes of each convolution.
     :param qties_filters: Quantity of filters of each CNN.
     :param diltation_rates: Dilation rate in each dimension of each CNN.
+    :param input_shape: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
     :param name: Name of the produced Keras model.
 
     :return: A Keras model.
     """
+    input_shape = input_shape[1:]
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
+
     encoder = Sequential(name=name)
+    encoder.add(input)
     for kernel, qty_filters, dilation_rate in zip(kernels, qties_filters,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
@@ -420,8 +532,7 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
     :return: A Keras model.
     """
     input_shape = input_shape[1:]
-    input = Input(shape=input_shape, batch_size=batch_size,
-                  dtype=input_dtype)
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
 
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
@@ -448,8 +559,7 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     :return: A Keras model.
     """
     input_shape = input_shape[1:]
-    input = Input(shape=input_shape, batch_size=batch_size,
-                  dtype=input_dtype)
+    input = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     data_stream = Permute((2, 1, 3))(input)
     batches, shots, timesteps, filter_dim = data_stream.get_shape()
     data_stream = reshape(data_stream,
@@ -464,7 +574,11 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     return rnn
 
 
-def assert_broadcastable(arr1, arr2, message=None):
+def assert_broadcastable(arr1: np.ndarray, arr2: np.ndarray,
+                         message: str = None):
+    """
+    Assert that two arrays can be broadcasted together.
+    """
     try:
         np.broadcast(arr1, arr2)
     except ValueError:
@@ -473,92 +587,25 @@ def assert_broadcastable(arr1, arr2, message=None):
         raise AssertionError(message)
 
 
-def build_time_to_depth_converter(case, input_shape, batch_size,
-                                  input_dtype=tf.float32,
-                                  name="time_to_depth_converter"):
+def find_latest_checkpoint(logdir: str):
     """
-    Build a time to depth conversion model in Keras.
+    Find the latest checkpoint that matches `"checkpoint_[0-9]*"`.
 
-    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
-                 `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
-                 case are used.
-    :param input_size: The shape of the expected input.
-    :param batch_size: Quantity of examples in a batch.
-    :param input_dtype: Data type of the input.
-    :param name: Name of the produced Keras model.
-
-    :return: A Keras model.
+    :param logdir: The directory in which to search for the checkpoints.
+    :type logdir: str
     """
-    vmax = case.model.vp_max
-    vmin = case.model.vp_min
-    dh = case.model.dh
-    dt = case.acquire.dt
-    resampling = case.acquire.resampling
-    tdelay = case.acquire.tdelay
-    tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
-    nz = case.model.NZ
-    source_depth = case.acquire.source_depth
-    max_depth = nz - int(source_depth / dh)
-
-    vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
-    actual_vint = vint*(vmax-vmin) + vmin
-    # Convert to unitless quantity of grid cells.
-    depth_intervals = actual_vint * dt * resampling / (dh*2)
-    paddings = [[0, 0], [1, 0], [0, 0], [0, 0]]
-    depth_intervals = tf.pad(depth_intervals, paddings, "CONSTANT")
-    depths = cumsum(depth_intervals, axis=1)
-    depth_delay = reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
-                             keepdims=True)
-    depths -= depth_delay
-    target_depths = arange(max_depth, dtype=tf.float32)
-    vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
-
-    time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)
-    return time_to_depth_converter
-
-
-def interp_nearest(x, x_ref, y_ref, axis=0):
-    """Perform 1D nearest neighbors interpolation in TensorFlow.
-
-    :param x: Positions of the new sampled data points. Has one dimension.
-    :param x_ref: Reference data points. `x_ref` has a first dimension of
-                  arbitrary length. Other dimensions are treated independently.
-    :param y_ref: Reference data points. `y_ref` has the same shape as `x_ref`.
-    :param axis: Dimension along which interpolation is executed.
-    """
-    new_dims = iter([axis, 0])
-    # Create a list where `axis` and `0` are interchanged.
-    permutation = [dim if dim not in [axis, 0] else next(new_dims)
-                   for dim in range(tf.rank(x_ref))]
-    x_ref = tf.transpose(x_ref, permutation)
-    y_ref = tf.transpose(y_ref, permutation)
-
-    x_ref = tf.expand_dims(x_ref, axis=0)
-    while tf.rank(x) != tf.rank(x_ref):
-        x = tf.expand_dims(x, axis=-1)
-    distances = tf.abs(x_ref-x)
-    nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
-
-    grid = tf.meshgrid(*[tf.range(dim) for dim in nearest_neighbor.shape],
-                       indexing="ij")
-    nearest_neighbor = tf.reshape(nearest_neighbor, [-1])
-    grid = [tf.reshape(t, [-1]) for t in grid[1:]]
-    idx = [nearest_neighbor, *grid]
-    idx = tf.transpose(idx, (1, 0))
-    y = tf.gather_nd(y_ref, idx)
-    y = tf.reshape(y, [-1, *y_ref.shape[1:]])
-
-    y = tf.transpose(y, permutation)
-    return y
-
-
-def find_latest_checkpoint(logdir):
     expr = re.compile(r"checkpoint_[0-9]*")
-    checkpoints = [f.split("_")[-1] for f in listdir(logdir) if expr.match(f)]
+    checkpoints = []
+    for file in listdir(logdir):
+        has_checkpoint_format = expr.match(file)
+        is_checkpoint = isfile(file)
+        is_model = exists(join(logdir, file, "saved_model.pb"))
+        if has_checkpoint_format and (is_checkpoint or is_model):
+            checkpoints.append(file.split("_")[-1].split(".")[0])
     checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
         restore_from = str(max(checkpoints))
-        restore_from = join(logdir, restore_from)
+        restore_from = join(logdir, f"checkpoint_{restore_from}")
     else:
         restore_from = None
     return restore_from
