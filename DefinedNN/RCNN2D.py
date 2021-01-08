@@ -1,47 +1,25 @@
 # -*- coding: utf-8 -*-
 """
-Build the neural network for predicting v_p in 2D and in depth.
+Build a neural network for predicting v_p in 2D and in depth.
 """
-
-import re
-from argparse import Namespace
-from os import mkdir, listdir
-from os.path import join, isdir, isfile, split, exists
 
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
-from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
                                      Input)
 from tensorflow.keras.backend import max as reduce_max, reshape
-from ray.tune.integration.keras import TuneReportCheckpointCallback
 
-from GeoFlow.GeoDataset import GeoDataset
+from GeoFlow.NN import Hyperparameters, NN
 from GeoFlow.Losses import ref_loss, v_compound_loss
 from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 
-WEIGHTS_NAME = "checkpoint_{epoch}"
 
-
-class ModelCheckpoint(ModelCheckpoint):
-    """Allow saving whole model, and not just weights.
-
-    This workaround is provided by
-    github.com/tensorflow/tensorflow/issues/42741#issuecomment-706534711.
-    """
-
-    def set_model(self, model):
-        self.model = model
-
-
-class Hyperparameters(Namespace):
+class Hyperparameters(Hyperparameters):
     def __init__(self):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
-        super().__init__()
-
         # Checkpoint directory from which to restore the model. Defaults to the
         # last checkpoint in `args.logdir`.
         self.restore_from = None
@@ -108,51 +86,14 @@ class Hyperparameters(Namespace):
         return str(self)
 
 
-class RCNN2D(Model):
+class RCNN2D(NN):
     """
     Combine a recursive CNN and LSTMs to predict 2D v_p velocity.
     """
     tooutputs = ["ref", "vrms", "vint", "vdepth"]
     toinputs = ["shotgather"]
 
-    def __init__(self,
-                 input_shape: tuple,
-                 params: Hyperparameters,
-                 dataset: GeoDataset,
-                 checkpoint_dir: str,
-                 run_eagerly: bool = False):
-        """
-        Build and restore the network.
-
-        :param input_shape: The shape of a single example from the input data.
-        :type input_shape: tuple
-        :param params: A grouping of hyperparameters.
-        :type params: Hyperparameters
-        :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
-                        `tdelay`, `nz`, `source_depth` and `receiver_depth` of
-                        the dataset are used for time to depth conversion.
-        :param checkpoint_dir: The root folder for checkpoints.
-        :type checkpoint_dir: str
-        :param run_eagerly: Whether to run the model in eager mode or not.
-        :type run_eagerly: bool
-        """
-        strategy = tf.distribute.MirroredStrategy()
-        with strategy.scope():
-            super().__init__()
-            self.params = params
-            self.dataset = dataset
-            self.checkpoint_dir = checkpoint_dir
-            self.inputs = self.build_inputs(input_shape)
-            self.build_network(self.inputs)
-            self.setup_training(run_eagerly)
-            self.current_epoch = self.restore(self.params.restore_from)
-
     def build_inputs(self, input_shape):
-        """
-        Build input layers.
-
-        :return: A dictionary of inputs' name-layer pairs.
-        """
         shotgather = Input(shape=input_shape,
                            batch_size=self.params.batch_size,
                            dtype=tf.float32)
@@ -164,12 +105,6 @@ class RCNN2D(Model):
         return inputs
 
     def build_network(self, inputs: dict):
-        """
-        Build the subnetworks of the model.
-
-        :param inputs: The inputs' name-layer pairs.
-        :type inputs: dict
-        """
         params = self.params
         batch_size = self.params.batch_size
 
@@ -257,14 +192,6 @@ class RCNN2D(Model):
                                                            name="vdepth")
 
     def call(self, inputs: dict):
-        """
-        Apply the neural network to an input tensor.
-
-        This is required from subclassing `tf.keras.Model`.
-
-        :param inputs: The inputs' name-layer pairs.
-        :type inputs: dict
-        """
         params = self.params
 
         outputs = {}
@@ -291,27 +218,6 @@ class RCNN2D(Model):
         outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
         return {out: outputs[out] for out in self.tooutputs}
-
-    def restore(self, path: str = None):
-        """
-        Restore a checkpoint of the model.
-
-        :param path: The path of the checkpoint to load. Defaults to the latest
-                     checkpoint in `self.checkpoint_dir`.
-        :type path: str
-
-        :return: The current epoch number.
-        """
-        if path is None:
-            path = find_latest_checkpoint(self.checkpoint_dir)
-        if path is not None:
-            _, filename = split(path)
-            current_epoch = filename.split("_")[-1].split(".")[0]
-            current_epoch = int(current_epoch)
-            self.load_weights(path)
-        else:
-            current_epoch = 0
-        return current_epoch
 
     def load_weights(self, filepath: str, by_name: bool = True,
                      skip_mismatch: bool = False):
@@ -347,14 +253,7 @@ class RCNN2D(Model):
             current_layer.set_weights(current_weights)
 
     def setup_training(self, run_eagerly: bool = False):
-        """
-        Setup `Model` prior to fitting.
-
-        :param run_eagerly: Whether to run the model in eager mode or not.
-        :type run_eagerly: bool
-        """
         losses, losses_weights = self.build_losses()
-
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
                                     beta_1=self.params.beta_1,
                                     beta_2=self.params.beta_2,
@@ -364,38 +263,6 @@ class RCNN2D(Model):
                      loss=losses,
                      loss_weights=losses_weights,
                      run_eagerly=run_eagerly)
-
-    def launch_training(self, dataset, use_tune: bool = False):
-        """
-        Fit the model to the dataset.
-
-        :param use_tune: Whether `ray[tune]` is used in training or not. This
-                         modifies the way callbacks and checkpoints are logged.
-        :param use_tune: bool
-        """
-        if use_tune:
-            self.current_epoch += 1
-        epochs = self.params.epochs + self.current_epoch
-
-        if not use_tune:
-            tensorboard = TensorBoard(log_dir=self.checkpoint_dir,
-                                      profile_batch=0)
-            checkpoints = ModelCheckpoint(join(self.checkpoint_dir,
-                                               WEIGHTS_NAME),
-                                          save_freq='epoch',
-                                          save_weights_only=False)
-            callbacks = [tensorboard, checkpoints]
-        else:
-            tune_report = TuneReportCheckpointCallback(filename='.',
-                                                       frequency=1)
-            callbacks = [tune_report]
-        self.fit(dataset,
-                 epochs=epochs,
-                 callbacks=callbacks,
-                 initial_epoch=self.current_epoch,
-                 steps_per_epoch=self.params.steps_per_epoch,
-                 max_queue_size=10,
-                 use_multiprocessing=False)
 
     def build_losses(self):
         """
@@ -410,40 +277,6 @@ class RCNN2D(Model):
             losses_weights[lbl] = self.params.loss_scales[lbl]
 
         return losses, losses_weights
-
-    def launch_testing(self, dataset):
-        """
-        Test the model on the current dataset.
-
-        Predictions are saved to a subfolder that has the name of the network
-        within the subdataset's directory.
-        """
-        # Save the predictions to a subfolder that has the name of the network.
-        savedir = join(self.dataset.datatest, type(self).__name__)
-        if not isdir(savedir):
-            mkdir(savedir)
-        if self.dataset.testsize % self.params.batch_size != 0:
-            raise ValueError("Your batch size must be a divisor of your "
-                             "dataset length.")
-
-        for data, _ in dataset:
-            evaluated = self.predict(data,
-                                     batch_size=self.params.batch_size,
-                                     max_queue_size=10,
-                                     use_multiprocessing=False)
-            for lbl, out in evaluated.items():
-                if lbl == 'ref':
-                    evaluated[lbl] = out[..., 1]
-                else:
-                    evaluated[lbl] = out[..., 0]
-
-            for i, example in enumerate(data["filename"]):
-                example = example.numpy().decode("utf-8")
-                exampleid = int(example.split("_")[-1])
-                example_evaluated = {lbl: out[i]
-                                     for lbl, out in evaluated.items()}
-                self.dataset.generator.write_predictions(exampleid, savedir,
-                                                         example_evaluated)
 
 
 def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
@@ -585,27 +418,3 @@ def assert_broadcastable(arr1: np.ndarray, arr2: np.ndarray,
         if message is None:
             message = "Arrays are not compatible for broadcasting."
         raise AssertionError(message)
-
-
-def find_latest_checkpoint(logdir: str):
-    """
-    Find the latest checkpoint that matches `"checkpoint_[0-9]*"`.
-
-    :param logdir: The directory in which to search for the checkpoints.
-    :type logdir: str
-    """
-    expr = re.compile(r"checkpoint_[0-9]*")
-    checkpoints = []
-    for file in listdir(logdir):
-        has_checkpoint_format = expr.match(file)
-        is_checkpoint = isfile(file)
-        is_model = exists(join(logdir, file, "saved_model.pb"))
-        if has_checkpoint_format and (is_checkpoint or is_model):
-            checkpoints.append(file.split("_")[-1].split(".")[0])
-    checkpoints = [int(f) for f in checkpoints]
-    if checkpoints:
-        restore_from = str(max(checkpoints))
-        restore_from = join(logdir, f"checkpoint_{restore_from}")
-    else:
-        restore_from = None
-    return restore_from
