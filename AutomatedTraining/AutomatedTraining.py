@@ -95,7 +95,7 @@ def chain(main: Callable,
         for param_name, param_value in to_chain.items():
             setattr(current_params, param_name, param_value[segment])
         if use_tune:
-            with tune.checkpoint_dir(step=0) as checkpoint_dir:
+            with tune.checkpoint_dir(step=1) as checkpoint_dir:
                 logdir, _ = split(checkpoint_dir)
         args = Namespace(nn=nn, params=current_params,
                          dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,

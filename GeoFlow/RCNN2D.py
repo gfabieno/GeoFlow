@@ -373,8 +373,6 @@ class RCNN2D(Model):
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
         """
-        if use_tune:
-            self.current_epoch += 1
         epochs = self.params.epochs + self.current_epoch
 
         if not use_tune:
@@ -388,6 +386,7 @@ class RCNN2D(Model):
         else:
             tune_report = TuneReportCheckpointCallback(filename='.',
                                                        frequency=1)
+            tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(dataset,
                  epochs=epochs,
