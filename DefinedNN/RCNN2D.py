@@ -79,12 +79,6 @@ class Hyperparameters(Hyperparameters):
         # Dilation of the CNNs between RNNs, a list of length 3.
         self.cnn_dilation = None
 
-    def __str__(self):
-        return str(self.__dict__)
-
-    def __repr__(self):
-        return str(self)
-
 
 class RCNN2D(NN):
     """
