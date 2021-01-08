@@ -33,6 +33,14 @@ class Hyperparameters(Namespace):
     def __init__(self):
         """
         Build the default hyperparameters for `RCNN2D`.
+
+        Mandatory hyperparameters are:
+        - `restore_from`: Checkpoint directory from which to restore the model.
+                          Defaults to the last checkpoint in `args.logdir`, if
+                          `restore_from` is `None`.
+        - `epochs`: Quantity of epochs, with `self.steps` iterations per epoch.
+        - `step_per_epoch`: Quantity of training iterations per epoch.
+        - `batch_size`: Quantity of examples per batch.
         """
         raise NotImplementedError
 
