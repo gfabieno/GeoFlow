@@ -258,9 +258,6 @@ class RCNN2D(NN):
                      run_eagerly=run_eagerly)
 
     def build_losses(self):
-        """
-        Initialize the losses used for training.
-        """
         losses, losses_weights = {}, {}
         for lbl in self.tooutputs:
             if lbl == 'ref':
