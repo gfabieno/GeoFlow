@@ -103,7 +103,10 @@ class NN(Model):
         Build input layers.
 
         Use `tensorflow.keras.layers.Input` layers to define the inputs to the
-        model.
+        model. The filename must be provided through an input layer, even
+        though it is not used in the network. Refer to
+        `GeoFlow.DefinedNN.Autoencoder.Autoencoder.build_inputs` for an
+        example.
 
         :return: A dictionary of inputs' name-layer pairs.
         """
