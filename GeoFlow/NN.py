@@ -85,6 +85,7 @@ class NN(Model):
             self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
             self.inputs = self.build_inputs(input_shape)
+            self._set_inputs(self.inputs)
             self.build_network(self.inputs)
             self.setup_training(run_eagerly)
             self.current_epoch = self.restore(self.params.restore_from)
@@ -94,9 +95,7 @@ class NN(Model):
         Build input layers.
 
         Use `tensorflow.keras.layers.Input` layers to define the inputs to the
-        model. Call `self._set_inputs(inputs)`, with `inputs` being a
-        dictionary of inputs' name-layer pairs, to make sure the inputs are
-        registered properly.
+        model.
 
         :return: A dictionary of inputs' name-layer pairs.
         """
