@@ -20,7 +20,7 @@ def ref_loss():
 
         loss = tf.nn.softmax_cross_entropy_with_logits(logits=output,
                                                        labels=label)
-        loss = tf.reduce_mean(loss)
+        loss = tf.reduce_sum(loss)
         return loss
 
     return loss
@@ -48,7 +48,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
         if fact1 > 0:
             num = tf.reduce_sum(weight * (label-output)**2, axis=[1, 2])
             den = tf.reduce_sum(weight * label**2, axis=[1, 2])
-            loss = tf.reduce_mean(num / den)
+            loss = tf.reduce_sum(num / den)
             losses.append(fact1 * loss)
 
         #  Calculate mean squared error of the z derivative
@@ -59,7 +59,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
                                 axis=[1, 2])
             den = tf.reduce_sum(weight[:, :-1, :] * dlabel**2,
                                 axis=[1, 2]) + 1E-6
-            loss = tf.reduce_mean(num / den)
+            loss = tf.reduce_sum(num / den)
             losses.append(alpha * loss)
 
         # Minimize gradient (blocky inversion)
@@ -70,7 +70,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
                 num += tf_norm(output[:, :, 1:] - output[:, :, :-1],
                                axis=[1, 2])
             den = tf.norm(output, ord=1, axis=[1, 2]) / .02
-            loss = tf.reduce_mean(num / den)
+            loss = tf.reduce_sum(num / den)
             losses.append(beta * loss)
 
         return tf.reduce_sum(losses)
