@@ -37,6 +37,9 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
     :return: Output of node calculating loss.
     """
+    assert alpha >= 0 and alpha <= 1
+    assert beta >= 0 and beta <= 1
+    assert beta + alpha >= 0 and beta + alpha <= 1
     fact1 = 1 - alpha - beta
 
     def loss(label, output):
