@@ -44,13 +44,13 @@ def v_compound_loss(alpha=0.2, beta=0.1):
         output = output[..., 0]
         losses = []
 
-        # Calculate mean squared error
+        # Compute mean squared error.
         if fact1 > 0:
             num = tf.reduce_sum(weight * (label-output)**2, axis=[1, 2])
             den = tf.reduce_sum(weight * label**2, axis=[1, 2])
             losses.append(fact1 * num / den)
 
-        #  Calculate mean squared error of the z derivative
+        # Compute mean squared error of the vertical derivative.
         if alpha > 0:
             dlabel = label[:, 1:, :] - label[:, :-1, :]
             dout = output[:, 1:, :] - output[:, :-1, :]
@@ -60,7 +60,7 @@ def v_compound_loss(alpha=0.2, beta=0.1):
                                 axis=[1, 2]) + 1E-6
             losses.append(alpha * num / den)
 
-        # Minimize gradient (blocky inversion)
+        # Minimize gradient (blocky inversion).
         if beta > 0:
             num = tf_norm(output[:, 1:, :] - output[:, :-1, :],
                           axis=[1, 2])
