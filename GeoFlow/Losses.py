@@ -4,6 +4,7 @@ Define custom losses.
 """
 
 import tensorflow as tf
+from tensorflow.keras.losses import binary_crossentropy
 
 
 def ref_loss():
@@ -13,13 +14,9 @@ def ref_loss():
     def loss(label, output):
         label, weight = label[:, 0], label[:, 1]
         # Logistic regression of zero offset time of reflections.
-        weight = tf.expand_dims(weight, -1)
-        output = output * weight
-        temp_lbl = tf.cast(label, tf.int32)
-        label = tf.one_hot(temp_lbl, 2) * weight
-
-        loss = tf.nn.softmax_cross_entropy_with_logits(logits=output,
-                                                       labels=label)
+        label = tf.expand_dims(label, -1)
+        loss = binary_crossentropy(label, output)
+        loss *= weight
         loss = tf.reduce_mean(loss, axis=[1, 2])
         return loss
 

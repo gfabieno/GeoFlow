@@ -195,8 +195,9 @@ class RCNN2D(Model):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
-        self.decoder['ref'] = Conv2D(2, params.decode_ref_kernel,
+        self.decoder['ref'] = Conv2D(1, params.decode_ref_kernel,
                                      padding='same',
+                                     activation='sigmoid',
                                      input_shape=self.rcnn.output_shape,
                                      batch_size=batch_size, name="ref")
 
@@ -433,10 +434,7 @@ class RCNN2D(Model):
                                      max_queue_size=10,
                                      use_multiprocessing=False)
             for lbl, out in evaluated.items():
-                if lbl == 'ref':
-                    evaluated[lbl] = out[..., 1]
-                else:
-                    evaluated[lbl] = out[..., 0]
+                evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
