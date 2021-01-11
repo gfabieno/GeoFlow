@@ -49,34 +49,28 @@ def v_compound_loss(alpha=0.2, beta=0.1):
 
         # Compute mean squared error.
         if fact1 > 0:
-            num = tf.reduce_sum(weight * (label-output)**2, axis=[1, 2])
-            den = tf.reduce_sum(weight * label**2, axis=[1, 2])
-            losses.append(fact1 * num / den)
+            loss = tf.reduce_mean(weight * (label-output)**2, axis=[1, 2])
+            losses.append(fact1 * loss)
 
         # Compute mean squared error of the vertical derivative.
         if alpha > 0:
             dlabel = label[:, 1:, :] - label[:, :-1, :]
             dout = output[:, 1:, :] - output[:, :-1, :]
-            num = tf.reduce_sum(weight[:, :-1, :] * (dlabel-dout)**2,
-                                axis=[1, 2])
-            den = tf.reduce_sum(weight[:, :-1, :] * dlabel**2,
-                                axis=[1, 2]) + 1E-6
-            losses.append(alpha * num / den)
+            loss = tf.reduce_mean(weight[:, :-1, :] * (dlabel-dout)**2,
+                                  axis=[1, 2])
+            losses.append(alpha * loss)
 
         # Minimize gradient (blocky inversion).
         if beta > 0:
-            num = tf_norm(output[:, 1:, :] - output[:, :-1, :],
-                          axis=[1, 2])
+            abs_diff = tf.abs(output[:, 1:, :] - output[:, :-1, :])
+            loss = tf.reduce_mean(abs_diff, axis=[1, 2])
             if output.get_shape()[-1] != 1:
-                num += tf_norm(output[:, :, 1:] - output[:, :, :-1],
-                               axis=[1, 2])
-            den = tf.norm(output, ord=1, axis=[1, 2]) / .02
-            losses.append(beta * num / den)
+                abs_diff = tf.abs(output[:, :, 1:] - output[:, :, :-1],
+                                  axis=[1, 2])
+                loss += tf.reduce_mean(abs_diff, axis=[1, 2])
+                loss /= 2
+            losses.append(beta * loss)
 
         return tf.reduce_sum(losses, axis=0)
 
     return loss
-
-
-def tf_norm(input, axis=None):
-    return tf.reduce_sum(tf.abs(input), axis=axis)

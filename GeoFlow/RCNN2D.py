@@ -222,6 +222,7 @@ class RCNN2D(Model):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="vrms")
@@ -246,6 +247,7 @@ class RCNN2D(Model):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="vint")
