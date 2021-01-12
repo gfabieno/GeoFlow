@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from DefinedDataset.Dataset1Dsmall import Dataset1Dsmall
-from GeoFlow.GraphIO import ReconstructedShotGather
+from GeoFlow.GraphIO import make_output_from_shotgather
 
 
 class Dataset1Dautoencode(Dataset1Dsmall):
@@ -14,7 +14,7 @@ class Dataset1Dautoencode(Dataset1Dsmall):
         self.validatesize = 0
         self.testsize = 50
 
-        reconstructed = ReconstructedShotGather(inputs['shotgather'])
+        reconstructed = make_output_from_shotgather(inputs['shotgather'])
         outputs = {reconstructed.name: reconstructed}
         for name in inputs:
             inputs[name].train_on_shots = True

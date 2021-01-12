@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -508,29 +510,28 @@ class ShotGather(GraphInput):
         return data
 
 
-class ReconstructedShotGather(ShotGather):
+def make_output_from_shotgather(shotgather):
     """
-    Make a `GraphOutput` out of `ShotGather` for autoencoding purposes.
+    Make a `GraphOutput` out of a `ShotGather` for autoencoding purposes.
     """
-    name = "reconstructed"
+    shotgather = deepcopy(shotgather)
+    shotgather.name = "reconstructed"
+    old_preprocess = shotgather.preprocess
 
-    def __init__(self, shotgather):
-        """
-        Define parameters controlling the preprocessing.
-
-        :param shotgather: The `ShotGather` object to reconstruct.
-        """
-        self.shotgather = shotgather
-
-    def generate(self, data, props):
+    def generate(data, props):
         return data, np.ones_like(data)
 
-    def preprocess(self, label, weight):
-        label = self.shotgather.preprocess(label, None)
+    def preprocess(label, weight):
+        label = old_preprocess(label, None)
         return label, weight
 
     def postprocess(label):
         return label
+
+    shotgather.generate = generate
+    shotgather.preprocess = preprocess
+    shotgather.postprocess = postprocess
+    return shotgather
 
 
 class Dispersion(GraphInput):
