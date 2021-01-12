@@ -50,16 +50,16 @@ class Hyperparameters(Namespace):
         # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
         # Quantity of examples per batch.
-        self.batch_size = 10
+        self.batch_size = 50
 
         # The learning rate.
-        self.learning_rate = 8E-4
+        self.learning_rate = 8E-5
         # Adam optimizer hyperparameters.
         self.beta_1 = 0.9
         self.beta_2 = 0.98
         self.epsilon = 1e-5
         # Losses associated with each label.
-        self.loss_scales = {'ref': .8, 'vrms': .1, 'vint': .1, 'vdepth': .0}
+        self.loss_scales = {'ref': .5, 'vrms': .4, 'vint': .1, 'vdepth': .0}
 
         # Whether to add noise or not to the data.
         self.add_noise = False
