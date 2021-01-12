@@ -12,8 +12,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
-from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
-                                     Input)
+from tensorflow.keras.layers import Conv3D, Conv2D, LSTM, Permute, Input
 from tensorflow.keras.backend import max as reduce_max, reshape
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
@@ -510,7 +509,6 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
-        encoder.add(LeakyReLU())
     return encoder
 
 
@@ -536,10 +534,8 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                      padding='same')
-    activation = LeakyReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
-        data_stream = activation(data_stream)
     rcnn = Model(inputs=input, outputs=data_stream, name=name)
     return rcnn
 
