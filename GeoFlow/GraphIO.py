@@ -141,7 +141,7 @@ class Reftime(GraphOutput):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        return refs, refs * 0 + 1
+        return refs, np.ones_like(refs)
 
     def preprocess(self, label, weight):
         src_pos_all, rec_pos_all = self.acquire.set_rec_src()
@@ -195,7 +195,7 @@ class Vrms(Reftime):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        tweights = vrms * 0 + 1
+        tweights = np.ones_like(vrms)
         for ii in range(vp.shape[1]):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
@@ -238,7 +238,7 @@ class Vint(Vrms):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        tweights = vint * 0 + 1
+        tweights = np.ones_like(vint)
         for ii in range(vp.shape[1]):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
@@ -304,7 +304,7 @@ class Vsdepth(Reftime):
 
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
-        return vs, vs * 0 + 1
+        return vs, np.ones_like(vs)
 
     def preprocess(self, label, weight):
         # TODO find a way to get vs min and max
