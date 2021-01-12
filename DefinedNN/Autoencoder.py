@@ -84,7 +84,7 @@ class Autoencoder(NN):
                          beta_2=self.params.beta_2,
                          epsilon=self.params.epsilon,
                          name="Adam")
-        loss = {"reconstructed": MeanSquaredError}
+        loss = {"reconstructed": MeanSquaredError()}
         self.compile(optimizer=optimizer,
                      loss=loss,
                      run_eagerly=run_eagerly)
