@@ -54,7 +54,6 @@ def main(args, use_tune=False):
 
 if __name__ == "__main__":
     from importlib import import_module
-    from GeoFlow import RCNN2D
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()
@@ -96,8 +95,9 @@ if __name__ == "__main__":
                         help="Run the Keras model eagerly, for debugging.")
 
     args = parser.parse_args()
-    args.nn = getattr(RCNN2D, args.nn)
+    nn_module = import_module("DefinedNN." + args.nn)
+    args.nn = getattr(nn_module, args.nn)
+    args.params = getattr(nn_module, args.params)()
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
-    args.params = getattr(RCNN2D, args.params)()
     main(args)
