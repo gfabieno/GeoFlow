@@ -79,7 +79,7 @@ if __name__ == "__main__":
                         type=int,
                         default=0,
                         help="0: create dataset only; 1: training only; "
-                        "2: training+dataset; 3: testing.")
+                             "2: training+dataset; 3: testing.")
     parser.add_argument("--ngpu",
                         type=int,
                         default=1,
