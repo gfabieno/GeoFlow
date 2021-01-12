@@ -95,7 +95,7 @@ class NN(Model):
             self.inputs = self.build_inputs(input_shape)
             self._set_inputs(self.inputs)
             self.build_network(self.inputs)
-            self.setup_training(run_eagerly)
+            self.setup(run_eagerly)
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self, input_shape):
@@ -161,7 +161,7 @@ class NN(Model):
             current_epoch = 0
         return current_epoch
 
-    def setup_training(self, run_eagerly: bool = False):
+    def setup(self, run_eagerly: bool = False):
         """
         Setup `Model` prior to fitting.
 

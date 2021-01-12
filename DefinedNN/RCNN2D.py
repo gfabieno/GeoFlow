@@ -245,7 +245,7 @@ class RCNN2D(NN):
                                                 current_weights)
             current_layer.set_weights(current_weights)
 
-    def setup_training(self, run_eagerly: bool = False):
+    def setup(self, run_eagerly: bool = False):
         losses, losses_weights = self.build_losses()
         optimizer = optimizers.Adam(learning_rate=self.params.learning_rate,
                                     beta_1=self.params.beta_1,

@@ -78,7 +78,7 @@ class Autoencoder(NN):
             data_stream = layer(data_stream)
         return {"reconstructed": data_stream}
 
-    def setup_training(self, run_eagerly: bool = False):
+    def setup(self, run_eagerly: bool = False):
         optimizer = Adam(learning_rate=self.params.learning_rate,
                          beta_1=self.params.beta_1,
                          beta_2=self.params.beta_2,
