@@ -6,9 +6,9 @@ Build a toy neural network for autoencoding shot gathers.
 import tensorflow as tf
 from tensorflow.keras.layers import Input, Conv3D, Conv3DTranspose
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.losses import MeanSquaredError
 
 from GeoFlow.NN import Hyperparameters, NN
+from GeoFlow.Losses import mean_squared_error
 
 
 class Hyperparameters(Hyperparameters):
@@ -84,7 +84,9 @@ class Autoencoder(NN):
                          beta_2=self.params.beta_2,
                          epsilon=self.params.epsilon,
                          name="Adam")
-        loss = {"reconstructed": MeanSquaredError()}
+        loss = {"reconstructed":
+                lambda label, output: mean_squared_error(label, output,
+                                                         axis=[1, 2])}
         self.compile(optimizer=optimizer,
                      loss=loss,
                      run_eagerly=run_eagerly)
