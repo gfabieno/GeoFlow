@@ -56,7 +56,7 @@ class DatasetGenerator:
         labels = {}
         weights = {}
         for name in self.outputs:
-            label, weight = self.outputs[name].generate(props)
+            label, weight = self.outputs[name].generate(data, props)
             labels[name] = label
             weights[name] = weight
 

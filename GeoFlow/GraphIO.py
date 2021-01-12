@@ -80,10 +80,11 @@ class GraphOutput:
 
         return ims
 
-    def generate(self, props):
+    def generate(self, data, props):
         """
         Output the labels and weights from a dict of earth properties.
 
+        :param data: The modeled seismic data.
         :param props: A dictionary of properties' name-values pairs.
 
         :return:
@@ -126,7 +127,7 @@ class Reftime(GraphOutput):
         self.identify_direct = False
         self.train_on_shots = False
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -168,7 +169,7 @@ class Reftime(GraphOutput):
 class Vrms(Reftime):
     name = "vrms"
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -215,7 +216,7 @@ class Vrms(Reftime):
 class Vint(Vrms):
     name = "vint"
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vint = np.zeros((self.acquire.NT, vp.shape[1]))
         z0 = int(self.acquire.source_depth / self.model.dh)
@@ -254,7 +255,7 @@ class Vdepth(Vrms):
         self.model_smooth_t = 0
         self.model_smooth_x = 0
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         z0 = int(self.acquire.source_depth / self.model.dh)
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
@@ -301,7 +302,7 @@ class Vdepth(Vrms):
 class Vsdepth(Reftime):
     name = "vsdepth"
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         return vs, vs * 0 + 1
 
