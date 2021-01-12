@@ -29,7 +29,7 @@ class Hyperparameters(Hyperparameters):
         self.encoder_qties_filters = [8] * 4
         self.encoder_kernels = [[5, 5, 1]] * 4
         # Quantity of convolution filters and kernel shapes of the decoder.
-        self.decoder_qties_filters = [8] * 4
+        self.decoder_qties_filters = [8] * 3 + [1]
         self.decoder_kernels = [[5, 5, 1]] * 4
 
 
