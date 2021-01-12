@@ -64,7 +64,9 @@ class Autoencoder(NN):
             conv_3d = Conv3DTranspose(qty_filters, kernel, activation='relu',
                                       padding='same')
             self.decoder.append(conv_3d)
-        conv_3d = Conv3D(qty_filters[-1], kernel[-1], activation='sigmoid',
+        conv_3d = Conv3D(self.params.decoder_qties_filters[-1],
+                         self.params.decoder_kernels[-1],
+                         activation='sigmoid',
                          padding='same')
         self.decoder.append(conv_3d)
 
