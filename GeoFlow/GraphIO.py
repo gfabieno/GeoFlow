@@ -523,6 +523,8 @@ def make_output_from_shotgather(shotgather):
 
     def preprocess(label, weight):
         label = old_preprocess(label, None)
+        label = label[..., 0]
+        weight = np.expand_dims(weight, axis=-1)
         return label, weight
 
     def postprocess(label):
