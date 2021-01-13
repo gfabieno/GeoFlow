@@ -78,5 +78,33 @@ def v_compound_loss(alpha=0.2, beta=0.1):
     return loss
 
 
+def make_loss_compatible(loss):
+    """
+    Make a loss function compatible with the presence of weights in labels.
+
+    :param loss: A loss function.
+    """
+    def compatible_loss(label, output, *args, **kwargs):
+        label, weight = label[:, 0], label[:, 1]
+        output = output[..., 0]
+        label *= weight
+        output *= weight
+        return loss(label, output, *args, **kwargs)
+
+    return compatible_loss
+
+
+@make_loss_compatible
+def mean_squared_error(label, output, axis=-1):
+    return tf.reduce_mean((label-output)**2, axis=axis)
+
+
+@make_loss_compatible
+def categorical_crossentropy(label, output):
+    label = tf.expand_dims(label, axis=-1)
+    output = tf.expand_dims(output, axis=-1)
+    return tf.keras.losses.categorical_crossentropy(label, output)
+
+
 def tf_norm(input, axis=None):
     return tf.reduce_sum(tf.abs(input), axis=axis)

@@ -10,9 +10,9 @@ def main(args, use_tune=False):
     dataset = args.dataset
 
     if args.debug:
-        dataset.trainsize = 5
+        dataset.trainsize = 4
         dataset.validatesize = 0
-        dataset.testsize = 5
+        dataset.testsize = 4
 
         args.params.batch_size = 2
         args.params.epochs = 2
@@ -28,9 +28,9 @@ def main(args, use_tune=False):
     if args.training != 0:
         phase = "train" if args.training in [1, 2] else "test"
         inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
-        inputs = inputs[args.nn.toinputs[0]]  # Multi-inputs not handled.
+        input_shapes = {name: input.shape for name, input in inputs.items()}
         nn = args.nn(dataset=dataset,
-                     input_shape=inputs.shape,
+                     input_shapes=input_shapes,
                      params=args.params,
                      checkpoint_dir=args.logdir,
                      run_eagerly=args.eager)
@@ -54,7 +54,6 @@ def main(args, use_tune=False):
 
 if __name__ == "__main__":
     from importlib import import_module
-    from GeoFlow import RCNN2D
 
     # Initialize argument parser
     parser = argparse.ArgumentParser()
@@ -80,7 +79,7 @@ if __name__ == "__main__":
                         type=int,
                         default=0,
                         help="0: create dataset only; 1: training only; "
-                        "2: training+dataset; 3: testing.")
+                             "2: training+dataset; 3: testing.")
     parser.add_argument("--ngpu",
                         type=int,
                         default=1,
@@ -96,8 +95,9 @@ if __name__ == "__main__":
                         help="Run the Keras model eagerly, for debugging.")
 
     args = parser.parse_args()
-    args.nn = getattr(RCNN2D, args.nn)
+    nn_module = import_module("DefinedNN." + args.nn)
+    args.nn = getattr(nn_module, args.nn)
+    args.params = getattr(nn_module, args.params)()
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
-    args.params = getattr(RCNN2D, args.params)()
     main(args)

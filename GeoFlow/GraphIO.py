@@ -1,3 +1,5 @@
+from copy import deepcopy
+
 import numpy as np
 from matplotlib import pyplot as plt
 
@@ -80,10 +82,11 @@ class GraphOutput:
 
         return ims
 
-    def generate(self, props):
+    def generate(self, data, props):
         """
         Output the labels and weights from a dict of earth properties.
 
+        :param data: The modeled seismic data.
         :param props: A dictionary of properties' name-values pairs.
 
         :return:
@@ -126,7 +129,7 @@ class Reftime(GraphOutput):
         self.identify_direct = False
         self.train_on_shots = False
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -140,7 +143,7 @@ class Reftime(GraphOutput):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        return refs, refs * 0 + 1
+        return refs, np.ones_like(refs)
 
     def preprocess(self, label, weight):
         src_pos_all, rec_pos_all = self.acquire.set_rec_src()
@@ -168,7 +171,7 @@ class Reftime(GraphOutput):
 class Vrms(Reftime):
     name = "vrms"
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
@@ -194,7 +197,7 @@ class Vrms(Reftime):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        tweights = vrms * 0 + 1
+        tweights = np.ones_like(vrms)
         for ii in range(vp.shape[1]):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
@@ -215,7 +218,7 @@ class Vrms(Reftime):
 class Vint(Vrms):
     name = "vint"
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vint = np.zeros((self.acquire.NT, vp.shape[1]))
         z0 = int(self.acquire.source_depth / self.model.dh)
@@ -237,7 +240,7 @@ class Vint(Vrms):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        tweights = vint * 0 + 1
+        tweights = np.ones_like(vint)
         for ii in range(vp.shape[1]):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
@@ -254,7 +257,7 @@ class Vdepth(Vrms):
         self.model_smooth_t = 0
         self.model_smooth_x = 0
 
-    def generate(self, props):
+    def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         z0 = int(self.acquire.source_depth / self.model.dh)
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
@@ -301,33 +304,33 @@ class Vdepth(Vrms):
 class Vsdepth(Reftime):
     name = "vsdepth"
 
-    def generate(self, props):
-        vp, vs, rho = props["vp"], props["vs"], props["rho"]
-        return vs, vs * 0 + 1
+    def generate(self, data, props):
+        vs = props["vs"]
+        return vs, np.ones_like(vs)
 
     def preprocess(self, label, weight):
-        # TODO find a way to get vs min and max
-        # label, weight = super().preprocess(label, weight)
+        # TODO Find a way to get v_s min and max.
         indx = int(label.shape[1]//2)
         label = label[:, indx]
         weight = weight[:, indx]
         vmin, vmax = self.model.properties["vs"]
-        label = (label - vmin) / (vmax - vmin)
+        label = (label-vmin) / (vmax-vmin)
         return label, weight
 
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
         return label * (vmax - vmin) + vmin
 
+
 class Vpdepth(Vdepth):
     name = "vpdepth"
 
     def preprocess(self, label, weight):
         indx = int(label.shape[1]//2)
-        label = label[:,indx]
-        weight = weight[:,indx]
+        label = label[:, indx]
+        weight = weight[:, indx]
         vmin, vmax = self.model.properties["vp"]
-        label = (label-vmin) / (vmax - vmin)
+        label = (label-vmin) / (vmax-vmin)
         return label, weight
 
 
@@ -460,7 +463,8 @@ class ShotGather(GraphInput):
                       for ii in range(rec_pos.shape[1])]
             minoffset = np.min(offset) + np.abs(rec_pos[0, 0]-rec_pos[0, 1])/2
             zero_offset_gather = np.transpose(data, axes=[0, 2, 1, 3])
-            zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0], -1])
+            zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0],
+                                                                 -1])
             zero_offset_gather = zero_offset_gather[:, offset < minoffset]
             [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
                                                 cmap, vmin, vmax, clip,
@@ -505,6 +509,32 @@ class ShotGather(GraphInput):
         data /= shot_max + eps
 
         return data
+
+
+def make_output_from_shotgather(shotgather):
+    """
+    Make a `GraphOutput` out of a `ShotGather` for autoencoding purposes.
+    """
+    shotgather = deepcopy(shotgather)
+    shotgather.name = "reconstructed"
+    old_preprocess = shotgather.preprocess
+
+    def generate(data, props):
+        return data, np.ones_like(data)
+
+    def preprocess(label, weight):
+        label = old_preprocess(label, None)
+        label = label[..., 0]
+        weight = np.expand_dims(weight, axis=-1)
+        return label, weight
+
+    def postprocess(label):
+        return label
+
+    shotgather.generate = generate
+    shotgather.preprocess = preprocess
+    shotgather.postprocess = postprocess
+    return shotgather
 
 
 class Dispersion(GraphInput):
