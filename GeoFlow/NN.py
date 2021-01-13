@@ -56,8 +56,8 @@ class NN(Model):
     """
     Define a parent network providing basic model management.
     """
-    # Define inputs and outputs names as string in lists stored at
-    # `cls.toinputs` and `cls.tooutputs`.
+    # Define inputs and outputs names as string in lists stored in class
+    # attributes `cls.toinputs` and `cls.tooutputs`.
     toinputs = None
     tooutputs = None
 
