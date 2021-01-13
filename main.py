@@ -10,9 +10,9 @@ def main(args, use_tune=False):
     dataset = args.dataset
 
     if args.debug:
-        dataset.trainsize = 5
+        dataset.trainsize = 4
         dataset.validatesize = 0
-        dataset.testsize = 5
+        dataset.testsize = 4
 
         args.params.batch_size = 2
         args.params.epochs = 2
