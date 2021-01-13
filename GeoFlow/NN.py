@@ -98,6 +98,7 @@ class NN(Model):
             self._set_inputs(inputs)
             self.build_network(inputs)
             self.setup(run_eagerly)
+            self.initialize(input_shapes)
             self.current_epoch = self.restore(self.params.restore_from)
 
     def build_inputs(self, inputs_shape: dict):
@@ -190,6 +191,22 @@ class NN(Model):
         """
         raise NotImplementedError
 
+    def initialize(self, input_shapes: list):
+        """
+        Build the model based on input shapes received.
+
+        This method exists for users who want to call model.build() in a
+        standalone way, as a substitute for calling the model on real data to
+        build it. The parent `Model.build` method does not support dictionary
+        input shapes.
+
+        :param input_shapes: The shape of every input feature of a single
+                             example from the input data.
+        :type input_shapes: dict
+        """
+        input_shapes = {name: (None,) + shape
+                        for name, shape in input_shapes.items()}
+        self.compute_output_shape(input_shapes)
 
     def load_weights(self, filepath: str, by_name: bool = True,
                      skip_mismatch: bool = False):
