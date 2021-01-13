@@ -3,8 +3,7 @@
 Build a toy neural network for autoencoding shot gathers.
 """
 
-import tensorflow as tf
-from tensorflow.keras.layers import Input, Conv3D, Conv3DTranspose
+from tensorflow.keras.layers import Conv3D, Conv3DTranspose
 from tensorflow.keras.optimizers import Adam
 
 from GeoFlow.NN import Hyperparameters, NN
