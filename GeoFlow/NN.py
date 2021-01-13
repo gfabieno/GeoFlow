@@ -190,6 +190,29 @@ class NN(Model):
         """
         raise NotImplementedError
 
+
+    def load_weights(self, filepath: str, by_name: bool = True,
+                     skip_mismatch: bool = False):
+        """
+        Load weights into the model.
+
+        :param filepath: String, path to the weights file to load. For weight
+                         files in TensorFlow format, this is the file prefix
+                         (the same as was passed to save_weights).
+        :param by_name: `by_name=True` is the only implemented behavior in this
+                        subclassed model.
+        :param skip_mismatch: This is not implemented.
+        """
+        if skip_mismatch or not by_name:
+            raise NotImplementedError
+
+        loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        for loaded_layer in loaded_model.layers:
+            name = loaded_layer.name
+            current_layer = self.get_layer(name)
+            loaded_weights = loaded_layer.get_weights()
+            current_layer.set_weights(loaded_weights)
+
     def launch_training(self, tfdataset, use_tune: bool = False):
         """
         Fit the model to the dataset.
