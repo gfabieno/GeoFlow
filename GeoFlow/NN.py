@@ -10,6 +10,7 @@ from os.path import join, isdir, isfile, split, exists
 
 import tensorflow as tf
 from tensorflow.keras import Model
+from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
@@ -61,7 +62,7 @@ class NN(Model):
     tooutputs = None
 
     def __init__(self,
-                 input_shape: tuple,
+                 input_shapes: dict,
                  params: Hyperparameters,
                  dataset: GeoDataset,
                  checkpoint_dir: str,
@@ -69,8 +70,9 @@ class NN(Model):
         """
         Build and restore the network.
 
-        :param input_shape: The shape of a single example from the input data.
-        :type input_shape: tuple
+        :param input_shapes: The shape of every input feature of a single
+                             example from the input data.
+        :type input_shapes: dict
         :param params: A grouping of hyperparameters.
         :type params: Hyperparameters
         :param dataset: The dataset that is operated on. The dataset can be
@@ -92,13 +94,13 @@ class NN(Model):
             self.params = params
             self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
-            self.inputs = self.build_inputs(input_shape)
+            self.inputs = self.build_inputs(input_shapes)
             self._set_inputs(self.inputs)
             self.build_network(self.inputs)
             self.setup(run_eagerly)
             self.current_epoch = self.restore(self.params.restore_from)
 
-    def build_inputs(self, input_shape):
+    def build_inputs(self, inputs_shape: dict):
         """
         Build input layers.
 
@@ -108,9 +110,23 @@ class NN(Model):
         `GeoFlow.DefinedNN.Autoencoder.Autoencoder.build_inputs` for an
         example.
 
+        :param input_shapes: The shape of every input feature of a single
+                             example from the input data.
+        :type input_shapes: dict
+
         :return: A dictionary of inputs' name-layer pairs.
         """
-        raise NotImplementedError
+        inputs = {}
+        for name, input_shape in inputs_shape.items():
+            input_layer = Input(shape=input_shape,
+                                batch_size=self.params.batch_size,
+                                dtype=tf.float32)
+            inputs[name] = input_layer
+        filename_layer = Input(shape=[1],
+                               batch_size=self.params.batch_size,
+                               dtype=tf.string)
+        inputs['filename'] = filename_layer
+        return inputs
 
     def build_network(self, inputs: dict):
         """

@@ -40,16 +40,6 @@ class Autoencoder(NN):
     toinputs = ["shotgather"]
     tooutputs = ["reconstructed"]
 
-    def build_inputs(self, input_shape):
-        shotgather = Input(shape=input_shape,
-                           batch_size=self.params.batch_size,
-                           dtype=tf.float32)
-        filename = Input(shape=[1],
-                         batch_size=self.params.batch_size,
-                         dtype=tf.string)
-        inputs = {"shotgather": shotgather, "filename": filename}
-        return inputs
-
     def build_network(self, inputs: dict):
         self.encoder = []
         for qty_filters, kernel in zip(self.params.encoder_qties_filters,

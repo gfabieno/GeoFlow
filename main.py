@@ -28,9 +28,9 @@ def main(args, use_tune=False):
     if args.training != 0:
         phase = "train" if args.training in [1, 2] else "test"
         inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
-        inputs = inputs[args.nn.toinputs[0]]  # Multi-inputs not handled.
+        input_shapes = {name: input.shape for name, input in inputs.items()}
         nn = args.nn(dataset=dataset,
-                     input_shape=inputs.shape,
+                     input_shapes=input_shapes,
                      params=args.params,
                      checkpoint_dir=args.logdir,
                      run_eagerly=args.eager)
