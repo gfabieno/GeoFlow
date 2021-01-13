@@ -2,9 +2,8 @@
 """Build and train a CNN on permafrost models."""
 
 from tensorflow.keras.layers import (Conv2D, MaxPool2D, Flatten, Dense,
-                                     Reshape, LeakyReLU)
+                                     Reshape, LeakyReLU, ReLU)
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.activations import softmax
 
 from GeoFlow.NN import Hyperparameters, NN
 from GeoFlow.Losses import mean_squared_error
@@ -34,7 +33,8 @@ class PermafrostCNN(NN):
                             build_conv_block([64, 128]),
                             build_conv_block([128, 64])]
         self.flatten = Flatten()
-        self.dense = Dense(400, activation=softmax)
+        self.dense = Dense(400)
+        self.activation = ReLU()
         self.reshape = Reshape(target_shape=(400, 1))
 
     def call(self, inputs: dict):
@@ -45,6 +45,7 @@ class PermafrostCNN(NN):
                 data_stream = layer(data_stream)
         data_stream = self.flatten(data_stream)
         data_stream = self.dense(data_stream)
+        data_stream = self.activation(data_stream)
         data_stream = self.reshape(data_stream)
         return {"vpdepth": data_stream}
 
