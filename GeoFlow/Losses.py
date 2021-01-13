@@ -87,7 +87,6 @@ def make_loss_compatible(loss):
     def compatible_loss(label, output, *args, **kwargs):
         label, weight = label[:, 0], label[:, 1]
         output = output[..., 0]
-        print(label.shape, weight.shape, output.shape)
         label *= weight
         output *= weight
         return loss(label, output, *args, **kwargs)
