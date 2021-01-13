@@ -99,5 +99,12 @@ def mean_squared_error(label, output, axis=-1):
     return tf.reduce_mean((label-output)**2, axis=axis)
 
 
+@make_loss_compatible
+def categorical_crossentropy(label, output):
+    label = tf.expand_dims(label, axis=-1)
+    output = tf.expand_dims(output, axis=-1)
+    return tf.keras.losses.categorical_crossentropy(label, output)
+
+
 def tf_norm(input, axis=None):
     return tf.reduce_sum(tf.abs(input), axis=axis)
