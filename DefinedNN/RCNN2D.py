@@ -6,8 +6,7 @@ Build a neural network for predicting v_p in 2D and in depth.
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
-from tensorflow.keras.layers import (Conv3D, Conv2D, LeakyReLU, LSTM, Permute,
-                                     Input)
+from tensorflow.keras.layers import Conv3D, Conv2D, LSTM, Permute, Input
 from tensorflow.keras.backend import max as reduce_max, reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -29,16 +28,16 @@ class Hyperparameters(Hyperparameters):
         # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
         # Quantity of examples per batch.
-        self.batch_size = 10
+        self.batch_size = 50
 
         # The learning rate.
-        self.learning_rate = 8E-4
+        self.learning_rate = 8E-5
         # Adam optimizer hyperparameters.
         self.beta_1 = 0.9
         self.beta_2 = 0.98
         self.epsilon = 1e-5
         # Losses associated with each label.
-        self.loss_scales = {'ref': .8, 'vrms': .1, 'vint': .1, 'vdepth': .0}
+        self.loss_scales = {'ref': .5, 'vrms': .4, 'vint': .1, 'vdepth': .0}
 
         # Whether to add noise or not to the data.
         self.add_noise = False
@@ -113,8 +112,9 @@ class RCNN2D(NN):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
-        self.decoder['ref'] = Conv2D(2, params.decode_ref_kernel,
+        self.decoder['ref'] = Conv2D(1, params.decode_ref_kernel,
                                      padding='same',
+                                     activation='sigmoid',
                                      input_shape=self.rcnn.output_shape,
                                      batch_size=batch_size, name="ref")
 
@@ -140,6 +140,7 @@ class RCNN2D(NN):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="vrms")
@@ -164,6 +165,7 @@ class RCNN2D(NN):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
+                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="vint")
@@ -324,7 +326,6 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
-        encoder.add(LeakyReLU())
     return encoder
 
 
@@ -350,10 +351,8 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                      padding='same')
-    activation = LeakyReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
-        data_stream = activation(data_stream)
     rcnn = Model(inputs=input, outputs=data_stream, name=name)
     return rcnn
 

@@ -243,8 +243,6 @@ class NN(Model):
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
         """
-        if use_tune:
-            self.current_epoch += 1
         epochs = self.params.epochs + self.current_epoch
 
         if not use_tune:
@@ -258,6 +256,7 @@ class NN(Model):
         else:
             tune_report = TuneReportCheckpointCallback(filename='.',
                                                        frequency=1)
+            tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(tfdataset,
                  epochs=epochs,
@@ -302,10 +301,7 @@ class NN(Model):
                                      max_queue_size=10,
                                      use_multiprocessing=False)
             for lbl, out in evaluated.items():
-                if lbl == 'ref':
-                    evaluated[lbl] = out[..., 1]
-                else:
-                    evaluated[lbl] = out[..., 0]
+                evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
                 example = example.numpy().decode("utf-8")
