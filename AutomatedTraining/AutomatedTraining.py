@@ -23,12 +23,12 @@ from typing import Callable
 from ray import tune
 
 from .Archive import ArchiveRepository
-from GeoFlow import RCNN2D
+from GeoFlow.NN import NN
 from GeoFlow.GeoDataset import GeoDataset
 
 
 def chain(main: Callable,
-          nn: RCNN2D.RCNN2D,
+          nn: NN,
           params: Namespace,
           dataset: GeoDataset,
           logdir: str = "./logs",
@@ -103,7 +103,7 @@ def chain(main: Callable,
         main(args, use_tune)
 
 
-def optimize(nn: RCNN2D.RCNN2D,
+def optimize(nn: NN,
              params: Namespace,
              dataset: GeoDataset,
              logdir: str = "./logs",
@@ -181,10 +181,12 @@ if __name__ == "__main__":
     args, config = parser.parse_known_args()
     config = {name[2:]: eval(value) for name, value
               in zip(config[::2], config[1::2])}
-    args.nn = getattr(RCNN2D, args.nn)
+    nn_module = import_module("DefinedNN." + args.nn)
+    dataset_module = import_module("DefinedDataset." + args.dataset)
+    args.nn = getattr(nn_module, args.nn)
+    args.params = getattr(nn_module, args.params)()
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
-    args.params = getattr(RCNN2D, args.params)()
 
     if args.debug:
         config["epochs"] = 1
