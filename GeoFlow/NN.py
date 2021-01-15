@@ -170,6 +170,7 @@ class NN(Model):
         if path is None:
             path = find_latest_checkpoint(self.checkpoint_dir)
         if path is not None:
+            path = path.rstrip("/\\")
             _, filename = split(path)
             current_epoch = filename.split("_")[-1].split(".")[0]
             current_epoch = int(current_epoch)
