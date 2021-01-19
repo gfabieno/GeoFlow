@@ -43,7 +43,7 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights=None, axs=[None], cmap=plt.get_cmap('hot'),
+    def plot(self, data, weights=None, axs=[None], cmap='viridis',
              vmin=0, vmax=1, clip=1, ims=[None]):
         """
         Plot the output.
@@ -346,7 +346,7 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights, axs, cmap=plt.get_cmap('Greys'), vmin=None,
+    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
              vmax=None, clip=0.1, ims=[None]):
         """
         Plot this input using default values.
@@ -456,7 +456,7 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
-    def plot(self, data, weights, axs, cmap=plt.get_cmap('Greys'), vmin=None,
+    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
              vmax=None, clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
@@ -574,5 +574,5 @@ class Dispersion(GraphInput):
 
     def plot(self, *args, **kwargs):
         kwargs["clip"] = 1.0
-        kwargs["cmap"] = plt.get_cmap('hot')
+        kwargs["cmap"] = 'hot'
         return super().plot(*args, **kwargs)
