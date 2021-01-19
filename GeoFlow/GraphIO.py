@@ -43,12 +43,13 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, axs=[None], cmap=plt.get_cmap('hot'), vmin=0,
-             vmax=1, clip=1, ims=[None]):
+    def plot(self, data, weights=None, axs=[None], cmap=plt.get_cmap('hot'),
+             vmin=0, vmax=1, clip=1, ims=[None]):
         """
         Plot the output.
 
         :param data: The data to plot.
+        :param weights: The weights associated to a particular example.
         :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
@@ -66,6 +67,9 @@ class GraphOutput:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
+        if weights is not None:
+            weights = weights.astype(bool)
+            data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
             if im is None:
                 ims[i] = ax.imshow(data,
@@ -342,12 +346,13 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.1, ims=[None]):
+    def plot(self, data, weights, axs, cmap=plt.get_cmap('Greys'), vmin=None,
+             vmax=None, clip=0.1, ims=[None]):
         """
         Plot this input using default values.
 
         :param data: The data to plot.
+        :param weights: The weights associated to a particular example.
         :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
@@ -365,6 +370,9 @@ class GraphInput:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
+        if weights is not None:
+            weights = weights.astype(bool)
+            data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
             if im is None:
                 ims[i] = ax.imshow(data,
@@ -448,15 +456,15 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
-    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.05, ims=None):
+    def plot(self, data, weights, axs, cmap=plt.get_cmap('Greys'), vmin=None,
+             vmax=None, clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
         else:
             first_shot_gather = data[:, :, 0]
-            [first_shot_gather] = super().plot(first_shot_gather, [axs[0]],
-                                               cmap, vmin, vmax, clip,
-                                               [ims[0]])
+            [first_shot_gather] = super().plot(first_shot_gather, weights,
+                                               [axs[0]], cmap, vmin, vmax,
+                                               clip, [ims[0]])
 
             src_pos, rec_pos = self.acquire.set_rec_src()
             offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
@@ -466,9 +474,9 @@ class ShotGather(GraphInput):
             zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0],
                                                                  -1])
             zero_offset_gather = zero_offset_gather[:, offset < minoffset]
-            [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
-                                                cmap, vmin, vmax, clip,
-                                                [ims[1]])
+            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
+                                                [axs[1]], cmap, vmin, vmax,
+                                                clip, [ims[1]])
 
             return first_shot_gather, zero_offset_gather
 

@@ -228,7 +228,8 @@ class GeoDataset:
         return inputs, outputs, filenames
 
     def plot_example(self, filename=None, phase='train', toinputs=None,
-                     tooutputs=None, plot_preds=False, nn_name=None, ims=None):
+                     tooutputs=None, plot_preds=False, apply_weights=False,
+                     nn_name=None, ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -239,6 +240,9 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param apply_weights: Whether to feed the weights to all `plot`
+                              functions the images or to show the weights on
+                              another row.
         :param nn_name: Name of the network that generated the results. This is
                         used as the prediction directory's name.
         :param ims: List of return values of plt.imshow to update.
@@ -249,8 +253,11 @@ class GeoDataset:
                                                phase=phase,
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
-        rows = [inputs, labels, weights]
-        rows_meta = [self.inputs, self.outputs, self.outputs]
+        rows = [inputs, labels]
+        rows_meta = [self.inputs, self.outputs]
+        if not apply_weights:
+            rows.append(weights)
+            rows_meta.append(self.outputs)
         if plot_preds:
             preds = self.generator.read_predictions(filename, nn_name)
             rows.append(preds)
@@ -281,7 +288,12 @@ class GeoDataset:
                 naxes = row_meta[colname].naxes
                 input_ims = ims[n:n+naxes]
                 input_axs = axs[n:n+naxes]
+                try:
+                    colweights = weights[colname] if apply_weights else None
+                except KeyError:
+                    colweights = None
                 output_ims = row_meta[colname].plot(row[colname],
+                                                    weights=colweights,
                                                     axs=input_axs,
                                                     ims=input_ims)
                 for im in output_ims:
