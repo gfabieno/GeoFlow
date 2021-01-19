@@ -94,10 +94,19 @@ if __name__ == "__main__":
                         action='store_true',
                         help="Run the Keras model eagerly, for debugging.")
 
-    args = parser.parse_args()
+    args, unknown_args = parser.parse_known_args()
     nn_module = import_module("DefinedNN." + args.nn)
     args.nn = getattr(nn_module, args.nn)
     args.params = getattr(nn_module, args.params)()
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
+    for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
+        arg = arg.strip('-')
+        if arg in args.params.__dict__.keys():
+            setattr(args.params, arg, value)
+        else:
+            raise ValueError(
+                f"Argument `{arg}` not recognized. Could not match it to an "
+                f"existing hyerparameter."
+            )
     main(args)
