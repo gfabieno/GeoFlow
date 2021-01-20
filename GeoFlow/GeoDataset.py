@@ -11,6 +11,7 @@ import os
 import gc
 import fnmatch
 from typing import List
+from copy import deepcopy
 
 import tensorflow as tf
 import numpy as np
@@ -257,11 +258,17 @@ class GeoDataset:
         rows_meta = [self.inputs, self.outputs]
         if not apply_weights:
             rows.append(weights)
-            rows_meta.append(self.outputs)
+            weights_meta = deepcopy(self.outputs)
+            for output in weights_meta.values():
+                output.meta_name = "Weights"
+            rows_meta.append(weights_meta)
         if plot_preds:
             preds = self.generator.read_predictions(filename, nn_name)
             rows.append(preds)
-            rows_meta.append(self.outputs)
+            preds_meta = deepcopy(self.outputs)
+            for output in preds_meta.values():
+                output.meta_name = "Predictions"
+            rows_meta.append(preds_meta)
 
         nrows = len(rows)
         ims_per_row = [sum(row[name].naxes for name in row)

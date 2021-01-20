@@ -25,6 +25,7 @@ class GraphOutput:
     :param naxes: The quantity of figures required by this output.
     :type naxes: int
     """
+    meta_name = "Output"
     name = "Baseoutput"
     naxes = 1
 
@@ -77,9 +78,8 @@ class GraphOutput:
                                    cmap=cmap,
                                    vmin=vmin, vmax=vmax,
                                    aspect='auto')
-                ax.set_title("Output: %s" % self.name,
-                             fontsize=16, fontweight='bold')
-                _ = ax.get_position().get_points().flatten()
+                ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
+                             fontweight='bold')
                 plt.colorbar(ims[i], ax=ax)
             else:
                 im.set_array(data)
@@ -339,6 +339,7 @@ class Vpdepth(Vdepth):
 
 
 class GraphInput:
+    meta_name = "Input"
     name = "BaseInput"
     naxes = 1
 
@@ -380,8 +381,8 @@ class GraphInput:
                                    cmap=cmap,
                                    vmin=vmin, vmax=vmax,
                                    aspect='auto')
-                ax.set_title("Input: %s" % self.name,
-                             fontsize=16, fontweight='bold')
+                ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
+                             fontweight='bold')
             else:
                 im.set_array(data)
 
