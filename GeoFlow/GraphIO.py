@@ -466,6 +466,8 @@ class ShotGather(GraphInput):
             [first_shot_gather] = super().plot(first_shot_gather, weights,
                                                [axs[0]], cmap, vmin, vmax,
                                                clip, [ims[0]])
+            axs[0].set_title(f"{self.meta_name}: first shot gather",
+                             fontsize=16, fontweight='bold')
 
             src_pos, rec_pos = self.acquire.set_rec_src()
             offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
@@ -478,6 +480,8 @@ class ShotGather(GraphInput):
             [zero_offset_gather] = super().plot(zero_offset_gather, weights,
                                                 [axs[1]], cmap, vmin, vmax,
                                                 clip, [ims[1]])
+            axs[1].set_title(f"{self.meta_name}: zero offset gather",
+                             fontsize=16, fontweight='bold')
 
             return first_shot_gather, zero_offset_gather
 
