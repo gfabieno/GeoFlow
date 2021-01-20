@@ -133,6 +133,15 @@ class Reftime(GraphOutput):
         self.identify_direct = False
         self.train_on_shots = False
 
+    def plot(self, data, weights=None, axs=[None], cmap='Greys',
+             vmin=0, vmax=1, clip=1, ims=[None]):
+        if self.meta_name in ['Output', 'Predictions']:
+            cmap = 'Greys'
+            vmin, vmax = -.2, 1
+        else:
+            cmap = 'rGreys'
+        return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
+
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
@@ -174,6 +183,9 @@ class Reftime(GraphOutput):
 
 class Vrms(Reftime):
     name = "vrms"
+
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
 
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
@@ -222,6 +234,9 @@ class Vrms(Reftime):
 class Vint(Vrms):
     name = "vint"
 
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
+
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         vint = np.zeros((self.acquire.NT, vp.shape[1]))
@@ -254,6 +269,9 @@ class Vint(Vrms):
 
 class Vdepth(Vrms):
     name = "vdepth"
+
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
 
     def __init__(self, model: EarthModel, acquire: Acquisition):
         super().__init__(model, acquire)
@@ -308,6 +326,9 @@ class Vdepth(Vrms):
 class Vsdepth(Reftime):
     name = "vsdepth"
 
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
+
     def generate(self, data, props):
         vs = props["vs"]
         return vs, np.ones_like(vs)
@@ -328,6 +349,9 @@ class Vsdepth(Reftime):
 
 class Vpdepth(Vdepth):
     name = "vpdepth"
+
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
 
     def preprocess(self, label, weight):
         indx = int(label.shape[1]//2)
