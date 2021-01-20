@@ -228,14 +228,11 @@ class Vrms(Reftime):
 
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vp"]
-        return label * (vmax - vmin) + vmin
+        return label*(vmax-vmin) + vmin
 
 
 class Vint(Vrms):
     name = "vint"
-
-    def plot(self, *args, **kwargs):
-        return GraphOutput.plot(self, *args, **kwargs)
 
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
@@ -269,9 +266,6 @@ class Vint(Vrms):
 
 class Vdepth(Vrms):
     name = "vdepth"
-
-    def plot(self, *args, **kwargs):
-        return GraphOutput.plot(self, *args, **kwargs)
 
     def __init__(self, model: EarthModel, acquire: Acquisition):
         super().__init__(model, acquire)
@@ -323,11 +317,8 @@ class Vdepth(Vrms):
         return label, weight
 
 
-class Vsdepth(Reftime):
+class Vsdepth(Vrms):
     name = "vsdepth"
-
-    def plot(self, *args, **kwargs):
-        return GraphOutput.plot(self, *args, **kwargs)
 
     def generate(self, data, props):
         vs = props["vs"]
@@ -344,14 +335,11 @@ class Vsdepth(Reftime):
 
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
-        return label * (vmax - vmin) + vmin
+        return label*(vmax-vmin) + vmin
 
 
 class Vpdepth(Vdepth):
     name = "vpdepth"
-
-    def plot(self, *args, **kwargs):
-        return GraphOutput.plot(self, *args, **kwargs)
 
     def preprocess(self, label, weight):
         indx = int(label.shape[1]//2)
