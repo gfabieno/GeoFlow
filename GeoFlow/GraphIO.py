@@ -139,7 +139,7 @@ class Reftime(GraphOutput):
             cmap = 'Greys'
             vmin, vmax = -.2, 1
         else:
-            cmap = 'rGreys'
+            cmap = 'Greys_r'
         return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
 
     def generate(self, data, props):
