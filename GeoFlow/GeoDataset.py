@@ -192,7 +192,7 @@ class GeoDataset:
                       `"validate"`.
         :param tooutputs: A list of names of the output variables.
 
-        :returns:
+        :return:
             inputs: The inputs, an array of size `[batch_size, input_size]`.
             outputs: The labels, an array of size `[batch_size, 2,
                      output_size]`. The items of the second dimension are the
@@ -299,7 +299,12 @@ class GeoDataset:
                     colweights = weights[colname] if apply_weights else None
                 except KeyError:
                     colweights = None
-                output_ims = row_meta[colname].plot(row[colname],
+                data = row[colname]
+                try:
+                    data = row_meta[colname].postprocess(data)
+                except AttributeError:
+                    pass
+                output_ims = row_meta[colname].plot(data,
                                                     weights=colweights,
                                                     axs=input_axs,
                                                     ims=input_ims)
