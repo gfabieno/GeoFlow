@@ -45,7 +45,7 @@ class GraphOutput:
         self.model = model
 
     def plot(self, data, weights=None, axs=[None], cmap='inferno',
-             vmin=0, vmax=1, clip=1, ims=[None]):
+             vmin=None, vmax=None, clip=1, ims=[None]):
         """
         Plot the output.
 
@@ -54,18 +54,18 @@ class GraphOutput:
         :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
-                     `-clip * np.amax(data)`.
+                     `self.model.vp_min`.
         :param vmax: Maximum value of the colormap. If None, defaults to
-                     `clip * np.amax(data)`.
+                     `self.model.vp_max`.
         :param clip: Clipping of the data.
         :param ims: If provided, the images' data is updated.
 
         :return: Return values of each `ax.imshow`.
         """
-        if vmax is None:
-            vmax = np.amax(data) * clip
         if vmin is None:
-            vmin = -vmax
+            vmin = self.model.vp_min
+        if vmax is None:
+            vmax = self.model.vp_max
 
         data = np.reshape(data, [data.shape[0], -1])
         if weights is not None:
