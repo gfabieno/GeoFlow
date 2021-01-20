@@ -175,9 +175,6 @@ class Reftime(GraphOutput):
         return label, weight
 
     def postprocess(self, label):
-        if len(label.shape) > 2:
-            label = np.argmax(label, axis=2)
-
         return label
 
 
