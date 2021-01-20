@@ -44,7 +44,7 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights=None, axs=[None], cmap='viridis',
+    def plot(self, data, weights=None, axs=[None], cmap='inferno',
              vmin=0, vmax=1, clip=1, ims=[None]):
         """
         Plot the output.
