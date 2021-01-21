@@ -31,7 +31,7 @@ class ModelCheckpoint(ModelCheckpoint):
 
 
 class Hyperparameters(Namespace):
-    def __init__(self):
+    def __init__(self, is_training: bool = True):
         """
         Build the default hyperparameters for `RCNN2D`.
 
@@ -42,6 +42,12 @@ class Hyperparameters(Namespace):
         - `epochs`: Quantity of epochs, with `self.steps` iterations per epoch.
         - `step_per_epoch`: Quantity of training iterations per epoch.
         - `batch_size`: Quantity of examples per batch.
+
+        :param is_training: Whether the model is initialized for training or
+                            not. This allows building a different network at
+                            inference time or dropping the multiple training
+                            stages at inference time if using
+                            `AutomatedTraining`.
         """
         raise NotImplementedError
 

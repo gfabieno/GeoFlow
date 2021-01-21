@@ -97,7 +97,8 @@ if __name__ == "__main__":
     args, unknown_args = parser.parse_known_args()
     nn_module = import_module("DefinedNN." + args.nn)
     args.nn = getattr(nn_module, args.nn)
-    args.params = getattr(nn_module, args.params)()
+    is_training = args.training in [1, 2]
+    args.params = getattr(nn_module, args.params)(is_training=is_training)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):

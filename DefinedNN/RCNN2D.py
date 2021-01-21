@@ -15,7 +15,7 @@ from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 
 
 class Hyperparameters(Hyperparameters):
-    def __init__(self):
+    def __init__(self, is_training=True):
         """
         Build the default hyperparameters for `RCNN2D`.
         """

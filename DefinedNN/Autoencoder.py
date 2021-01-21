@@ -11,7 +11,7 @@ from GeoFlow.Losses import mean_squared_error
 
 
 class Hyperparameters(Hyperparameters):
-    def __init__(self):
+    def __init__(self, is_training=True):
         self.restore_from = None
         self.epochs = 5
         self.steps_per_epoch = 100
