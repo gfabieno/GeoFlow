@@ -184,7 +184,7 @@ if __name__ == "__main__":
     nn_module = import_module("DefinedNN." + args.nn)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.nn = getattr(nn_module, args.nn)
-    args.params = getattr(nn_module, args.params)()
+    args.params = getattr(nn_module, args.params)(is_training=True)
     dataset_module = import_module("DefinedDataset." + args.dataset)
     args.dataset = getattr(dataset_module, args.dataset)()
 

@@ -461,6 +461,7 @@ class ShotGather(GraphInput):
             src_pos, rec_pos = self.acquire.set_rec_src()
             offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
                       for ii in range(rec_pos.shape[1])]
+            offset = np.array(offset)
             minoffset = np.min(offset) + np.abs(rec_pos[0, 0]-rec_pos[0, 1])/2
             zero_offset_gather = np.transpose(data, axes=[0, 2, 1, 3])
             zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0],

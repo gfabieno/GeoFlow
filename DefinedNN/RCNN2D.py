@@ -15,7 +15,7 @@ from GeoFlow.SeismicUtilities import build_time_to_depth_converter
 
 
 class Hyperparameters(Hyperparameters):
-    def __init__(self):
+    def __init__(self, is_training=True):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
@@ -31,7 +31,7 @@ class Hyperparameters(Hyperparameters):
         self.batch_size = 50
 
         # The learning rate.
-        self.learning_rate = 8E-5
+        self.learning_rate = 8E-4
         # Adam optimizer hyperparameters.
         self.beta_1 = 0.9
         self.beta_2 = 0.98
