@@ -255,17 +255,20 @@ class GeoDataset:
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
         rows = [inputs, labels]
-        rows_meta = [self.inputs, self.outputs]
+        inputs_meta = {input: self.inputs[input] for input in toinputs}
+        outputs_meta = {output: self.outputs[output] for output in tooutputs}
+        rows_meta = [inputs_meta, outputs_meta]
         if not apply_weights:
             rows.append(weights)
-            weights_meta = deepcopy(self.outputs)
+            weights_meta = deepcopy(outputs_meta)
             for output in weights_meta.values():
                 output.meta_name = "Weights"
             rows_meta.append(weights_meta)
         if plot_preds:
             preds = self.generator.read_predictions(filename, nn_name)
+            preds = {name: preds[name] for name in tooutputs}
             rows.append(preds)
-            preds_meta = deepcopy(self.outputs)
+            preds_meta = deepcopy(outputs_meta)
             for output in preds_meta.values():
                 output.meta_name = "Predictions"
             rows_meta.append(preds_meta)
