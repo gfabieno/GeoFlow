@@ -523,7 +523,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
 
     sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
-    cmps = ((sx + gx) / 2 / binsize).astype(int) * binsize
+    cmps = ((sx+gx)/2/binsize).astype(int) * binsize
     offsets = sx - gx
 
     ind = np.lexsort((offsets, cmps))
@@ -535,13 +535,13 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
 
     unique_cmps, counts = np.unique(cmps, return_counts=True)
     maxfold = np.max(counts)
-    firstcmp = unique_cmps[np.argmax(counts == maxfold)]
-    lastcmp = unique_cmps[-np.argmax(counts[::-1] == maxfold)-1]
+    first_cmp = unique_cmps[np.argmax(counts == maxfold)]
+    last_cmp = unique_cmps[-np.argmax(counts[::-1] == maxfold)-1]
     unique_cmps = unique_cmps[counts == maxfold]
     if data is not None:
-        ind1 = np.argmax(cmps == firstcmp)
-        ind2 = np.argmax(cmps > lastcmp)
-        data_cmp = data_cmp[:, ind1:ind2]
+        ind_start = np.argmax(cmps == first_cmp)
+        ind_end = np.argmax(cmps > last_cmp)
+        data_cmp = data_cmp[:, ind_start:ind_end]
         ncmps = unique_cmps.shape[0]
         data_cmp = np.reshape(data_cmp, [data_cmp.shape[0], ncmps, maxfold])
         data_cmp = np.swapaxes(data_cmp, 1, 2)
