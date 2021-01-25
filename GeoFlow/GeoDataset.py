@@ -254,6 +254,10 @@ class GeoDataset:
                                                phase=phase,
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
+        if toinputs is None:
+            toinputs = [name for name in self.inputs.keys()]
+        if tooutputs is None:
+            tooutputs = [name for name in self.outputs.keys()]
         rows = [inputs, labels]
         inputs_meta = {input: self.inputs[input] for input in toinputs}
         outputs_meta = {output: self.outputs[output] for output in tooutputs}
