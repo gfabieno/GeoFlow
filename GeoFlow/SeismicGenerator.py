@@ -104,14 +104,17 @@ class Acquisition:
         if self.gmin:
             gmin = self.gmin
         else:
-            gmin = self.Npad
+            if self.configuration == 'end-on spread':
+                gmin = -(self.model.NX-2*self.Npad) // 2
+            elif self.configuration == 'full':
+                gmin = self.Npad
         if self.gmax:
             gmax = self.gmax
         else:
             if self.configuration == 'end-on spread':
-                gmax = (self.NX-2*self.Npad) // 2
+                gmax = (self.model.NX-2*self.Npad) // 2
             elif self.configuration == 'full':
-                gmax = self.NX - self.Npad
+                gmax = self.model.NX - self.Npad
 
         gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
