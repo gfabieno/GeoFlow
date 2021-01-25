@@ -82,6 +82,7 @@ class GraphOutput:
                              fontweight='bold')
                 plt.colorbar(ims[i], ax=ax)
             else:
+                ax.imshow(np.zeros_like(data), cmap='Greys')
                 im.set_array(data)
 
         return ims
@@ -161,7 +162,7 @@ class Reftime(GraphOutput):
     def preprocess(self, label, weight):
         src_pos_all, rec_pos_all = self.acquire.set_rec_src()
         if not self.train_on_shots:
-            data, datapos = sortcmp(None, src_pos_all, rec_pos_all)
+            _, datapos = sortcmp(None, src_pos_all, rec_pos_all)
         else:
             datapos = src_pos_all[0, :]
         # Resample labels in x to correspond to data position.
@@ -220,7 +221,7 @@ class Vrms(Reftime):
     def preprocess(self, label, weight):
         label, weight = super().preprocess(label, weight)
         vmin, vmax = self.model.properties["vp"]
-        label = (label - vmin) / (vmax - vmin)
+        label = (label-vmin) / (vmax-vmin)
         return label, weight
 
     def postprocess(self, label):
@@ -470,7 +471,25 @@ class ShotGather(GraphInput):
              vmax=None, clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
-        else:
+        elif self.acquire.configuration == 'end-on spread':
+            first_cmp = data[:, :, 0]
+            [first_cmp] = super().plot(first_cmp, weights,
+                                       [axs[0]], cmap, vmin, vmax,
+                                       clip, [ims[0]])
+            if axs[0] is not None:
+                axs[0].set_title(f"{self.meta_name}: first CMP",
+                                 fontsize=16, fontweight='bold')
+
+            zero_offset_gather = data[:, -1]
+            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
+                                                [axs[1]], cmap, vmin, vmax,
+                                                clip, [ims[1]])
+            if axs[1] is not None:
+                axs[1].set_title(f"{self.meta_name}: zero offset gather",
+                                 fontsize=16, fontweight='bold')
+
+            return first_cmp, zero_offset_gather
+        elif self.acquire.configuration == 'full':
             first_shot_gather = data[:, :, 0]
             [first_shot_gather] = super().plot(first_shot_gather, weights,
                                                [axs[0]], cmap, vmin, vmax,
