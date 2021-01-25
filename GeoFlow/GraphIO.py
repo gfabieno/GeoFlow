@@ -82,7 +82,8 @@ class GraphOutput:
                              fontweight='bold')
                 plt.colorbar(ims[i], ax=ax)
             else:
-                ax.imshow(np.zeros_like(data), cmap='Greys')
+                ax = im.axes
+                ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
                 im.set_array(data)
 
         return ims

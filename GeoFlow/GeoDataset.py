@@ -293,8 +293,8 @@ class GeoDataset:
                     axs.append(ax)
             ims = [None for _ in range(qty_ims)]
         else:
-            fig = plt.gcf()
-            axs = [im.axes for im in ims]
+            fig = None
+            axs = [None for _ in range(qty_ims)]
 
         n = 0
         for row, row_meta in zip(rows, rows_meta):
