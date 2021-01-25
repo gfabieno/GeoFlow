@@ -318,7 +318,7 @@ class GeoDataset:
         return fig, axs, ims
 
     def animate(self, phase='train', toinputs=None, tooutputs=None,
-                plot_preds=False, nn_name=None):
+                plot_preds=False, apply_weights=True, nn_name=None):
         """
         Produce an animation of a dataset.
 
@@ -329,6 +329,9 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param apply_weights: Whether to feed the weights to all `plot`
+                              functions the images or to show the weights on
+                              another row.
         :param nn_name: Name of the network that generated the results. This is
                         used as the prediction directory's name.
         """
@@ -336,19 +339,22 @@ class GeoDataset:
                                           toinputs=toinputs,
                                           tooutputs=tooutputs,
                                           plot_preds=plot_preds,
+                                          apply_weights=apply_weights,
                                           nn_name=nn_name)
         plt.tight_layout()
 
         def init():
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds, nn_name=nn_name)
+                              plot_preds=plot_preds,
+                              apply_weights=apply_weights, nn_name=nn_name)
             return ims
 
         def animate(_):
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds, nn_name=nn_name)
+                              plot_preds=plot_preds,
+                              apply_weights=apply_weights, nn_name=nn_name)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,
