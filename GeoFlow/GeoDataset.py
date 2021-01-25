@@ -11,6 +11,7 @@ import os
 import gc
 import fnmatch
 from typing import List
+from copy import deepcopy
 
 import tensorflow as tf
 import numpy as np
@@ -191,7 +192,7 @@ class GeoDataset:
                       `"validate"`.
         :param tooutputs: A list of names of the output variables.
 
-        :returns:
+        :return:
             inputs: The inputs, an array of size `[batch_size, input_size]`.
             outputs: The labels, an array of size `[batch_size, 2,
                      output_size]`. The items of the second dimension are the
@@ -228,7 +229,8 @@ class GeoDataset:
         return inputs, outputs, filenames
 
     def plot_example(self, filename=None, phase='train', toinputs=None,
-                     tooutputs=None, plot_preds=False, nn_name=None, ims=None):
+                     tooutputs=None, plot_preds=False, apply_weights=True,
+                     nn_name=None, ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -239,6 +241,9 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param apply_weights: Whether to feed the weights to all `plot`
+                              functions the images or to show the weights on
+                              another row.
         :param nn_name: Name of the network that generated the results. This is
                         used as the prediction directory's name.
         :param ims: List of return values of plt.imshow to update.
@@ -249,12 +254,28 @@ class GeoDataset:
                                                phase=phase,
                                                toinputs=toinputs,
                                                tooutputs=tooutputs)
-        rows = [inputs, labels, weights]
-        rows_meta = [self.inputs, self.outputs, self.outputs]
+        if toinputs is None:
+            toinputs = [name for name in self.inputs.keys()]
+        if tooutputs is None:
+            tooutputs = [name for name in self.outputs.keys()]
+        rows = [inputs, labels]
+        inputs_meta = {input: self.inputs[input] for input in toinputs}
+        outputs_meta = {output: self.outputs[output] for output in tooutputs}
+        rows_meta = [inputs_meta, outputs_meta]
+        if not apply_weights:
+            rows.append(weights)
+            weights_meta = deepcopy(outputs_meta)
+            for output in weights_meta.values():
+                output.meta_name = "Weights"
+            rows_meta.append(weights_meta)
         if plot_preds:
             preds = self.generator.read_predictions(filename, nn_name)
+            preds = {name: preds[name] for name in tooutputs}
             rows.append(preds)
-            rows_meta.append(self.outputs)
+            preds_meta = deepcopy(outputs_meta)
+            for output in preds_meta.values():
+                output.meta_name = "Predictions"
+            rows_meta.append(preds_meta)
 
         nrows = len(rows)
         ims_per_row = [sum(row[name].naxes for name in row)
@@ -281,7 +302,17 @@ class GeoDataset:
                 naxes = row_meta[colname].naxes
                 input_ims = ims[n:n+naxes]
                 input_axs = axs[n:n+naxes]
-                output_ims = row_meta[colname].plot(row[colname],
+                try:
+                    colweights = weights[colname] if apply_weights else None
+                except KeyError:
+                    colweights = None
+                data = row[colname]
+                try:
+                    data = row_meta[colname].postprocess(data)
+                except AttributeError:
+                    pass
+                output_ims = row_meta[colname].plot(data,
+                                                    weights=colweights,
                                                     axs=input_axs,
                                                     ims=input_ims)
                 for im in output_ims:
@@ -291,7 +322,7 @@ class GeoDataset:
         return fig, axs, ims
 
     def animate(self, phase='train', toinputs=None, tooutputs=None,
-                plot_preds=False, nn_name=None):
+                plot_preds=False, apply_weights=True, nn_name=None):
         """
         Produce an animation of a dataset.
 
@@ -302,6 +333,9 @@ class GeoDataset:
         :param toinputs: List of the name(s) of the inputs to the network.
         :param tooutputs: List of the name(s) of the outputs of the network.
         :param plot_preds: Whether or not to plot predictions.
+        :param apply_weights: Whether to feed the weights to all `plot`
+                              functions the images or to show the weights on
+                              another row.
         :param nn_name: Name of the network that generated the results. This is
                         used as the prediction directory's name.
         """
@@ -309,19 +343,22 @@ class GeoDataset:
                                           toinputs=toinputs,
                                           tooutputs=tooutputs,
                                           plot_preds=plot_preds,
+                                          apply_weights=apply_weights,
                                           nn_name=nn_name)
         plt.tight_layout()
 
         def init():
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds, nn_name=nn_name)
+                              plot_preds=plot_preds,
+                              apply_weights=apply_weights, nn_name=nn_name)
             return ims
 
         def animate(_):
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
-                              plot_preds=plot_preds, nn_name=nn_name)
+                              plot_preds=plot_preds,
+                              apply_weights=apply_weights, nn_name=nn_name)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,

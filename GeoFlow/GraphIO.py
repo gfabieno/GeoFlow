@@ -25,6 +25,7 @@ class GraphOutput:
     :param naxes: The quantity of figures required by this output.
     :type naxes: int
     """
+    meta_name = "Output"
     name = "Baseoutput"
     naxes = 1
 
@@ -43,29 +44,33 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, axs=[None], cmap=plt.get_cmap('hot'), vmin=0,
-             vmax=1, clip=1, ims=[None]):
+    def plot(self, data, weights=None, axs=[None], cmap='inferno',
+             vmin=None, vmax=None, clip=1, ims=[None]):
         """
         Plot the output.
 
         :param data: The data to plot.
+        :param weights: The weights associated to a particular example.
         :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
-                     `-clip * np.amax(data)`.
+                     `self.model.vp_min`.
         :param vmax: Maximum value of the colormap. If None, defaults to
-                     `clip * np.amax(data)`.
+                     `self.model.vp_max`.
         :param clip: Clipping of the data.
         :param ims: If provided, the images' data is updated.
 
         :return: Return values of each `ax.imshow`.
         """
-        if vmax is None:
-            vmax = np.amax(data) * clip
         if vmin is None:
-            vmin = -vmax
+            vmin = self.model.vp_min
+        if vmax is None:
+            vmax = self.model.vp_max
 
         data = np.reshape(data, [data.shape[0], -1])
+        if weights is not None:
+            weights = weights.astype(bool)
+            data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
             if im is None:
                 ims[i] = ax.imshow(data,
@@ -73,11 +78,12 @@ class GraphOutput:
                                    cmap=cmap,
                                    vmin=vmin, vmax=vmax,
                                    aspect='auto')
-                ax.set_title("Output: %s" % self.name,
-                             fontsize=16, fontweight='bold')
-                _ = ax.get_position().get_points().flatten()
+                ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
+                             fontweight='bold')
                 plt.colorbar(ims[i], ax=ax)
             else:
+                ax = im.axes
+                ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
                 im.set_array(data)
 
         return ims
@@ -129,6 +135,15 @@ class Reftime(GraphOutput):
         self.identify_direct = False
         self.train_on_shots = False
 
+    def plot(self, data, weights=None, axs=[None], cmap='Greys',
+             vmin=0, vmax=1, clip=1, ims=[None]):
+        if self.meta_name in ['Output', 'Predictions']:
+            cmap = 'Greys'
+            vmin, vmax = -.2, 1
+        else:
+            cmap = 'Greys_r'
+        return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
+
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
@@ -148,7 +163,7 @@ class Reftime(GraphOutput):
     def preprocess(self, label, weight):
         src_pos_all, rec_pos_all = self.acquire.set_rec_src()
         if not self.train_on_shots:
-            data, datapos = sortcmp(None, src_pos_all, rec_pos_all)
+            _, datapos = sortcmp(None, src_pos_all, rec_pos_all)
         else:
             datapos = src_pos_all[0, :]
         # Resample labels in x to correspond to data position.
@@ -162,14 +177,14 @@ class Reftime(GraphOutput):
         return label, weight
 
     def postprocess(self, label):
-        if len(label.shape) > 2:
-            label = np.argmax(label, axis=2)
-
         return label
 
 
 class Vrms(Reftime):
     name = "vrms"
+
+    def plot(self, *args, **kwargs):
+        return GraphOutput.plot(self, *args, **kwargs)
 
     def generate(self, data, props):
         vp, vs, rho = props["vp"], props["vs"], props["rho"]
@@ -207,12 +222,12 @@ class Vrms(Reftime):
     def preprocess(self, label, weight):
         label, weight = super().preprocess(label, weight)
         vmin, vmax = self.model.properties["vp"]
-        label = (label - vmin) / (vmax - vmin)
+        label = (label-vmin) / (vmax-vmin)
         return label, weight
 
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vp"]
-        return label * (vmax - vmin) + vmin
+        return label*(vmax-vmin) + vmin
 
 
 class Vint(Vrms):
@@ -301,7 +316,7 @@ class Vdepth(Vrms):
         return label, weight
 
 
-class Vsdepth(Reftime):
+class Vsdepth(Vrms):
     name = "vsdepth"
 
     def generate(self, data, props):
@@ -319,7 +334,7 @@ class Vsdepth(Reftime):
 
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
-        return label * (vmax - vmin) + vmin
+        return label*(vmax-vmin) + vmin
 
 
 class Vpdepth(Vdepth):
@@ -335,6 +350,7 @@ class Vpdepth(Vdepth):
 
 
 class GraphInput:
+    meta_name = "Input"
     name = "BaseInput"
     naxes = 1
 
@@ -342,12 +358,13 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.1, ims=[None]):
+    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
+             vmax=None, clip=0.1, ims=[None]):
         """
         Plot this input using default values.
 
         :param data: The data to plot.
+        :param weights: The weights associated to a particular example.
         :param axs: The axes on which to plot.
         :param cmap: The colormap.
         :param vmin: Minimum value of the colormap. If None, defaults to
@@ -365,6 +382,9 @@ class GraphInput:
             vmin = -vmax
 
         data = np.reshape(data, [data.shape[0], -1])
+        if weights is not None:
+            weights = weights.astype(bool)
+            data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
             if im is None:
                 ims[i] = ax.imshow(data,
@@ -372,8 +392,8 @@ class GraphInput:
                                    cmap=cmap,
                                    vmin=vmin, vmax=vmax,
                                    aspect='auto')
-                ax.set_title("Input: %s" % self.name,
-                             fontsize=16, fontweight='bold')
+                ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
+                             fontweight='bold')
             else:
                 im.set_array(data)
 
@@ -448,15 +468,36 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
-    def plot(self, data, axs, cmap=plt.get_cmap('Greys'), vmin=None, vmax=None,
-             clip=0.05, ims=None):
+    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
+             vmax=None, clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
-        else:
+        elif self.acquire.configuration == 'end-on spread':
+            first_cmp = data[:, :, 0]
+            [first_cmp] = super().plot(first_cmp, weights,
+                                       [axs[0]], cmap, vmin, vmax,
+                                       clip, [ims[0]])
+            if axs[0] is not None:
+                axs[0].set_title(f"{self.meta_name}: first CMP",
+                                 fontsize=16, fontweight='bold')
+
+            zero_offset_gather = data[:, -1]
+            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
+                                                [axs[1]], cmap, vmin, vmax,
+                                                clip, [ims[1]])
+            if axs[1] is not None:
+                axs[1].set_title(f"{self.meta_name}: zero offset gather",
+                                 fontsize=16, fontweight='bold')
+
+            return first_cmp, zero_offset_gather
+        elif self.acquire.configuration == 'full':
             first_shot_gather = data[:, :, 0]
-            [first_shot_gather] = super().plot(first_shot_gather, [axs[0]],
-                                               cmap, vmin, vmax, clip,
-                                               [ims[0]])
+            [first_shot_gather] = super().plot(first_shot_gather, weights,
+                                               [axs[0]], cmap, vmin, vmax,
+                                               clip, [ims[0]])
+            if axs[0] is not None:
+                axs[0].set_title(f"{self.meta_name}: first shot gather",
+                                 fontsize=16, fontweight='bold')
 
             src_pos, rec_pos = self.acquire.set_rec_src()
             offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
@@ -467,9 +508,12 @@ class ShotGather(GraphInput):
             zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0],
                                                                  -1])
             zero_offset_gather = zero_offset_gather[:, offset < minoffset]
-            [zero_offset_gather] = super().plot(zero_offset_gather, [axs[1]],
-                                                cmap, vmin, vmax, clip,
-                                                [ims[1]])
+            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
+                                                [axs[1]], cmap, vmin, vmax,
+                                                clip, [ims[1]])
+            if axs[1] is not None:
+                axs[1].set_title(f"{self.meta_name}: zero offset gather",
+                                 fontsize=16, fontweight='bold')
 
             return first_shot_gather, zero_offset_gather
 
@@ -567,5 +611,5 @@ class Dispersion(GraphInput):
 
     def plot(self, *args, **kwargs):
         kwargs["clip"] = 1.0
-        kwargs["cmap"] = plt.get_cmap('hot')
+        kwargs["cmap"] = 'hot'
         return super().plot(*args, **kwargs)
