@@ -481,7 +481,8 @@ class ShotGather(GraphInput):
                 axs[0].set_title(f"{self.meta_name}: first CMP",
                                  fontsize=16, fontweight='bold')
 
-            zero_offset_gather = data[:, -1]
+            zero_offset_idx = data.shape[1] // 2
+            zero_offset_gather = data[:, zero_offset_idx]
             [zero_offset_gather] = super().plot(zero_offset_gather, weights,
                                                 [axs[1]], cmap, vmin, vmax,
                                                 clip, [ims[1]])
