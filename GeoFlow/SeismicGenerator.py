@@ -60,6 +60,7 @@ class Acquisition:
         self.rectype = 2
 
         self.singleshot = True
+        self.configuration = 'full'
 
     def set_rec_src(self):
         """
@@ -71,16 +72,25 @@ class Acquisition:
             src_pos: Source array.
             rec_pos: Receiver array.
         """
-        # Source and receiver positions.
+        assert self.configuration in ['end-on spread', 'full']
+
         if self.singleshot:
             # Add just one source in the middle
-            sx = np.arange(self.model.NX / 2,
-                           1 + self.model.NX / 2) * self.model.dh
-        else:
+            middle = self.model.NX / 2 * self.model.dh
+            sx = np.array([middle])
+        elif self.configuration == 'end-on spread':
             # Compute several sources
-            l1 = self.Npad + 1
-            l2 = self.model.NX - self.Npad
-            sx = np.arange(l1, l2, self.ds) * self.model.dh
+            start_idx = self.Npad + 1
+            if self.gmin and self.gmin < 0:
+                start_idx += -self.gmin
+            end_idx = self.model.NX - self.Npad
+            if self.gmax and self.gmax > 0:
+                end_idx += -self.gmax
+        elif self.configuration == 'full':
+            # Compute several sources
+            start_idx = self.Npad + 1
+            end_idx = self.model.NX - self.Npad
+        sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
         sz = np.full_like(sx, self.source_depth)
         sid = np.arange(0, sx.shape[0])
 
@@ -98,11 +108,17 @@ class Acquisition:
         if self.gmax:
             gmax = self.gmax
         else:
-            gmax = self.model.NX - self.Npad
+            if self.configuration == 'end-on spread':
+                gmax = (self.NX-2*self.Npad) // 2
+            elif self.configuration == 'full':
+                gmax = self.NX - self.Npad
 
         gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
-        gx = np.concatenate([gx0 for _ in sx], axis=0)
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+        if self.configuration == 'end-on spread':
+            gx = np.concatenate([s + gx0 for s in sx], axis=0)
+        elif self.configuration == 'full':
+            gx = np.concatenate([gx0 for _ in sx], axis=0)
         gz = np.full_like(gx, self.receiver_depth)
         gid = np.arange(0, len(gx))
 
