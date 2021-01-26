@@ -88,11 +88,12 @@ class Acquisition:
             end_idx = self.model.NX - self.Npad
             if self.gmax and self.gmax > 0:
                 end_idx += -self.gmax
+            sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
         elif self.configuration == 'full':
             # Compute several sources
             start_idx = self.Npad + 1
             end_idx = self.model.NX - self.Npad
-        sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
+            sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
         sz = np.full_like(sx, self.source_depth)
         sid = np.arange(0, sx.shape[0])
 
