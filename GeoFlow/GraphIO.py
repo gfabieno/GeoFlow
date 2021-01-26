@@ -532,7 +532,8 @@ class ShotGather(GraphInput):
             wind_length = int(2 / self.acquire.peak_freq / self.acquire.dt
                               / self.acquire.resampling)
             s, r = self.acquire.set_rec_src()
-            offsets = [r[0, ii] - s[0, r[3, ii]] for ii in range(r.shape[1])]
+            offsets = [r[0, ii] - s[0, int(r[3, ii])]
+                       for ii in range(r.shape[1])]
             data = top_mute(data, vp[0], wind_length, offsets,
                             self.acquire.dt * self.acquire.resampling,
                             self.acquire.tdelay)
