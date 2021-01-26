@@ -472,51 +472,55 @@ class ShotGather(GraphInput):
              vmax=None, clip=0.05, ims=None):
         if self.is_1d:
             return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
-        elif self.acquire.configuration == 'end-on spread':
-            first_cmp = data[:, :, 0]
-            [first_cmp] = super().plot(first_cmp, weights,
-                                       [axs[0]], cmap, vmin, vmax,
-                                       clip, [ims[0]])
-            if axs[0] is not None:
-                axs[0].set_title(f"{self.meta_name}: first CMP",
-                                 fontsize=16, fontweight='bold')
-
-            zero_offset_idx = data.shape[1] // 2
-            zero_offset_gather = data[:, zero_offset_idx]
-            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
-                                                [axs[1]], cmap, vmin, vmax,
-                                                clip, [ims[1]])
-            if axs[1] is not None:
-                axs[1].set_title(f"{self.meta_name}: zero offset gather",
-                                 fontsize=16, fontweight='bold')
-
-            return first_cmp, zero_offset_gather
-        elif self.acquire.configuration == 'full':
-            first_shot_gather = data[:, :, 0]
-            [first_shot_gather] = super().plot(first_shot_gather, weights,
-                                               [axs[0]], cmap, vmin, vmax,
-                                               clip, [ims[0]])
-            if axs[0] is not None:
-                axs[0].set_title(f"{self.meta_name}: first shot gather",
-                                 fontsize=16, fontweight='bold')
+        else:
+            first_panel = data[:, :, 0]
+            [first_panel] = super().plot(first_panel, weights,
+                                         [axs[0]], cmap, vmin, vmax,
+                                         clip, [ims[0]])
+            if self.train_on_shots:
+                if axs[0] is not None:
+                    axs[0].set_title(f"{self.meta_name}: first shot gather",
+                                     fontsize=16, fontweight='bold')
+            else:
+                if axs[0] is not None:
+                    axs[0].set_title(f"{self.meta_name}: first CMP",
+                                     fontsize=16, fontweight='bold')
 
             src_pos, rec_pos = self.acquire.set_rec_src()
-            offset = [np.abs(rec_pos[0, ii] - src_pos[0, rec_pos[3, ii]])
-                      for ii in range(rec_pos.shape[1])]
+            if not self.train_on_shots:
+                _, valid_cmps = sortcmp(None, src_pos, rec_pos)
+                binsize = np.abs(src_pos[0, 1] - src_pos[0, 0])
+
+                sx = [src_pos[0, int(srcid)] for srcid in rec_pos[3, :]]
+                sx = np.array(sx)
+                gx = rec_pos[0, :]
+                data_cmps = ((sx+gx)/2/binsize).astype(int) * binsize
+                dcmp = np.abs(data_cmps[1] - data_cmps[0]) / 2
+                valid_cmps, data_cmps = valid_cmps[None, :], data_cmps[:, None]
+                valid_idx = ((valid_cmps-dcmp < data_cmps)
+                             & (data_cmps < valid_cmps+dcmp)).any(axis=1)
+                rec_pos = rec_pos[:, valid_idx]
+
+            offset = [np.abs(rec_pos[0, i]-src_pos[0, int(rec_pos[3, i])])
+                      for i in range(rec_pos.shape[1])]
             offset = np.array(offset)
             minoffset = np.min(offset) + np.abs(rec_pos[0, 0]-rec_pos[0, 1])/2
-            zero_offset_gather = np.transpose(data, axes=[0, 2, 1, 3])
-            zero_offset_gather = np.reshape(zero_offset_gather, [data.shape[0],
-                                                                 -1])
-            zero_offset_gather = zero_offset_gather[:, offset < minoffset]
-            [zero_offset_gather] = super().plot(zero_offset_gather, weights,
-                                                [axs[1]], cmap, vmin, vmax,
-                                                clip, [ims[1]])
-            if axs[1] is not None:
-                axs[1].set_title(f"{self.meta_name}: zero offset gather",
-                                 fontsize=16, fontweight='bold')
+            offset_gather = np.reshape(data, [data.shape[0], -1])
+            offset_gather = offset_gather[:, offset < minoffset]
+            [offset_gather] = super().plot(offset_gather, weights,
+                                           [axs[1]], cmap, vmin, vmax,
+                                           clip, [ims[1]])
 
-            return first_shot_gather, zero_offset_gather
+            if np.min(offset) < 1E-4:
+                if axs[1] is not None:
+                    axs[1].set_title(f"{self.meta_name}: zero offset gather",
+                                     fontsize=16, fontweight='bold')
+            else:
+                if axs[1] is not None:
+                    axs[1].set_title(f"{self.meta_name}: constant offset "
+                                     f"gather", fontsize=16, fontweight='bold')
+
+            return first_panel, offset_gather
 
     def preprocess(self, data, labels):
         # Add random noises to the data.
