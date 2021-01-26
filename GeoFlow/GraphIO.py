@@ -471,7 +471,8 @@ class ShotGather(GraphInput):
     def plot(self, data, weights, axs, cmap='Greys', vmin=None,
              vmax=None, clip=0.05, ims=None):
         if self.is_1d:
-            return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
+            return super().plot(data, weights, axs, cmap, vmin, vmax, clip,
+                                ims)
         else:
             first_panel = data[:, :, 0]
             [first_panel] = super().plot(first_panel, weights,
