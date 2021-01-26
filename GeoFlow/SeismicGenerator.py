@@ -60,6 +60,8 @@ class Acquisition:
         self.rectype = 2
 
         self.singleshot = True
+        # Whether to fill the surface with geophones or to use inline spread.
+        # Either `'full'` or `'inline'`.
         self.configuration = 'full'
 
     def set_rec_src(self):
@@ -72,13 +74,13 @@ class Acquisition:
             src_pos: Source array.
             rec_pos: Receiver array.
         """
-        assert self.configuration in ['end-on spread', 'full']
+        assert self.configuration in ['inline', 'full']
 
         if self.singleshot:
             # Add just one source in the middle
             middle = self.model.NX / 2 * self.model.dh
             sx = np.array([middle])
-        elif self.configuration == 'end-on spread':
+        elif self.configuration == 'inline':
             # Compute several sources
             start_idx = self.Npad + 1
             if self.gmin and self.gmin < 0:
@@ -104,21 +106,21 @@ class Acquisition:
         if self.gmin:
             gmin = self.gmin
         else:
-            if self.configuration == 'end-on spread':
+            if self.configuration == 'inline':
                 gmin = -(self.model.NX-2*self.Npad) // 2
             elif self.configuration == 'full':
                 gmin = self.Npad
         if self.gmax:
             gmax = self.gmax
         else:
-            if self.configuration == 'end-on spread':
+            if self.configuration == 'inline':
                 gmax = (self.model.NX-2*self.Npad) // 2
             elif self.configuration == 'full':
                 gmax = self.model.NX - self.Npad
 
         gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
-        if self.configuration == 'end-on spread':
+        if self.configuration == 'inline':
             gx = np.concatenate([s + gx0 for s in sx], axis=0)
         elif self.configuration == 'full':
             gx = np.concatenate([gx0 for _ in sx], axis=0)
