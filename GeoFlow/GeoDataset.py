@@ -261,7 +261,9 @@ class GeoDataset:
         rows = [inputs, labels]
         inputs_meta = {input: self.inputs[input] for input in toinputs}
         outputs_meta = {output: self.outputs[output] for output in tooutputs}
-        rows_meta = [inputs_meta, outputs_meta]
+        rows_meta = [inputs_meta]
+        if outputs_meta:
+            rows_meta.append(outputs_meta)
         if not apply_weights:
             rows.append(weights)
             weights_meta = deepcopy(outputs_meta)
