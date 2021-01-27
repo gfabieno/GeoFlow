@@ -518,7 +518,7 @@ class ShotGather(GraphInput):
                                      fontsize=16, fontweight='bold')
             else:
                 if axs[1] is not None:
-                    axs[1].set_title(f"{self.meta_name}: constant offset "
+                    axs[1].set_title(f"{self.meta_name}: nearest offset "
                                      f"gather", fontsize=16, fontweight='bold')
 
             return first_panel, offset_gather
