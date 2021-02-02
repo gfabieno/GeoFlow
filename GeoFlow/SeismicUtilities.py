@@ -335,9 +335,9 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
     """
     Build a time to depth conversion model in Keras.
 
-    :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
-                 `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
-                 case are used.
+    :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
+                    `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
+                    current dataset are used.
     :param input_size: The shape of the expected input.
     :param batch_size: Quantity of examples in a batch.
     :param input_dtype: Data type of the input.
@@ -345,15 +345,15 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
 
     :return: A Keras model.
     """
-    vmax = case.model.vp_max
-    vmin = case.model.vp_min
-    dh = case.model.dh
-    dt = case.acquire.dt
-    resampling = case.acquire.resampling
-    tdelay = case.acquire.tdelay
+    vmax = dataset.model.vp_max
+    vmin = dataset.model.vp_min
+    dh = dataset.model.dh
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
     tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
-    nz = case.model.NZ
-    source_depth = case.acquire.source_depth
+    nz = dataset.model.NZ
+    source_depth = dataset.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
