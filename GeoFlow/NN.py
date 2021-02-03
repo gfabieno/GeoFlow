@@ -281,7 +281,7 @@ class NN(Model):
         """
         raise NotImplementedError
 
-    def launch_testing(self, tfdataset: tf.data.Dataset):
+    def launch_testing(self, tfdataset: tf.data.Dataset, savedir: str = None):
         """
         Test the model on a dataset.
 
@@ -293,9 +293,15 @@ class NN(Model):
                           output pairs of data and labels, but labels are
                           ignored at inference time.
         :type tfdataset: tf.data.Dataset
+        :param savedir: The name of the subdirectory within the dataset test
+                        directory to save predictions in. Defaults to the name
+                        of the network class.
+        :type savedir: str
         """
-        # Save the predictions to a subfolder that has the name of the network.
-        savedir = join(self.dataset.datatest, type(self).__name__)
+        if savedir is None:
+            # Save the predictions to a subfolder that has the name of the
+            # network.
+            savedir = join(self.dataset.datatest, type(self).__name__)
         if not isdir(savedir):
             mkdir(savedir)
         if self.dataset.testsize % self.params.batch_size != 0:
