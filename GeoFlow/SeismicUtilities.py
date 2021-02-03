@@ -352,12 +352,13 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
     tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
 
     vrms = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
-    vrms = vrms*(vmax-vmin) + vmin
-    traveltimes = tf.range(vrms.shape[1]+1-tdelay) * dt * resampling
-    diff = vrms[:, tdelay-1:]**2 * traveltimes[None, :]
+    rescaled_vrms = vrms*(vmax-vmin) + vmin
+    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=tf.float32)
+    traveltimes *= dt * resampling
+    diff = rescaled_vrms[:, tdelay-1:]**2 * traveltimes[None, :, None]
     diff = diff[:, 1:] - diff[:, :-1]
     vint = tf.sqrt(diff / (dt*resampling))
-    vint = tf.concat([vrms[:, :tdelay], vint], axis=1)
+    vint = tf.concat([rescaled_vrms[:, :tdelay], vint], axis=1)
     vint = (vint-vmin) / (vmax-vmin)
 
     vrms_to_vint_converter = Model(inputs=vrms, outputs=vint, name=name)
