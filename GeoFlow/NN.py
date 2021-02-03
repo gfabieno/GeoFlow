@@ -301,7 +301,8 @@ class NN(Model):
         if savedir is None:
             # Save the predictions to a subfolder that has the name of the
             # network.
-            savedir = join(self.dataset.datatest, type(self).__name__)
+            savedir = type(self).__name__
+        savedir = join(self.dataset.datatest, savedir)
         if not isdir(savedir):
             mkdir(savedir)
         if self.dataset.testsize % self.params.batch_size != 0:
