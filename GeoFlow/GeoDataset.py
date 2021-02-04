@@ -230,7 +230,7 @@ class GeoDataset:
 
     def plot_example(self, filename=None, phase='train', toinputs=None,
                      tooutputs=None, plot_preds=False, apply_weights=True,
-                     loaddir=None, ims=None):
+                     pred_dir=None, ims=None):
         """
         Plot the data and the labels of an example.
 
