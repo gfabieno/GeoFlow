@@ -230,7 +230,7 @@ class GeoDataset:
 
     def plot_example(self, filename=None, phase='train', toinputs=None,
                      tooutputs=None, plot_preds=False, apply_weights=True,
-                     nn_name=None, ims=None):
+                     pred_dir=None, ims=None):
         """
         Plot the data and the labels of an example.
 
@@ -244,8 +244,10 @@ class GeoDataset:
         :param apply_weights: Whether to feed the weights to all `plot`
                               functions the images or to show the weights on
                               another row.
-        :param nn_name: Name of the network that generated the results. This is
-                        used as the prediction directory's name.
+        :param pred_dir: The name of the subdirectory within the dataset test
+                         directory to restore the predictions from. Defaults to
+                         the name of the network class. This should typically
+                         be the network's name.
         :param ims: List of return values of plt.imshow to update.
         """
 
@@ -269,7 +271,7 @@ class GeoDataset:
                 output.meta_name = "Weights"
             rows_meta.append(weights_meta)
         if plot_preds:
-            preds = self.generator.read_predictions(filename, nn_name)
+            preds = self.generator.read_predictions(filename, pred_dir)
             preds = {name: preds[name] for name in tooutputs}
             rows.append(preds)
             preds_meta = deepcopy(outputs_meta)
@@ -322,7 +324,7 @@ class GeoDataset:
         return fig, axs, ims
 
     def animate(self, phase='train', toinputs=None, tooutputs=None,
-                plot_preds=False, apply_weights=True, nn_name=None):
+                plot_preds=False, apply_weights=True, pred_dir=None):
         """
         Produce an animation of a dataset.
 
@@ -336,29 +338,31 @@ class GeoDataset:
         :param apply_weights: Whether to feed the weights to all `plot`
                               functions the images or to show the weights on
                               another row.
-        :param nn_name: Name of the network that generated the results. This is
-                        used as the prediction directory's name.
+        :param pred_dir: The name of the subdirectory within the dataset test
+                         directory to restore the predictions from. Defaults to
+                         the name of the network class. This should typically
+                         be the network's name.
         """
         fig, axs, ims = self.plot_example(phase=phase,
                                           toinputs=toinputs,
                                           tooutputs=tooutputs,
                                           plot_preds=plot_preds,
                                           apply_weights=apply_weights,
-                                          nn_name=nn_name)
+                                          pred_dir=pred_dir)
         plt.tight_layout()
 
         def init():
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
                               plot_preds=plot_preds,
-                              apply_weights=apply_weights, nn_name=nn_name)
+                              apply_weights=apply_weights, pred_dir=pred_dir)
             return ims
 
         def animate(_):
             self.plot_example(phase=phase, toinputs=toinputs,
                               tooutputs=tooutputs, ims=ims,
                               plot_preds=plot_preds,
-                              apply_weights=apply_weights, nn_name=nn_name)
+                              apply_weights=apply_weights, pred_dir=pred_dir)
             return ims
 
         _ = animation.FuncAnimation(fig, animate, init_func=init,
