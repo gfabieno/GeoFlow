@@ -45,11 +45,11 @@ def main(args, use_tune=False):
 
         # Test model.
         if args.training == 3:
-            nn.launch_testing(tfdataset)
+            nn.launch_testing(tfdataset, args.savedir)
             if args.plot:
-                nn_name = type(nn).__name__
+                pred_dir = args.savedir or type(nn).__name__
                 dataset.animate(phase='test', plot_preds=True,
-                                nn_name=nn_name)
+                                pred_dir=pred_dir)
 
 
 if __name__ == "__main__":
@@ -84,6 +84,12 @@ if __name__ == "__main__":
                         type=int,
                         default=1,
                         help="Quantity of GPUs for data creation.")
+    parser.add_argument("--savedir",
+                        type=str,
+                        default=None,
+                        help="The name of the subdirectory within the dataset "
+                             "test directory to save predictions in. Defaults "
+                             "to the name of the network class.")
     parser.add_argument("--plot",
                         action='store_true',
                         help="Validate data by plotting.")

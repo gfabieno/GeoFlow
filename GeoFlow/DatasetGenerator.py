@@ -69,9 +69,9 @@ class DatasetGenerator:
         :param filename: Name of the file.
 
         :returns:
-                inputs: A dictionary of inputs' name-data pairs.
-                labels: A dictionary of labels' name-values pairs.
-                weights: A dictionary of weights' name-values pairs.
+            inputs: A dictionary of inputs' name-data pairs.
+            labels: A dictionary of labels' name-values pairs.
+            weights: A dictionary of weights' name-values pairs.
         """
         with h5.File(filename, "r") as file:
             inputs = {key: file[key][:] for key in self.inputs}
@@ -79,19 +79,21 @@ class DatasetGenerator:
             weights = {key: file[key+"_w"][:] for key in self.outputs}
         return inputs, labels, weights
 
-    def read_predictions(self, filename: str, nn_name: str):
+    def read_predictions(self, filename: str, load_dir: str):
         """
         Read one example's predictions from hdf5 file.
 
         :param filename: Name of the file.
-        :param nn_name: Name of the network that generated the results. This is
-                        used as the prediction directory's name.
+        :param load_dir: The name of the subdirectory within the dataset test
+                         directory to restore the predictions from. Defaults to
+                         the name of the network class. This should typically
+                         be the network's name.
 
         :returns:
-                preds: A dictionary of predictions' name-values pairs.
+            preds: A dictionary of predictions' name-values pairs.
         """
         directory, filename = os.path.split(filename)
-        filename = os.path.join(directory, nn_name, filename)
+        filename = os.path.join(directory, load_dir, filename)
         with h5.File(filename, "r") as file:
             preds = {key: file[key][:] for key in self.outputs}
         return preds
