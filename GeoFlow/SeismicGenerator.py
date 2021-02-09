@@ -60,6 +60,9 @@ class Acquisition:
         self.rectype = 2
 
         self.singleshot = True
+        #Absorbing boundary type :
+        # 1: CPML, 2: Absorbing layer of Cerjan
+        self.abs_type = 1
 
     def set_rec_src(self):
         """
@@ -165,6 +168,7 @@ class SeismicGenerator(SeisCL):
         self.f0 = acquire.peak_freq  # Source frequency
         self.seisout = acquire.rectype  # Output pressure
         self.freesurf = int(acquire.fs)  # Free surface
+        self.abs_type = acquire.abs_type # Absorbing boundary type
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
