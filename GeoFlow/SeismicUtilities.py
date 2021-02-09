@@ -335,6 +335,9 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
     """
     Build a Dix conversion model in Keras.
 
+    Use the Dix formula (wiki.seg.org/wiki/Dictionary:Dix_formula) to convert
+    RMS velocity into interval velocity.
+
     :param dataset: Constants `vmin`, `vmax`, `dt`, `resampling` and `tdelay`
                     of the dataset are used.
     :param input_size: The shape of the expected input.
@@ -369,7 +372,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
     """
-    Build a time to depth conversion model in Keras.
+    Build a time to depth conversion model for interval velocity in Keras.
 
     :param dataset: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                     `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
