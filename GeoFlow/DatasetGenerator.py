@@ -106,9 +106,9 @@ class DatasetGenerator:
 
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
-        :param inputs: A dicitonary of graph inputs' name-values pairs.
-        :param labels: A dicitonary of graph labels' name-values pairs.
-        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param inputs: A dictionary of graph inputs' name-values pairs.
+        :param labels: A dictionary of graph labels' name-values pairs.
+        :param weights:  A dictionary of graph weights' name-values pairs.
         :param filename: If provided, save the example in filename.
         """
         if filename is None:
@@ -128,9 +128,9 @@ class DatasetGenerator:
         """
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
-        :param inputs: A dicitonary of graph inputs' name-values pairs.
-        :param labels: A dicitonary of graph labels' name-values pairs.
-        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param inputs: A dictionary of graph inputs' name-values pairs.
+        :param labels: A dictionary of graph labels' name-values pairs.
+        :param weights:  A dictionary of graph weights' name-values pairs.
         :param filename: If provided, save the example in filename.
         """
         if filename is None:
