@@ -6,6 +6,7 @@ Used by the `GeoFlow.GeoDataset.GeoDataset` class.
 
 import os
 from multiprocessing import Process, Queue
+import queue
 from typing import Dict
 
 import numpy as np
@@ -209,7 +210,9 @@ class DatasetProcess(Process):
         while not self.seeds.empty():
             try:
                 seed = self.seeds.get(timeout=1)
-            except Queue.Full:
+            except queue.Full:
+                break
+            except queue.Empty:
                 break
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):
