@@ -330,16 +330,19 @@ def vdepth2time(vp, dh, t, t0=0):
 
 
 def build_time_to_depth_converter(case, input_shape, batch_size,
+                                  crop_water=False,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
     """
-    Build a time to depth conversion model in Keras.
+    Build a time to depth conversion model for interval velocity in Keras.
 
     :param case: Constants `vmin`, `vmax`, `dh`, `dt`, `resampling`,
                  `tdelay`, `nz`, `source_depth` and `receiver_depth` of the
                  case are used.
-    :param input_size: The shape of the expected input.
+    :param input_shape: The shape of the expected input.
     :param batch_size: Quantity of examples in a batch.
+    :param crop_water: Whether to crop depth dimension to minimal water depth
+                       or not.
     :param input_dtype: Data type of the input.
     :param name: Name of the produced Keras model.
 
@@ -355,6 +358,10 @@ def build_time_to_depth_converter(case, input_shape, batch_size,
     nz = case.model.NZ
     source_depth = case.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
+    if crop_water:
+        water_dmin = case.model.water_dmin
+        crop_idx = int(water_dmin / dh)
+        max_depth -= crop_idx
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     actual_vint = vint*(vmax-vmin) + vmin
