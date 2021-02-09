@@ -18,7 +18,9 @@ def main(args, use_tune=False):
         args.params.epochs = 2
         args.params.steps_per_epoch = 1
 
-    # Generate the dataset.
+    if args.plot:
+        dataset.acquire.plot_acquisition_geometry()
+
     if args.training in [0, 2]:
         dataset.generate_dataset(ngpu=args.ngpu)
 

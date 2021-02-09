@@ -9,6 +9,7 @@ import os
 import shutil
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 from SeisCL.SeisCL import SeisCL
 from GeoFlow.SeismicUtilities import random_wavelet_generator
@@ -142,6 +143,38 @@ class Acquisition:
     def source_generator(self):
         return random_wavelet_generator(self.NT, self.dt, self.peak_freq,
                                         self.df, self.tdelay)
+
+    def plot_acquisition_geometry(self):
+        src_pos, rec_pos = self.set_rec_src()
+        qty_srcs = src_pos.shape[1]
+        src_x, _, _, src_id, _ = src_pos
+        rec_x, _, _, rec_src_id, _, _, _, _ = rec_pos
+        props, _, _ = self.model.generate_model()
+        model = props['vp']
+        x_max = self.model.NX * self.model.dh
+        z_max = self.model.NZ * self.model.dh
+
+        height_geometry = 12 * (qty_srcs+1) / 72
+        fig, axs = plt.subplots(nrows=2, sharex=True,
+                                figsize=(8, 8+height_geometry),
+                                gridspec_kw={'height_ratios': [height_geometry,
+                                                               8],
+                                             'hspace': 0})
+
+        axs[0].scatter(src_x, src_id, marker='x', s=8, label="Sources")
+        axs[0].scatter(rec_x, rec_src_id, marker='v', s=8, label="Receivers")
+        axs[0].set_axis_off()
+        axs[0].set_xlim([0, x_max])
+        axs[0].set_ylim([-.5, qty_srcs-.5])
+        axs[0].legend()
+
+        axs[1].imshow(model, origin='upper', extent=[0, x_max, z_max, 0],
+                      aspect='auto')
+        axs[1].set_ylabel("Depth (m)")
+        axs[1].set_xlabel("Position (m)")
+
+        plt.tight_layout()
+        plt.show()
 
 
 class SeismicGenerator(SeisCL):
