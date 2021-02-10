@@ -471,7 +471,7 @@ class ShotGather(GraphInput):
     def plot(self, data, weights, axs, cmap='Greys', vmin=None,
              vmax=None, clip=0.05, ims=None):
         if self.is_1d:
-            return super().plot(data, axs, cmap, vmin, vmax, clip, ims)
+            return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
         elif self.acquire.configuration == 'end-on spread':
             first_cmp = data[:, :, 0]
             [first_cmp] = super().plot(first_cmp, weights,
