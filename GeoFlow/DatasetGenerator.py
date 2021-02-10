@@ -6,6 +6,7 @@ Used by the `GeoFlow.GeoDataset.GeoDataset` class.
 
 import os
 from multiprocessing import Process, Queue
+import queue
 from typing import Dict
 
 import numpy as np
@@ -105,9 +106,9 @@ class DatasetGenerator:
 
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
-        :param inputs: A dicitonary of graph inputs' name-values pairs.
-        :param labels: A dicitonary of graph labels' name-values pairs.
-        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param inputs: A dictionary of graph inputs' name-values pairs.
+        :param labels: A dictionary of graph labels' name-values pairs.
+        :param weights:  A dictionary of graph weights' name-values pairs.
         :param filename: If provided, save the example in filename.
         """
         if filename is None:
@@ -127,9 +128,9 @@ class DatasetGenerator:
         """
         :param exampleid: The example ID number.
         :param savedir The directory in which to save the example.
-        :param inputs: A dicitonary of graph inputs' name-values pairs.
-        :param labels: A dicitonary of graph labels' name-values pairs.
-        :param weights:  A dicitonary of graph weights' name-values pairs.
+        :param inputs: A dictionary of graph inputs' name-values pairs.
+        :param labels: A dictionary of graph labels' name-values pairs.
+        :param weights:  A dictionary of graph weights' name-values pairs.
         :param filename: If provided, save the example in filename.
         """
         if filename is None:
@@ -209,7 +210,9 @@ class DatasetProcess(Process):
         while not self.seeds.empty():
             try:
                 seed = self.seeds.get(timeout=1)
-            except Queue.Full:
+            except queue.Full:
+                break
+            except queue.Empty:
                 break
             filename = "example_%d" % seed
             if not os.path.isfile(os.path.join(self.savepath, filename)):

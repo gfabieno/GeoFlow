@@ -9,6 +9,7 @@ import os
 import shutil
 
 import numpy as np
+from matplotlib import pyplot as plt
 
 from SeisCL.SeisCL import SeisCL
 from GeoFlow.SeismicUtilities import random_wavelet_generator
@@ -58,11 +59,14 @@ class Acquisition:
         # Integer used by SeisCL indicating which type of recording. Either
         # 2) pressure or 1) velocities.
         self.rectype = 2
+        # Absorbing boundary type:
+        # 1) CPML or 2) absorbing layer of Cerjan.
+        self.abs_type = 1
 
         self.singleshot = True
-        #Absorbing boundary type :
-        # 1: CPML, 2: Absorbing layer of Cerjan
-        self.abs_type = 1
+        # Whether to fill the surface with geophones or to use inline spread.
+        # Either `'full'` or `'inline'`.
+        self.configuration = 'full'
 
     def set_rec_src(self):
         """
@@ -74,16 +78,26 @@ class Acquisition:
             src_pos: Source array.
             rec_pos: Receiver array.
         """
-        # Source and receiver positions.
+        assert self.configuration in ['inline', 'full']
+
         if self.singleshot:
             # Add just one source in the middle
-            sx = np.arange(self.model.NX / 2,
-                           1 + self.model.NX / 2) * self.model.dh
-        else:
+            middle = self.model.NX / 2 * self.model.dh
+            sx = np.array([middle])
+        elif self.configuration == 'inline':
             # Compute several sources
-            l1 = self.Npad + 1
-            l2 = self.model.NX - self.Npad
-            sx = np.arange(l1, l2, self.ds) * self.model.dh
+            start_idx = self.Npad + 1
+            if self.gmin and self.gmin < 0:
+                start_idx += -self.gmin
+            end_idx = self.model.NX - self.Npad
+            if self.gmax and self.gmax > 0:
+                end_idx += -self.gmax
+            sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
+        elif self.configuration == 'full':
+            # Compute several sources
+            start_idx = self.Npad + 1
+            end_idx = self.model.NX - self.Npad
+            sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
         sz = np.full_like(sx, self.source_depth)
         sid = np.arange(0, sx.shape[0])
 
@@ -97,15 +111,24 @@ class Acquisition:
         if self.gmin:
             gmin = self.gmin
         else:
-            gmin = self.Npad
+            if self.configuration == 'inline':
+                gmin = -(self.model.NX-2*self.Npad) // 2
+            elif self.configuration == 'full':
+                gmin = self.Npad
         if self.gmax:
             gmax = self.gmax
         else:
-            gmax = self.model.NX - self.Npad
+            if self.configuration == 'inline':
+                gmax = (self.model.NX-2*self.Npad) // 2
+            elif self.configuration == 'full':
+                gmax = self.model.NX - self.Npad
 
         gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
-        gx = np.concatenate([gx0 for _ in sx], axis=0)
         gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
+        if self.configuration == 'inline':
+            gx = np.concatenate([s + gx0 for s in sx], axis=0)
+        elif self.configuration == 'full':
+            gx = np.concatenate([gx0 for _ in sx], axis=0)
         gz = np.full_like(gx, self.receiver_depth)
         gid = np.arange(0, len(gx))
 
@@ -123,6 +146,38 @@ class Acquisition:
     def source_generator(self):
         return random_wavelet_generator(self.NT, self.dt, self.peak_freq,
                                         self.df, self.tdelay)
+
+    def plot_acquisition_geometry(self):
+        src_pos, rec_pos = self.set_rec_src()
+        qty_srcs = src_pos.shape[1]
+        src_x, _, _, src_id, _ = src_pos
+        rec_x, _, _, rec_src_id, _, _, _, _ = rec_pos
+        props, _, _ = self.model.generate_model()
+        model = props['vp']
+        x_max = self.model.NX * self.model.dh
+        z_max = self.model.NZ * self.model.dh
+
+        height_geometry = 12 * (qty_srcs+1) / 72
+        fig, axs = plt.subplots(nrows=2, sharex=True,
+                                figsize=(8, 8+height_geometry),
+                                gridspec_kw={'height_ratios': [height_geometry,
+                                                               8],
+                                             'hspace': 0})
+
+        axs[0].scatter(src_x, src_id, marker='x', s=8, label="Sources")
+        axs[0].scatter(rec_x, rec_src_id, marker='v', s=8, label="Receivers")
+        axs[0].set_axis_off()
+        axs[0].set_xlim([0, x_max])
+        axs[0].set_ylim([-.5, qty_srcs-.5])
+        axs[0].legend()
+
+        axs[1].imshow(model, origin='upper', extent=[0, x_max, z_max, 0],
+                      aspect='auto')
+        axs[1].set_ylabel("Depth (m)")
+        axs[1].set_xlabel("Position (m)")
+
+        plt.tight_layout()
+        plt.show()
 
 
 class SeismicGenerator(SeisCL):
