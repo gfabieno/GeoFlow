@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from GeoFlow import GeoDataset, EarthModel, Acquisition
 from GeoFlow.GraphIO import Vsdepth, ShotGather, Dispersion
 from ModelGenerator import (Sequence, Stratigraphy, Deformation,
@@ -9,7 +10,6 @@ from GeoFlow.SeismicUtilities import dispersion_curve
 
 
 class MaswModel(EarthModel):
-
     def build_stratigraphy(self):
         dh = self.dh
 
@@ -50,8 +50,8 @@ class MaswModel(EarthModel):
 
         deform = Deformation(max_deform_freq=0.02,
                              min_deform_freq=0.0001,
-                             amp_max=5,  # 8
-                             max_deform_nfreq=10,  # 40
+                             amp_max=5,
+                             max_deform_nfreq=10,
                              prob_deform_change=0.1)
         deform = None
 
@@ -96,9 +96,8 @@ class MaswModel(EarthModel):
 
 
 class AquisitionMASW(Acquisition):
-
     def set_rec_src(self):
-        # en Mètre!!
+        # In meters.
         dh = self.model.dh
         dg = self.dg
 
@@ -178,7 +177,8 @@ class AquisitionMASW(Acquisition):
                 elif dg == 0.5:
                     sx = [gmin-5, gmax+5]
                 else:
-                    raise ValueError("Geophone spacing (dg) must be 3, 1 or 0.5 m")
+                    raise ValueError("Geophone spacing (dg) must be 3, 1 or "
+                                     "0.5 m")
 
             # Set source.
             sz = np.full_like(sx, self.source_depth)
@@ -190,7 +190,7 @@ class AquisitionMASW(Acquisition):
                                 sid,
                                 np.full_like(sx, self.sourcetype)], axis=0)
 
-            # Set receivers
+            # Set receivers.
             gx0 = np.arange(gmin, gmax, dg)
             gx = np.concatenate([gx0 for _ in sx], axis=0)
             gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
@@ -208,8 +208,8 @@ class AquisitionMASW(Acquisition):
 
         return src_pos, rec_pos
 
-class DispersionMasw(Dispersion):
 
+class DispersionMasw(Dispersion):
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()
         dt = self.acquire.dt * self.acquire.resampling
@@ -219,8 +219,9 @@ class DispersionMasw(Dispersion):
         mask = (f >= 0) & (f <= 50)
         d = d[:, mask]
         d = abs(d)
-        d = (d - d.min()) / (d.max() - d.min())
+        d = (d-d.min()) / (d.max()-d.min())
         return d
+
 
 class DatasetMASW(GeoDataset):
     name = "Dataset_masw"
@@ -266,8 +267,8 @@ class DatasetMASW(GeoDataset):
         acquire.ds = 5
         acquire.dt = dt = 0.00002
         acquire.NT = int(1.5 / dt)  # 2 s survey.
-        acquire.dg = 1 # 3 / dh # 3m spacing
-        acquire.fs = True  # Free surface
+        acquire.dg = 1  # 3m spacing.
+        acquire.fs = True  # Free surface.
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
@@ -275,11 +276,9 @@ class DatasetMASW(GeoDataset):
         acquire.Npad = nab
         acquire.abs_type = 2
 
-
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire),
                   Dispersion.name: DispersionMasw(model=model, acquire=acquire,
-                                              cmax=1500, cmin=100)}
-
+                                                  cmax=1500, cmin=100)}
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
         for name in inputs:
             inputs[name].train_on_shots = True
@@ -287,6 +286,8 @@ class DatasetMASW(GeoDataset):
             outputs[name].train_on_shots = True
 
         return model, acquire, inputs, outputs
+
+
 if __name__ == "__main__":
     np.random.seed(0)
     dataset = DatasetMASW()
