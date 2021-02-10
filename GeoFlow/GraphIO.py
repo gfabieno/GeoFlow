@@ -113,7 +113,7 @@ class GraphOutput:
         :return:
             data: The preprocessed data ready to be fed to the network.
         """
-        raise NotImplementedError
+        return label, weight
 
     def postprocess(self, label):
         """
@@ -124,7 +124,7 @@ class GraphOutput:
         :return:
             labels: The preprocessed output.
         """
-        raise NotImplementedError
+        return label
 
 
 class Reftime(GraphOutput):
@@ -173,11 +173,7 @@ class Reftime(GraphOutput):
 
         label = label[:, ind1:ind2:self.acquire.ds]
         weight = weight[:, ind1:ind2:self.acquire.ds]
-
         return label, weight
-
-    def postprocess(self, label):
-        return label
 
 
 class Vrms(Reftime):
