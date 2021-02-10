@@ -336,6 +336,44 @@ class Vsdepth(Vrms):
         vmin, vmax = self.model.properties["vs"]
         return label*(vmax-vmin) + vmin
 
+    def plot(self, data, weights=None, axs=[None],
+             vmin=None, vmax=None, ims=[None]):
+        """
+        Plot the output.
+
+        :param data: The data to plot.
+        :param weights: The weights associated to a particular example.
+        :param axs: The axes on which to plot.
+        :param vmin: Minimum value of the colormap. If None, defaults to
+                     `self.model.vp_min`.
+        :param vmax: Maximum value of the colormap. If None, defaults to
+                     `self.model.vp_max`.
+        :param ims: If provided, the images' data is updated.
+
+        :return: Return values of each `ax.imshow`.
+        """
+        if vmin is None:
+            vmin = self.model.properties["vs"][0]
+        if vmax is None:
+            vmax = self.model.properties["vs"][1]
+
+        depth = np.arange(0, self.model.NZ*self.model.dh, self.model.dh)
+        if weights is not None:
+            weights = weights.astype(bool)
+            data[~weights] = np.nan
+        for i, (im, ax) in enumerate(zip(ims, axs)):
+            if im is None:
+                ims[i] = ax.plot(depth, data, lw=2)[0]
+                ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
+                             fontweight='bold')
+                ax.set_ylabel(f"Vs (m/s)", fontsize=12)
+                ax.set_xlabel(f"Depth (m)", fontsize=12)
+                ax.set(ylim=(vmin-10,vmax+10))
+            else:
+                im.set_data(depth, data)
+
+        return ims
+
 
 class Vpdepth(Vdepth):
     name = "vpdepth"
