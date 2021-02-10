@@ -59,6 +59,9 @@ class Acquisition:
         # Integer used by SeisCL indicating which type of recording. Either
         # 2) pressure or 1) velocities.
         self.rectype = 2
+        # Absorbing boundary type:
+        # 1) CPML or 2) absorbing layer of Cerjan.
+        self.abs_type = 1
 
         self.singleshot = True
         # Whether to fill the surface with geophones or to use inline spread.
@@ -220,6 +223,7 @@ class SeismicGenerator(SeisCL):
         self.f0 = acquire.peak_freq  # Source frequency
         self.seisout = acquire.rectype  # Output pressure
         self.freesurf = int(acquire.fs)  # Free surface
+        self.abs_type = acquire.abs_type # Absorbing boundary type
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
