@@ -145,7 +145,7 @@ class Reftime(GraphOutput):
         return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
 
     def generate(self, data, props):
-        vp, vs, rho = props["vp"], props["vs"], props["rho"]
+        vp = props["vp"]
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
             refs[:, ii] = generate_reflections_ttime(vp[:, ii],
@@ -183,7 +183,7 @@ class Vrms(Reftime):
         return GraphOutput.plot(self, *args, **kwargs)
 
     def generate(self, data, props):
-        vp, vs, rho = props["vp"], props["vs"], props["rho"]
+        vp = props["vp"]
         vrms = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
             vrms[:, ii] = calculate_vrms(vp[:, ii],
@@ -230,7 +230,7 @@ class Vint(Vrms):
     name = "vint"
 
     def generate(self, data, props):
-        vp, vs, rho = props["vp"], props["vs"], props["rho"]
+        vp = props["vp"]
         vint = np.zeros((self.acquire.NT, vp.shape[1]))
         z0 = int(self.acquire.source_depth / self.model.dh)
         t = np.arange(0, self.acquire.NT, 1) * self.acquire.dt
@@ -269,7 +269,7 @@ class Vdepth(Vrms):
         self.model_smooth_x = 0
 
     def generate(self, data, props):
-        vp, vs, rho = props["vp"], props["vs"], props["rho"]
+        vp = props["vp"]
         z0 = int(self.acquire.source_depth / self.model.dh)
         refs = np.zeros((self.acquire.NT, vp.shape[1]))
         for ii in range(vp.shape[1]):
