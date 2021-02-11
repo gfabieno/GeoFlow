@@ -398,7 +398,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     source_depth = dataset.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
     if crop_water:
-        water_dmin = case.model.water_dmin
+        water_dmin = dataset.model.water_dmin
         crop_idx = int(water_dmin / dh)
         max_depth -= crop_idx
 
