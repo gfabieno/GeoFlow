@@ -308,6 +308,7 @@ class Vdepth(Vrms):
         return vp, dweights
 
     def preprocess(self, label, weight):
+        label, weight = super().preprocess(label, weight)
         # We can predict velocities under the source and receiver arrays only.
         sz = int(self.acquire.source_depth / self.model.dh)
         label = label[sz:, :]
