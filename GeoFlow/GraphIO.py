@@ -494,13 +494,15 @@ class ShotGather(GraphInput):
                 sx = np.array(sx)
                 gx = rec_pos[0, :]
                 data_cmps = ((sx+gx)/2/binsize).astype(int) * binsize
+                offsets = gx - sx
+                ind = np.lexsort((offsets, data_cmps))
+                data_cmps = data_cmps[ind]
                 dcmp = np.abs(data_cmps[1] - data_cmps[0]) / 2
                 valid_cmps, data_cmps = valid_cmps[None, :], data_cmps[:, None]
                 valid_idx = ((valid_cmps-dcmp < data_cmps)
                              & (data_cmps < valid_cmps+dcmp)).any(axis=1)
                 rec_pos = rec_pos[:, valid_idx]
-            else:
-                data = np.transpose(data, axes=[0, 2, 1, 3])
+            data = np.transpose(data, axes=[0, 2, 1, 3])
 
             offset = [np.abs(rec_pos[0, i]-src_pos[0, int(rec_pos[3, i])])
                       for i in range(rec_pos.shape[1])]
