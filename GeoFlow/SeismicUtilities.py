@@ -570,7 +570,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
     sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
     cmps = ((sx+gx)/2/binsize).astype(int) * binsize
-    offsets = sx - gx
+    offsets = gx - sx
 
     ind = np.lexsort((offsets, cmps))
     cmps = cmps[ind]
