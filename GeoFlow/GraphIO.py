@@ -158,9 +158,12 @@ class Reftime(GraphOutput):
                                                      self.acquire.minoffset,
                                                      self.identify_direct)
         refs = refs[::self.acquire.resampling, :]
-        return refs, np.ones_like(refs)
+        weight = np.ones_like(refs)
 
-    def preprocess(self, label, weight):
+        refs, weight = self.resample(refs, weight)
+        return refs, weight
+
+    def resample(self, label, weight):
         src_pos_all, rec_pos_all = self.acquire.set_rec_src()
         if not self.train_on_shots:
             _, datapos = sortcmp(None, src_pos_all, rec_pos_all)
@@ -213,10 +216,10 @@ class Vrms(Reftime):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
 
+        vrms, tweights = self.resample(vrms, tweights)
         return vrms, tweights
 
     def preprocess(self, label, weight):
-        label, weight = super().preprocess(label, weight)
         vmin, vmax = self.model.properties["vp"]
         label = (label-vmin) / (vmax-vmin)
         return label, weight
@@ -256,6 +259,7 @@ class Vint(Vrms):
             i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
             tweights[i_t:, ii] = 0
 
+        vint, tweights = self.resample(vint, tweights)
         return vint, tweights
 
 
@@ -293,17 +297,17 @@ class Vdepth(Vrms):
             dweights[mask, ii] = 0
             dweights[dweights[:, ii] != 0, ii] = 1
 
+        # Smooth the velocity model.
+        if self.model_smooth_x != 0 or self.model_smooth_t != 0:
+            vp = smooth_velocity_wavelength(vp,
+                                            self.model.dh,
+                                            self.model_smooth_t,
+                                            self.model_smooth_x)
+
+        vp, dweights = self.resample(vp, dweights)
         return vp, dweights
 
     def preprocess(self, label, weight):
-        # Smooth the velocity model.
-        if self.model_smooth_x != 0 or self.model_smooth_t != 0:
-            label = smooth_velocity_wavelength(label,
-                                               self.model.dh,
-                                               self.model_smooth_t,
-                                               self.model_smooth_x)
-
-        label, weight = super().preprocess(label, weight)
         # We can predict velocities under the source and receiver arrays only.
         sz = int(self.acquire.source_depth / self.model.dh)
         label = label[sz:, :]
@@ -317,13 +321,13 @@ class Vsdepth(Vrms):
 
     def generate(self, data, props):
         vs = props["vs"]
-        return vs, np.ones_like(vs)
+        indx = int(vs.shape[1]//2)
+        vs = vs[:, [indx]]
+        weight = np.ones_like(vs)
+        weight = weight[:, [indx]]
+        return vs, weight
 
     def preprocess(self, label, weight):
-        # TODO Find a way to get v_s min and max.
-        indx = int(label.shape[1]//2)
-        label = label[:, indx]
-        weight = weight[:, indx]
         vmin, vmax = self.model.properties["vs"]
         label = (label-vmin) / (vmax-vmin)
         return label, weight
@@ -337,9 +341,6 @@ class Vpdepth(Vdepth):
     name = "vpdepth"
 
     def preprocess(self, label, weight):
-        indx = int(label.shape[1]//2)
-        label = label[:, indx]
-        weight = weight[:, indx]
         vmin, vmax = self.model.properties["vp"]
         label = (label-vmin) / (vmax-vmin)
         return label, weight
