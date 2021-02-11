@@ -498,6 +498,8 @@ class ShotGather(GraphInput):
                 valid_idx = ((valid_cmps-dcmp < data_cmps)
                              & (data_cmps < valid_cmps+dcmp)).any(axis=1)
                 rec_pos = rec_pos[:, valid_idx]
+            else:
+                data = np.transpose(data, axes=[0, 2, 1, 3])
 
             offset = [np.abs(rec_pos[0, i]-src_pos[0, int(rec_pos[3, i])])
                       for i in range(rec_pos.shape[1])]
