@@ -326,8 +326,8 @@ class Vsdepth(Vrms):
     def preprocess(self, label, weight):
         # TODO Find a way to get v_s min and max.
         indx = int(label.shape[1]//2)
-        label = label[:, indx]
-        weight = weight[:, indx]
+        label = label[:, [indx]]
+        weight = weight[:, [indx]]
         vmin, vmax = self.model.properties["vs"]
         label = (label-vmin) / (vmax-vmin)
         return label, weight
@@ -335,6 +335,17 @@ class Vsdepth(Vrms):
     def postprocess(self, label):
         vmin, vmax = self.model.properties["vs"]
         return label*(vmax-vmin) + vmin
+
+    def plot(self, data, weights=None, axs=[None], cmap='inferno',
+             vmin=None, vmax=None, clip=1, ims=[None]):
+        if vmin is None:
+            vmin = self.model.properties["vs"][0]
+        if vmax is None:
+            vmax = self.model.properties["vs"][1]
+
+        return GraphOutput.plot(self, data, weights=weights, axs=axs,
+                                cmap=cmap, vmin=vmin, vmax=vmax, clip=clip,
+                                ims=ims)
 
 
 class Vpdepth(Vdepth):
@@ -594,10 +605,12 @@ def make_output_from_shotgather(shotgather):
 class Dispersion(GraphInput):
     name = "dispersion"
 
-    def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin):
+    def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin,
+                 fmin, fmax):
         self.acquire = acquire
         self.model = model
         self.cmax, self.cmin = cmax, cmin
+        self.fmax, self.fmin = fmax, fmin
 
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()
@@ -605,7 +618,7 @@ class Dispersion(GraphInput):
         d, fr, c = dispersion_curve(data, rec_pos[0], dt, src_pos[0, 0],
                                     minc=self.cmax, maxc=self.cmin)
         f = fr.reshape(fr.size)
-        mask = (f > 0) & (f < 100)
+        mask = (f > self.fmin) & (f < self.fmax)
         d = d[:, mask]
         d = abs(d)
         d = (d-d.min()) / (d.max()-d.min())
