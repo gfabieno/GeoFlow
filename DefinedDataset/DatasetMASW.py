@@ -6,7 +6,6 @@ from GeoFlow import GeoDataset, EarthModel, Acquisition
 from GeoFlow.GraphIO import Vsdepth, ShotGather, Dispersion
 from ModelGenerator import (Sequence, Stratigraphy, Deformation,
                             Property, Lithology)
-from GeoFlow.SeismicUtilities import dispersion_curve
 
 
 class MaswModel(EarthModel):
@@ -209,20 +208,6 @@ class AquisitionMASW(Acquisition):
         return src_pos, rec_pos
 
 
-class DispersionMasw(Dispersion):
-    def generate(self, data):
-        src_pos, rec_pos = self.acquire.set_rec_src()
-        dt = self.acquire.dt * self.acquire.resampling
-        d, fr, c = dispersion_curve(data, rec_pos[0], dt, src_pos[0, 0],
-                                    minc=self.cmax, maxc=self.cmin)
-        f = fr.reshape(fr.size)
-        mask = (f >= 0) & (f <= 50)
-        d = d[:, mask]
-        d = abs(d)
-        d = (d-d.min()) / (d.max()-d.min())
-        return d
-
-
 class DatasetMASW(GeoDataset):
     name = "Dataset_masw"
 
@@ -277,8 +262,9 @@ class DatasetMASW(GeoDataset):
         acquire.abs_type = 2
 
         inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire),
-                  Dispersion.name: DispersionMasw(model=model, acquire=acquire,
-                                                  cmax=1500, cmin=100)}
+                  Dispersion.name: Dispersion(model=model, acquire=acquire,
+                                              cmax=1500, cmin=100, fmin=0,
+                                              fmax=50)}
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
         for name in inputs:
             inputs[name].train_on_shots = True
