@@ -398,7 +398,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     source_depth = dataset.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
     if crop_water:
-        water_dmin = case.model.water_dmin
+        water_dmin = dataset.model.water_dmin
         crop_idx = int(water_dmin / dh)
         max_depth -= crop_idx
 
@@ -570,7 +570,7 @@ def sortcmp(data, src_pos, rec_pos, binsize=None):
     sx = np.array([src_pos[0, int(srcid)] for srcid in rec_pos[3, :]])
     gx = rec_pos[0, :]
     cmps = ((sx+gx)/2/binsize).astype(int) * binsize
-    offsets = sx - gx
+    offsets = gx - sx
 
     ind = np.lexsort((offsets, cmps))
     cmps = cmps[ind]
