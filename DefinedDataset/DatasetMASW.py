@@ -1,15 +1,17 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+
 from GeoFlow import GeoDataset, EarthModel, Acquisition
-from GeoFlow.GraphIO import Vsdepth, ShotGather
+from GeoFlow.GraphIO import Vsdepth, ShotGather, Dispersion
 from ModelGenerator import (Sequence, Stratigraphy, Deformation,
                             Property, Lithology)
 
 
 class MaswModel(EarthModel):
-
     def build_stratigraphy(self):
+        dh = self.dh
+
         name = "unsaturated_sand"
         vp = Property("vp", vmin=300, vmax=500, texture=100)
         vpvs = Property("vpvs", vmin=1.8, vmax=2.5, texture=0.2)
@@ -47,20 +49,21 @@ class MaswModel(EarthModel):
 
         deform = Deformation(max_deform_freq=0.02,
                              min_deform_freq=0.0001,
-                             amp_max=5,  # 8
-                             max_deform_nfreq=10,  # 40
+                             amp_max=5,
+                             max_deform_nfreq=10,
                              prob_deform_change=0.1)
+        deform = None
 
         unsat_seq = Sequence(name="unsaturated",
                              lithologies=[unsaturated_sand],
-                             thick_max=25, deform=deform)
+                             thick_max=int(25/dh), deform=deform)
         sat_seq = Sequence(name="saturated",
                            lithologies=[saturated_clay,
                                         saturated_sand],
-                           thick_max=100, deform=deform)
+                           thick_max=int(100/dh), deform=deform)
         weathered_seq = Sequence(name="weathered",
                                  lithologies=[weathered_shale],
-                                 thick_max=50, deform=deform)
+                                 thick_max=int(50/dh), deform=deform)
         roc_seq = Sequence(name="roc",
                            lithologies=[shale],
                            thick_max=99999, deform=deform)
@@ -93,8 +96,10 @@ class MaswModel(EarthModel):
 
 class AquisitionMASW(Acquisition):
     def set_rec_src(self):
-
+        # In meters.
+        dh = self.model.dh
         dg = self.dg
+
         ng = 24  # Quantity of geophones.
 
         if dg == 'all':
@@ -149,21 +154,30 @@ class AquisitionMASW(Acquisition):
             if self.gmin:
                 gmin = self.gmin
             else:
-                gmin = self.Npad + 20*self.model.dh
+                gmin = (self.Npad+10)*dh + 20
             if self.gmax:
                 gmax = self.gmax
             else:
                 gmax = gmin + ng * dg
 
             # Add sources.
-            if dg == 3:
-                sx = [gmin-20, gmin-5, gmax+5, gmax+20]
-            elif dg == 1:
-                sx = [gmin-10, gmin-3, gmax+3, gmax+10]
-            elif dg == 0.5:
-                sx = [gmin-5, gmax+5]
+            if self.singleshot:
+                if dg == 3:
+                    sx = [gmin - 20]
+                elif dg == 1:
+                    sx = [gmin - 10]
+                elif dg == 0.5:
+                    sx = [gmin - 5]
             else:
-                raise ValueError("Geophone spacing (dg) must be 3, 1 or 0.5 m")
+                if dg == 3:
+                    sx = [gmin-20, gmin-5, gmax+5, gmax+20]
+                elif dg == 1:
+                    sx = [gmin-10, gmin-3, gmax+3, gmax+10]
+                elif dg == 0.5:
+                    sx = [gmin-5, gmax+5]
+                else:
+                    raise ValueError("Geophone spacing (dg) must be 3, 1 or "
+                                     "0.5 m")
 
             # Set source.
             sz = np.full_like(sx, self.source_depth)
@@ -175,8 +189,8 @@ class AquisitionMASW(Acquisition):
                                 sid,
                                 np.full_like(sx, self.sourcetype)], axis=0)
 
-            # Set receivers
-            gx0 = np.arange(gmin, gmax, self.dg) * self.model.dh
+            # Set receivers.
+            gx0 = np.arange(gmin, gmax, dg)
             gx = np.concatenate([gx0 for _ in sx], axis=0)
             gsid = np.concatenate([np.full_like(gx0, s) for s in sid], axis=0)
             gz = np.full_like(gx, self.receiver_depth)
@@ -209,10 +223,16 @@ class DatasetMASW(GeoDataset):
                 self.inputs[name].random_noise_max = 0.02
 
     def set_dataset(self):
+        self.trainsize = 700
+        self.validatesize = 150
+        self.testsize = 150
+
+        nab = 250
+
         model = MaswModel()
-        model.NX = 500
-        model.NZ = 100
-        model.dh = dh = 1
+        model.dh = dh = 0.1
+        model.NX = int(120/dh + 2*nab)
+        model.NZ = int(50/dh + nab)
 
         model.marine = False
         model.texture_xrange = 3
@@ -223,24 +243,28 @@ class DatasetMASW(GeoDataset):
         model.ddip_max = 0
 
         model.layer_num_min = 1
-        model.layer_dh_min = 5
-        model.layer_dh_max = 20
+        model.layer_dh_min = int(1/dh)
+        model.layer_dh_max = int(8/dh)
 
         acquire = AquisitionMASW(model=model)
-        acquire.peak_freq = 26
+        acquire.peak_freq = 35
         acquire.sourcetype = 2  # Force in z (2).
         acquire.ds = 5
-        acquire.dt = dt = 0.0001
-        acquire.NT = int(2 / dt)  # 2 s survey.
-        acquire.tdelay = dt * 5
-        acquire.dg = 'all'  # 3 / dh # 3m spacing
-        acquire.fs = True  # Free surface
+        acquire.dt = dt = 0.00002
+        acquire.NT = int(1.5 / dt)  # 2 s survey.
+        acquire.dg = 1  # 3m spacing.
+        acquire.fs = True  # Free surface.
         acquire.source_depth = 0
         acquire.receiver_depth = 0
         acquire.rectype = 1
-        acquire.singleshot = False
+        acquire.singleshot = True
+        acquire.Npad = nab
+        acquire.abs_type = 2
 
-        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire)}
+        inputs = {ShotGather.name: ShotGather(model=model, acquire=acquire),
+                  Dispersion.name: Dispersion(model=model, acquire=acquire,
+                                              cmax=1500, cmin=100, fmin=0,
+                                              fmax=50)}
         outputs = {Vsdepth.name: Vsdepth(model=model, acquire=acquire)}
         for name in inputs:
             inputs[name].train_on_shots = True
@@ -251,5 +275,10 @@ class DatasetMASW(GeoDataset):
 
 
 if __name__ == "__main__":
+    np.random.seed(0)
     dataset = DatasetMASW()
-    dataset.model.animated_dataset()
+    dataset.trainsize = 5
+    dataset.validatesize = 0
+    dataset.testsize = 0
+    dataset.generate_dataset(ngpu=1)
+    dataset.animate()
