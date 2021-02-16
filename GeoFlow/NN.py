@@ -101,8 +101,8 @@ class NN(Model):
             self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
             inputs = self.build_inputs(input_shapes)
-            self._set_inputs(inputs)
             self.build_network(inputs)
+            self._set_inputs(inputs)
             self.setup(run_eagerly)
             self.initialize(input_shapes)
             self.current_epoch = self.restore(self.params.restore_from)
