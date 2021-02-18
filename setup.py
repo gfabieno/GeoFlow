@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 GITHUB_REQUIREMENT = ("{name} @ git+https://github.com/{author}/{name}.git"
                       "@{version}")
 REQUIREMENTS = ["numpy",
-                "tensorflow-gpu==2.1.0",
+                "tensorflow-gpu==2.3.0",
                 "scipy",
                 "matplotlib",
                 "h5py",
