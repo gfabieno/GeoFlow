@@ -138,10 +138,9 @@ class Reftime(GraphOutput):
     def plot(self, data, weights=None, axs=[None], cmap='Greys',
              vmin=0, vmax=1, clip=1, ims=[None]):
         if self.meta_name in ['Output', 'Predictions']:
-            cmap = 'Greys'
             vmin, vmax = -.2, 1
         else:
-            cmap = 'Greys_r'
+            cmap = cmap + '_r'
         return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
 
     def generate(self, data, props):
