@@ -483,7 +483,7 @@ class ShotGather(GraphInput):
                                 ims)
         else:
             first_panel = data[:, :, 0]
-            [first_panel] = super().plot(first_panel, weights,
+            [first_panel] = super().plot(first_panel, None,
                                          [axs[0]], cmap, vmin, vmax,
                                          clip, [ims[0]])
             if self.train_on_shots:
