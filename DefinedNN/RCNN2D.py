@@ -266,19 +266,25 @@ class RCNN2D(NN):
         return losses, losses_weights
 
 
-def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
+def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray,
+                      rescale_current: float = .1):
     """
     Broadcast `loaded_weights` on `current_weights`.
 
-    Extend the loaded weights along one missing dimension and rescale the
-    weights to account for the duplication. This is equivalent to using an
-    average in the missing dimension.
+    Extend the loaded weights along one missing dimension and fill additional
+    kernel elements with the newly initialized weights, rescaled by
+    `rescale_current`. This is equivalent to initializing weights in the lower
+    dimensional setting, plus a noise contribution of the newly initialized
+    weights `current_weights` off-middle.
 
     :param loaded_weights: The weights of the recovered checkpoint.
     :type loaded_weights: np.ndarray
     :param current_weights: The current weights of the model, which will be
-                            overridden.
+                            partly overridden.
     :type current_weights: np.ndarray
+    :param rescale_current: A scaling factor applied on the newly initialized
+                            weights `current_weights`.
+    :type rescale_current: float
     """
     for i, (current, loaded) in enumerate(zip(current_weights,
                                               loaded_weights)):
@@ -293,16 +299,16 @@ def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
                                           "implemented for weights "
                                           "with more than 1 "
                                           "mismatching dimension.")
-            # Extend `loaded` in the missing dimension and rescale
-            # it to account for the addition of duplicated layers.
+            # Insert the loaded weights in the middle of the new dimension.
             mismatch_idx = mismatch_idx[0]
-            repeats = current.shape[mismatch_idx]
-            loaded = np.repeat(loaded, repeats,
-                               axis=mismatch_idx)
-            loaded /= repeats
-            noise = np.random.uniform(0, np.amax(loaded)*1E-2,
-                                      size=loaded.shape)
-            loaded += noise
+            length = current.shape[mismatch_idx]
+            assert length % 2 == 1, ("The size of the new dimension must be "
+                                     "odd.")
+            current *= rescale_current
+            current = np.swapaxes(current, mismatch_idx, 0)
+            loaded = np.swapaxes(loaded, mismatch_idx, 0)
+            current[length//2] = loaded[0]
+            loaded = np.swapaxes(current, 0, mismatch_idx)
         current_weights[i] = loaded
     return current_weights
 
