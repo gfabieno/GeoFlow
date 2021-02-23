@@ -79,9 +79,6 @@ class Hyperparameters(Hyperparameters):
         # Dilation of the CNNs between RNNs, a list of length 3.
         self.cnn_dilation = None
 
-        # Whether to crop depth dimension to minimal water depth or not.
-        self.crop_water = False
-
 
 class RCNN2D(NN):
     """
@@ -175,11 +172,9 @@ class RCNN2D(NN):
                                       name="vint")
 
         vint_shape = input_shape[1:-1] + (1,)
-        crop_water = params.crop_water
         self.time_to_depth = build_time_to_depth_converter(self.dataset,
                                                            vint_shape,
                                                            batch_size,
-                                                           crop_water,
                                                            name="vdepth")
 
     def call(self, inputs: dict):

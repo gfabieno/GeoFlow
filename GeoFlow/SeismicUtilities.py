@@ -369,7 +369,6 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
 
 
 def build_time_to_depth_converter(dataset, input_shape, batch_size,
-                                  crop_water=False,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
     """
@@ -380,8 +379,6 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
                     current dataset are used.
     :param input_shape: The shape of the expected input.
     :param batch_size: Quantity of examples in a batch.
-    :param crop_water: Whether to crop depth dimension to minimal water depth
-                       or not.
     :param input_dtype: Data type of the input.
     :param name: Name of the produced Keras model.
 
@@ -397,10 +394,6 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     nz = dataset.model.NZ
     source_depth = dataset.acquire.source_depth
     max_depth = nz - int(source_depth / dh)
-    if crop_water:
-        water_dmin = dataset.model.water_dmin
-        crop_idx = int(water_dmin / dh)
-        max_depth -= crop_idx
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     actual_vint = vint*(vmax-vmin) + vmin
