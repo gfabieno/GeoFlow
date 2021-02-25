@@ -164,7 +164,7 @@ class DatasetGenerator:
             os.makedirs(savepath)
         if gpus is None:
             gpus = [device.name for device in list_physical_devices('GPU')]
-            gpus = [int(gpu.strip('/GPU:')) for gpu in gpus]
+            gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
 
         exampleids = Queue()
         for el in np.arange(seed0, seed0 + nexamples):
