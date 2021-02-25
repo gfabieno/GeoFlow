@@ -280,5 +280,5 @@ if __name__ == "__main__":
     dataset.trainsize = 5
     dataset.validatesize = 0
     dataset.testsize = 0
-    dataset.generate_dataset(ngpu=1)
+    dataset.generate_dataset(gpus=1)
     dataset.animate()
