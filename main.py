@@ -8,6 +8,8 @@ import argparse
 
 def main(args, use_tune=False):
     dataset = args.dataset
+    if isinstance(args.gpus, int):
+        args.gpus = list(range(args.gpus))
 
     if args.debug:
         dataset.trainsize = 4
@@ -54,6 +56,16 @@ def main(args, use_tune=False):
                                 pred_dir=pred_dir)
 
 
+def int_or_list(arg):
+    if arg is None:
+        return None
+    try:
+        arg = int(arg)
+    except ValueError:
+        arg = list(arg)
+    return arg
+
+
 if __name__ == "__main__":
     from importlib import import_module
 
@@ -82,10 +94,14 @@ if __name__ == "__main__":
                         default=0,
                         help="0: create dataset only; 1: training only; "
                              "2: training+dataset; 3: testing.")
-    parser.add_argument("--ngpu",
-                        type=int,
-                        default=1,
-                        help="Quantity of GPUs for data creation.")
+    parser.add_argument("--gpus",
+                        type=int_or_list,
+                        default=None,
+                        help="Either the quantity of GPUs or a list of GPU "
+                             "IDs to use in data creation, training and "
+                             "inference. Use a string representation for "
+                             "lists of GPU IDs, e.g. `'[0, 1]'`. By default, "
+                             "use all available GPUs.")
     parser.add_argument("--savedir",
                         type=str,
                         default=None,
