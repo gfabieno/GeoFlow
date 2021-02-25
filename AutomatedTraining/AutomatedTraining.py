@@ -32,7 +32,7 @@ def chain(main: Callable,
           params: Namespace,
           dataset: GeoDataset,
           logdir: str = "./logs",
-          ngpu: int = 1,
+          gpus: list = None,
           debug: bool = False,
           eager: bool = False,
           use_tune: bool = False,
@@ -46,7 +46,7 @@ def chain(main: Callable,
     :param params: Name of hyperparameters from `RCNN2D` to use.
     :param dataset: Name of dataset from `DefinedDataset` to use.
     :param logdir: Directory in which to store the checkpoints.
-    :param ngpu: Quantity of GPUs for data creation.
+    :param gpus: List of GPUs to use.
     :param debug: Generate a small dataset of 5 examples.
     :param eager: Run the Keras model eagerly, for debugging.
     :param use_tune: Whether to use `ray[tune]` or not.
@@ -68,7 +68,7 @@ def chain(main: Callable,
               params=params,
               dataset=Dataset1Dsmall(),
               logdir="logs",
-              ngpu=2)
+              gpus=[0, 1])
     Output:
         A 3-step training with different losses.
     """
@@ -98,7 +98,7 @@ def chain(main: Callable,
             with tune.checkpoint_dir(step=1) as checkpoint_dir:
                 logdir, _ = split(checkpoint_dir)
         args = Namespace(nn=nn, params=current_params,
-                         dataset=dataset, logdir=logdir, training=1, ngpu=ngpu,
+                         dataset=dataset, logdir=logdir, training=1, gpus=gpus,
                          plot=False, debug=debug, eager=eager)
         main(args, use_tune)
 
@@ -107,7 +107,7 @@ def optimize(nn: NN,
              params: Namespace,
              dataset: GeoDataset,
              logdir: str = "./logs",
-             ngpu: int = 1,
+             gpus: list = None,
              debug: bool = False,
              eager: bool = False,
              **config):
@@ -118,7 +118,7 @@ def optimize(nn: NN,
     :param params: Name of hyperparameters from `RCNN2D` to use.
     :param dataset: Name of dataset from `DefinedDataset` to use.
     :param logdir: Directory in which to store the checkpoints.
-    :param ngpu: Quantity of GPUs for data creation.
+    :param gpus: List of GPUs to use.
     :param debug: Generate a small dataset of 5 examples.
     :param eager: Run the Keras model eagerly, for debugging.
     :param config: Key-value pairs of argument names and values that will be
@@ -142,12 +142,22 @@ def optimize(nn: NN,
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
             tune.run(lambda config: chain(main, nn, params, dataset,
-                                          logdir, ngpu, debug, eager,
+                                          logdir, gpus, debug, eager,
                                           use_tune=True, **config),
                      num_samples=1,
                      local_dir=logdir,
-                     resources_per_trial={"gpu": ngpu},
+                     resources_per_trial={"gpu": len(gpus)},
                      config=grid_search_config)
+
+
+def int_or_list(arg):
+    if arg is None:
+        return None
+    try:
+        arg = int(arg)
+    except ValueError:
+        arg = list(arg)
+    return arg
 
 
 if __name__ == "__main__":
@@ -168,10 +178,14 @@ if __name__ == "__main__":
                         type=str,
                         default="./logs",
                         help="Directory in which to store the checkpoints.")
-    parser.add_argument("--ngpu",
-                        type=int,
-                        default=1,
-                        help="Quantity of GPUs for data creation.")
+    parser.add_argument("--gpus",
+                        type=int_or_list,
+                        default=None,
+                        help="Either the quantity of GPUs or a list of GPU "
+                             "IDs to use in data creation, training and "
+                             "inference. Use a string representation for "
+                             "lists of GPU IDs, e.g. `'[0, 1]'`. By default, "
+                             "use all available GPUs.")
     parser.add_argument("--debug",
                         action='store_true',
                         help="Generate a small dataset of 5 examples.")
@@ -196,7 +210,7 @@ if __name__ == "__main__":
              params=args.params,
              dataset=args.dataset,
              logdir=args.logdir,
-             ngpu=args.ngpu,
+             gpus=args.gpus,
              debug=args.debug,
              eager=args.eager,
              **config)
