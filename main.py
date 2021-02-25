@@ -37,6 +37,7 @@ def main(args, use_tune=False):
                      input_shapes=input_shapes,
                      params=args.params,
                      checkpoint_dir=args.logdir,
+                     devices=args.gpus,
                      run_eagerly=args.eager)
         tfdataset = dataset.tfdataset(phase=phase,
                                       tooutputs=nn.tooutputs,
