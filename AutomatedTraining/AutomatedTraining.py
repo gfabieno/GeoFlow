@@ -21,8 +21,12 @@ from importlib import import_module
 from typing import Callable
 
 from ray import tune
+from tensorflow.config import list_physical_devices
 
-from .Archive import ArchiveRepository
+try:
+    from .Archive import ArchiveRepository
+except ImportError:
+    from Archive import ArchiveRepository
 from GeoFlow.NN import NN
 from GeoFlow.GeoDataset import GeoDataset
 
@@ -141,12 +145,16 @@ def optimize(nn: NN,
                 if isinstance(value, list):
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
+            if gpus is not None:
+                ngpu = len(gpus)
+            else:
+                ngpu = len(list_physical_devices('GPU'))
             tune.run(lambda config: chain(main, nn, params, dataset,
                                           logdir, gpus, debug, eager,
                                           use_tune=True, **config),
                      num_samples=1,
                      local_dir=logdir,
-                     resources_per_trial={"gpu": len(gpus)},
+                     resources_per_trial={"gpu": ngpu},
                      config=grid_search_config)
 
 
