@@ -24,7 +24,7 @@ def main(args, use_tune=False):
         dataset.acquire.plot_acquisition_geometry()
 
     if args.training in [0, 2]:
-        dataset.generate_dataset(ngpu=args.ngpu)
+        dataset.generate_dataset(gpus=args.gpus)
 
     if args.plot:
         dataset.animate()
