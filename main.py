@@ -60,10 +60,8 @@ def main(args, use_tune=False):
 def int_or_list(arg):
     if arg is None:
         return None
-    try:
-        arg = int(arg)
-    except ValueError:
-        arg = list(arg)
+    arg = eval(arg)
+    assert isinstance(arg, (int, list))
     return arg
 
 
@@ -101,8 +99,8 @@ if __name__ == "__main__":
                         help="Either the quantity of GPUs or a list of GPU "
                              "IDs to use in data creation, training and "
                              "inference. Use a string representation for "
-                             "lists of GPU IDs, e.g. `'[0, 1]'`. By default, "
-                             "use all available GPUs.")
+                             "lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. "
+                             "By default, use all available GPUs.")
     parser.add_argument("--savedir",
                         type=str,
                         default=None,
