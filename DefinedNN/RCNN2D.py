@@ -6,7 +6,8 @@ Build a neural network for predicting v_p in 2D and in depth.
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
-from tensorflow.keras.layers import Conv3D, Conv2D, LSTM, Permute, Input
+from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
+                                     LeakyReLU)
 from tensorflow.keras.backend import max as reduce_max, reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -77,9 +78,6 @@ class Hyperparameters(Hyperparameters):
         self.cnn_filters = None
         # Dilation of the CNNs between RNNs, a list of length 3.
         self.cnn_dilation = None
-
-        # Whether to crop depth dimension to minimal water depth or not.
-        self.crop_water = False
 
 
 class RCNN2D(NN):
@@ -174,11 +172,9 @@ class RCNN2D(NN):
                                       name="vint")
 
         vint_shape = input_shape[1:-1] + (1,)
-        crop_water = params.crop_water
         self.time_to_depth = build_time_to_depth_converter(self.dataset,
                                                            vint_shape,
                                                            batch_size,
-                                                           crop_water,
                                                            name="vdepth")
 
     def call(self, inputs: dict):
@@ -266,19 +262,25 @@ class RCNN2D(NN):
         return losses, losses_weights
 
 
-def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
+def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray,
+                      rescale_current: float = .1):
     """
     Broadcast `loaded_weights` on `current_weights`.
 
-    Extend the loaded weights along one missing dimension and rescale the
-    weights to account for the duplication. This is equivalent to using an
-    average in the missing dimension.
+    Extend the loaded weights along one missing dimension and fill additional
+    kernel elements with the newly initialized weights, rescaled by
+    `rescale_current`. This is equivalent to initializing weights in the lower
+    dimensional setting, plus a noise contribution of the newly initialized
+    weights `current_weights` off-middle.
 
     :param loaded_weights: The weights of the recovered checkpoint.
     :type loaded_weights: np.ndarray
     :param current_weights: The current weights of the model, which will be
-                            overridden.
+                            partly overridden.
     :type current_weights: np.ndarray
+    :param rescale_current: A scaling factor applied on the newly initialized
+                            weights `current_weights`.
+    :type rescale_current: float
     """
     for i, (current, loaded) in enumerate(zip(current_weights,
                                               loaded_weights)):
@@ -293,16 +295,16 @@ def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray):
                                           "implemented for weights "
                                           "with more than 1 "
                                           "mismatching dimension.")
-            # Extend `loaded` in the missing dimension and rescale
-            # it to account for the addition of duplicated layers.
+            # Insert the loaded weights in the middle of the new dimension.
             mismatch_idx = mismatch_idx[0]
-            repeats = current.shape[mismatch_idx]
-            loaded = np.repeat(loaded, repeats,
-                               axis=mismatch_idx)
-            loaded /= repeats
-            noise = np.random.uniform(0, np.amax(loaded)*1E-2,
-                                      size=loaded.shape)
-            loaded += noise
+            length = current.shape[mismatch_idx]
+            assert length % 2 == 1, ("The size of the new dimension must be "
+                                     "odd.")
+            current *= rescale_current
+            current = np.swapaxes(current, mismatch_idx, 0)
+            loaded = np.swapaxes(loaded, mismatch_idx, 0)
+            current[length//2] = loaded[0]
+            loaded = np.swapaxes(current, 0, mismatch_idx)
         current_weights[i] = loaded
     return current_weights
 
@@ -331,6 +333,7 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
+        encoder.add(LeakyReLU())
     return encoder
 
 
@@ -356,8 +359,10 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                      padding='same')
+    activation = LeakyReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
+        data_stream = activation(data_stream)
     rcnn = Model(inputs=input, outputs=data_stream, name=name)
     return rcnn
 
