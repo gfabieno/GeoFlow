@@ -273,7 +273,7 @@ class GeoDataset:
                 output.meta_name = "Weights"
             rows_meta.append(weights_meta)
         if plot_preds:
-            preds = self.generator.read_predictions(filename, pred_dir)
+            preds = self.generator.read_predictions(filename, pred_dir, tooutputs)
             preds = {name: preds[name] for name in tooutputs}
             rows.append(preds)
             preds_meta = deepcopy(outputs_meta)

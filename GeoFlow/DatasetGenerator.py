@@ -80,7 +80,7 @@ class DatasetGenerator:
             weights = {key: file[key+"_w"][:] for key in self.outputs}
         return inputs, labels, weights
 
-    def read_predictions(self, filename: str, load_dir: str):
+    def read_predictions(self, filename: str, load_dir: str, tooutputs: list):
         """
         Read one example's predictions from hdf5 file.
 
@@ -96,7 +96,7 @@ class DatasetGenerator:
         directory, filename = os.path.split(filename)
         filename = os.path.join(directory, load_dir, filename)
         with h5.File(filename, "r") as file:
-            preds = {key: file[key][:] for key in self.outputs}
+            preds = {key: file[key][:] for key in tooutputs}
         return preds
 
     def write(self, exampleid, savedir, inputs, labels, weights,
