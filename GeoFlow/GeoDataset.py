@@ -112,21 +112,21 @@ class GeoDataset:
             except FileNotFoundError:
                 pass
 
-    def generate_dataset(self, ngpu=1):
+    def generate_dataset(self, gpus=None):
         """
-        Generate the training, testing and validation datasets with ngpus.
+        Generate the training, testing and validation datasets with GPUs.
         """
         seed0 = self.seed0
         self.generator.generate_dataset(self.datatrain, self.trainsize,
-                                        ngpu=ngpu, seed0=seed0)
+                                        gpus=gpus, seed0=seed0)
 
         seed0 += self.trainsize
         self.generator.generate_dataset(self.datavalidate, self.validatesize,
-                                        ngpu=ngpu, seed0=seed0)
+                                        gpus=gpus, seed0=seed0)
 
         seed0 += self.validatesize
         self.generator.generate_dataset(self.datatest, self.testsize,
-                                        ngpu=ngpu, seed0=seed0)
+                                        gpus=gpus, seed0=seed0)
 
     def get_example(self, filename=None, phase="train", shuffle=True,
                     toinputs=None, tooutputs=None):

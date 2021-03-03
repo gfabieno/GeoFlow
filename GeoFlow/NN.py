@@ -72,6 +72,7 @@ class NN(Model):
                  params: Hyperparameters,
                  dataset: GeoDataset,
                  checkpoint_dir: str,
+                 devices: list = None,
                  run_eagerly: bool = False):
         """
         Build and restore the network.
@@ -91,10 +92,16 @@ class NN(Model):
         :type dataset: GeoDataset
         :param checkpoint_dir: The root folder for checkpoints.
         :type checkpoint_dir: str
+        :param devices: The list of devices to distribute the model on, such as
+                        `[0, 1]`, which will translate to `['/gpu:0',
+                        '/gpu:1']`. Defaults to using all GPUs.
+        :type devices: list
         :param run_eagerly: Whether to run the model in eager mode or not.
         :type run_eagerly: bool
         """
-        strategy = tf.distribute.MirroredStrategy()
+        if devices:
+            devices = [f'/gpu:{i}' for i in devices]
+        strategy = tf.distribute.MirroredStrategy(devices)
         with strategy.scope():
             super().__init__()
             self.params = params

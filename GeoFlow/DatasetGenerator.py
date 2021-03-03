@@ -11,6 +11,7 @@ from typing import Dict
 
 import numpy as np
 import h5py as h5
+from tensorflow.config import list_physical_devices
 
 from GeoFlow.EarthModel import EarthModel
 from GeoFlow.SeismicGenerator import SeismicGenerator, Acquisition
@@ -148,7 +149,7 @@ class DatasetGenerator:
                          savepath: str,
                          nexamples: int,
                          seed0: int = None,
-                         ngpu: int = 3):
+                         gpus: list = None):
         """
         Create a dataset on multiple GPUs.
 
@@ -156,22 +157,25 @@ class DatasetGenerator:
         :param nexamples: Quantity of examples to generate.
         :param seed0: First seed of the first example in the dataset. Seeds are
                       incremented by 1 at each example.
-        :param ngpu: Quantity of available GPUs for data creation.
+        :param gpus: List of GPU IDs for data creation. Defaults to all GPUs.
 
         """
         if not os.path.isdir(savepath):
             os.makedirs(savepath)
+        if gpus is None:
+            gpus = [device.name for device in list_physical_devices('GPU')]
+            gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
 
         exampleids = Queue()
         for el in np.arange(seed0, seed0 + nexamples):
             exampleids.put(el)
         generators = []
-        for jj in range(ngpu):
+        for i in gpus:
             sg = self.__class__(model=self.model,
                                 acquire=self.acquire,
                                 inputs=self.inputs,
                                 outputs=self.outputs,
-                                gpu=jj)
+                                gpu=i)
             thisgen = DatasetProcess(savepath, sg, exampleids)
             thisgen.start()
             generators.append(thisgen)
