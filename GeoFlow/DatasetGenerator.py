@@ -78,15 +78,12 @@ class DatasetGenerator:
         """
         with h5.File(filename, "r") as file:
             if toinputs is None:
-                inputs = {key: file[key][:] for key in self.inputs}
-            else:
-                inputs = {key: file[key][:] for key in toinputs}
+                toinputs = self.inputs
             if tooutputs is None:
-                labels = {key: file[key][:] for key in self.outputs}
-                weights = {key: file[key+"_w"][:] for key in self.outputs}
-            else:
-                labels = {key: file[key][:] for key in tooutputs}
-                weights = {key: file[key+"_w"][:] for key in tooutputs}
+                tooutputs = self.outputs
+            inputs = {key: file[key][:] for key in toinputs}
+            labels = {key: file[key][:] for key in tooutputs}
+            weights = {key: file[key+"_w"][:] for key in tooutputs}
         return inputs, labels, weights
 
     def read_predictions(self, filename: str, load_dir: str, tooutputs: list = None):
@@ -107,9 +104,8 @@ class DatasetGenerator:
         filename = os.path.join(directory, load_dir, filename)
         with h5.File(filename, "r") as file:
             if tooutputs is None:
-                preds = {key: file[key][:] for key in self.outputs}
-            else:
-                preds = {key: file[key][:] for key in tooutputs}
+                tooutputs = self.outputs
+            preds = {key: file[key][:] for key in tooutputs}
         return preds
 
     def write(self, exampleid, savedir, inputs, labels, weights,
