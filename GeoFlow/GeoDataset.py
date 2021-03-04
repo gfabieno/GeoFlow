@@ -163,7 +163,7 @@ class GeoDataset:
                 self.shuffled = shuffle
             filename = self.files[phase].pop()
 
-        inputs, labels, weights = self.generator.read(filename)
+        inputs, labels, weights = self.generator.read(filename, toinputs, tooutputs)
         inputspre = {key: self.inputs[key].preprocess(inputs[key], labels)
                      for key in toinputs}
         labelspre = {}
@@ -273,8 +273,7 @@ class GeoDataset:
                 output.meta_name = "Weights"
             rows_meta.append(weights_meta)
         if plot_preds:
-            preds = self.generator.read_predictions(filename, pred_dir)
-            preds = {name: preds[name] for name in tooutputs}
+            preds = self.generator.read_predictions(filename, pred_dir, tooutputs)
             rows.append(preds)
             preds_meta = deepcopy(outputs_meta)
             for output in preds_meta.values():

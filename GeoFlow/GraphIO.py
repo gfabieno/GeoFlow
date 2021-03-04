@@ -605,11 +605,12 @@ class Dispersion(GraphInput):
     name = "dispersion"
 
     def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin,
-                 fmin, fmax):
+                 fmin, fmax, c_log=False, f_log=False):
         self.acquire = acquire
         self.model = model
         self.cmax, self.cmin = cmax, cmin
         self.fmax, self.fmin = fmax, fmin
+        self.c_log, self.f_log = c_log, f_log
 
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()

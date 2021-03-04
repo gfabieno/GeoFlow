@@ -677,7 +677,7 @@ def semblance(nmo_corrected, window=10):
     return num / den
 
 
-def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
+def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01, c_log=False, f_log=False):
     """
     Compute the dispersion curve of `data`.
 
@@ -696,6 +696,8 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     """
     freq = np.fft.fftfreq(np.size(data, 0), dt)
     c = np.linspace(minc, maxc, 201)[:-1]
+    if c_log:
+        c = np.logspace(minc, maxc, 201)[:-1]
     c = c[1:]
     data_fft = np.fft.fft(data, axis=0)
     data_fft /= np.abs(data_fft) + epsilon*np.abs(data_fft).max()
@@ -704,6 +706,7 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     x = np.abs(gx-sx)
     x -= np.min(x)
     x = np.reshape(x, [1, -1])
+
     for i in range(len(c)):
         delta = 2 * np.pi * freq * x / c[i]
         a2[:, i] = np.sum(np.exp(1j*delta) * data_fft, axis=1)
