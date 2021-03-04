@@ -63,11 +63,13 @@ class DatasetGenerator:
 
         return inputs, labels, weights
 
-    def read(self, filename: str):
+    def read(self, filename: str, toinputs: list = None, tooutputs: list = None):
         """
         Read one example from hdf5 file.
 
         :param filename: Name of the file.
+        :param toinputs: List of inputs to read.
+        :param tooutputs: List of outputs to read.
 
         :returns:
             inputs: A dictionary of inputs' name-data pairs.
@@ -75,12 +77,19 @@ class DatasetGenerator:
             weights: A dictionary of weights' name-values pairs.
         """
         with h5.File(filename, "r") as file:
-            inputs = {key: file[key][:] for key in self.inputs}
-            labels = {key: file[key][:] for key in self.outputs}
-            weights = {key: file[key+"_w"][:] for key in self.outputs}
+            if toinputs is None:
+                inputs = {key: file[key][:] for key in self.inputs}
+            else:
+                inputs = {key: file[key][:] for key in toinputs}
+            if tooutputs is None:
+                labels = {key: file[key][:] for key in self.outputs}
+                weights = {key: file[key+"_w"][:] for key in self.outputs}
+            else:
+                labels = {key: file[key][:] for key in tooutputs}
+                weights = {key: file[key+"_w"][:] for key in tooutputs}
         return inputs, labels, weights
 
-    def read_predictions(self, filename: str, load_dir: str, tooutputs: list):
+    def read_predictions(self, filename: str, load_dir: str, tooutputs: list = None):
         """
         Read one example's predictions from hdf5 file.
 
@@ -89,6 +98,7 @@ class DatasetGenerator:
                          directory to restore the predictions from. Defaults to
                          the name of the network class. This should typically
                          be the network's name.
+        :param tooutputs: List of outputs to read predictions
 
         :returns:
             preds: A dictionary of predictions' name-values pairs.
@@ -96,7 +106,10 @@ class DatasetGenerator:
         directory, filename = os.path.split(filename)
         filename = os.path.join(directory, load_dir, filename)
         with h5.File(filename, "r") as file:
-            preds = {key: file[key][:] for key in tooutputs}
+            if tooutputs is None:
+                preds = {key: file[key][:] for key in self.outputs}
+            else:
+                preds = {key: file[key][:] for key in tooutputs}
         return preds
 
     def write(self, exampleid, savedir, inputs, labels, weights,
