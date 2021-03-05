@@ -127,7 +127,7 @@ if __name__ == "__main__":
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
         arg = arg.strip('-')
         if arg in args.params.__dict__.keys():
-            setattr(args.params, arg, value)
+            setattr(args.params, arg, eval(value))
         else:
             raise ValueError(
                 f"Argument `{arg}` not recognized. Could not match it to an "
