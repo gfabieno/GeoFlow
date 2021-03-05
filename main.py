@@ -131,6 +131,6 @@ if __name__ == "__main__":
         else:
             raise ValueError(
                 f"Argument `{arg}` not recognized. Could not match it to an "
-                f"existing hyerparameter."
+                f"existing hyperparameter."
             )
     main(args)
