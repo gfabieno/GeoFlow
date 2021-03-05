@@ -42,6 +42,7 @@ class Hyperparameters(Namespace):
         - `epochs`: Quantity of epochs, with `self.steps` iterations per epoch.
         - `step_per_epoch`: Quantity of training iterations per epoch.
         - `batch_size`: Quantity of examples per batch.
+        - `seed`: Seed set at the start of training.
 
         :param is_training: Whether the model is initialized for training or
                             not. This allows building a different network at
@@ -107,6 +108,7 @@ class NN(Model):
             self.params = params
             self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
+            tf.random.set_seed(self.params.seed)
             inputs = self.build_inputs(input_shapes)
             self._set_inputs(inputs)
             self.build_network(inputs)
