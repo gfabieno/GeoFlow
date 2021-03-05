@@ -150,7 +150,9 @@ def optimize(nn: NN,
                 gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
             elif isinstance(gpus, int):
                 gpus = list(range(gpus))
-            gpus = [f'/gpu:{i}' for i in gpus]
+            all_gpus = list_physical_devices('GPU')
+            gpus = [gpu for gpu in all_gpus
+                    if int(gpu.name.split(':')[-1]) in gpus]
             set_visible_devices(gpus, 'GPU')
             tune.run(lambda config: chain(main, nn, params, dataset,
                                           logdir, gpus, debug, eager,
