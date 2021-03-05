@@ -21,7 +21,7 @@ from importlib import import_module
 from typing import Callable
 
 from ray import tune
-from tensorflow.config import list_physical_devices
+from tensorflow.config import list_physical_devices, set_visible_devices
 
 try:
     from .Archive import ArchiveRepository
@@ -145,16 +145,19 @@ def optimize(nn: NN,
                 if isinstance(value, list):
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
-            if gpus is not None:
-                ngpu = len(gpus)
-            else:
-                ngpu = len(list_physical_devices('GPU'))
+            if gpus is None:
+                gpus = [device.name for device in list_physical_devices('GPU')]
+                gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
+            elif isinstance(gpus, int):
+                gpus = list(range(gpus))
+            gpus = [f'/gpu:{i}' for i in gpus]
+            set_visible_devices(gpus, 'GPU')
             tune.run(lambda config: chain(main, nn, params, dataset,
                                           logdir, gpus, debug, eager,
                                           use_tune=True, **config),
                      num_samples=1,
                      local_dir=logdir,
-                     resources_per_trial={"gpu": ngpu},
+                     resources_per_trial={"gpu": len(gpus)},
                      config=grid_search_config)
 
 
