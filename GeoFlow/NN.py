@@ -244,7 +244,8 @@ class NN(Model):
             loaded_weights = loaded_layer.get_weights()
             current_layer.set_weights(loaded_weights)
 
-    def launch_training(self, tfdataset, use_tune: bool = False):
+    def launch_training(self, tfdataset, tfvalidate=None,
+                        use_tune: bool = False):
         """
         Fit the model to the dataset.
 
@@ -273,6 +274,7 @@ class NN(Model):
             tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(tfdataset,
+                 validation_data= tfvalidate,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,
