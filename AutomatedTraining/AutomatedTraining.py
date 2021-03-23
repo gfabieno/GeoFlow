@@ -145,10 +145,12 @@ def optimize(nn: NN,
                 if isinstance(value, list):
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
-            if gpus is not None:
-                ngpu = len(gpus)
-            else:
+            if gpus is None:
                 ngpu = len(list_physical_devices('GPU'))
+            elif isinstance(gpus, list):
+                ngpu = len(list)
+            else:
+                ngpu = gpus
             tune.run(lambda config: chain(main, nn, params, dataset,
                                           logdir, gpus, debug, eager,
                                           use_tune=True, **config),

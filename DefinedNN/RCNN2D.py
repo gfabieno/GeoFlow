@@ -20,16 +20,11 @@ class Hyperparameters(Hyperparameters):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
-        # Checkpoint directory from which to restore the model. Defaults to the
-        # last checkpoint in `args.logdir`.
         self.restore_from = None
-
-        # Quantity of epochs, with `self.steps` iterations per epoch.
         self.epochs = 5
-        # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
-        # Quantity of examples per batch.
         self.batch_size = 50
+        self.seed = None
 
         # The learning rate.
         self.learning_rate = 8E-4

@@ -366,7 +366,7 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
+    def plot(self, data, weights=None, axs=[None], cmap='Greys', vmin=None,
              vmax=None, clip=0.1, ims=[None]):
         """
         Plot this input using default values.
@@ -476,8 +476,8 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
-    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
-             vmax=None, clip=0.05, ims=None):
+    def plot(self, data, weights=None, axs=[None], cmap='Greys', vmin=None,
+             vmax=None, clip=0.05, ims=[None]):
         if self.is_1d:
             return super().plot(data, weights, axs, cmap, vmin, vmax, clip,
                                 ims)
