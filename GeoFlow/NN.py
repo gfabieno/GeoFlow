@@ -274,7 +274,7 @@ class NN(Model):
             tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(tfdataset,
-                 validation_data= tfvalidate,
+                 validation_data=tfvalidate,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,
