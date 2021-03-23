@@ -23,7 +23,7 @@ def ref_loss():
     return loss
 
 
-def v_compound_loss(alpha=0.2, beta=0.1):
+def v_compound_loss(alpha=0.2, beta=0.1, norm=False):
     """
     Get the three-part loss function for velocity.
 
@@ -47,6 +47,8 @@ def v_compound_loss(alpha=0.2, beta=0.1):
         # Compute mean squared error.
         if fact1 > 0:
             loss = tf.reduce_mean(weight * (label-output)**2, axis=[1, 2])
+            if norm:
+                loss /= tf.reduce_mean(weight * label**2, axis=[1, 2])
             losses.append(fact1 * loss)
 
         # Compute mean squared error of the vertical derivative.
@@ -89,7 +91,10 @@ def make_loss_compatible(loss):
 
 
 @make_loss_compatible
-def mean_squared_error(label, output, axis=-1):
+def mean_squared_error(label, output, axis=-1, norm=False):
+    loss = tf.reduce_mean((label-output)**2, axis=axis)
+    if norm:
+        loss /= tf.reduce_mean(label**2, axis=axis)
     return tf.reduce_mean((label-output)**2, axis=axis)
 
 
