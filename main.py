@@ -50,7 +50,8 @@ def main(args, use_tune=False):
 
         # Train model.
         if args.training in [1, 2]:
-            nn.launch_training(tfdataset, tfvalidate=tfvalidate, use_tune)
+            nn.launch_training(tfdataset, tfvalidate=tfvalidate,
+                               use_tune=use_tune)
 
         # Test model.
         if args.training == 3:
