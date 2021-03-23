@@ -252,8 +252,15 @@ class NN(Model):
         :param tfdataset: A TensorFlow `Dataset` object created from
                           `GeoFlow.GeoDataset.tfdataset`. `tfdataset` must
                           output pairs of data and labels, but labels are
-                          ignored at inference time.
+                          ignored at inference time. `tfdataset` contains the
+                          training data.
         :type tfdataset: tf.data.Dataset
+        :param tfvalidate: A TensorFlow `Dataset` object created from
+                          `GeoFlow.GeoDataset.tfdataset`. `tfvalidate` must
+                          output pairs of data and labels, but labels are
+                          ignored at inference time. `tfvalidate` contains the
+                          validation data.
+        :type tfvalidate: tf.data.Dataset
         :param use_tune: Whether `ray[tune]` is used in training or not. This
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
