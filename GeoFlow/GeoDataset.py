@@ -397,9 +397,11 @@ class GeoDataset:
         phases = {"train": self.datatrain,
                   "validate": self.datavalidate,
                   "test": self.datatest}
+
+        if phase == "validate" and self.validatesize == 0: return None
+
         pathstr = os.path.join(phases[phase], 'example_*')
         tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
-
         data, labels, weights, _ = self.get_example(toinputs=toinputs,
                                                     tooutputs=tooutputs)
         data_shape = tuple(data[el].shape for el in toinputs)
