@@ -246,15 +246,23 @@ class NN(Model):
             loaded_weights = loaded_layer.get_weights()
             current_layer.set_weights(loaded_weights)
 
-    def launch_training(self, tfdataset, use_tune: bool = False):
+    def launch_training(self, tfdataset, tfvalidate=None,
+                        use_tune: bool = False):
         """
         Fit the model to the dataset.
 
         :param tfdataset: A TensorFlow `Dataset` object created from
                           `GeoFlow.GeoDataset.tfdataset`. `tfdataset` must
                           output pairs of data and labels, but labels are
-                          ignored at inference time.
+                          ignored at inference time. `tfdataset` contains the
+                          training data.
         :type tfdataset: tf.data.Dataset
+        :param tfvalidate: A TensorFlow `Dataset` object created from
+                          `GeoFlow.GeoDataset.tfdataset`. `tfvalidate` must
+                          output pairs of data and labels, but labels are
+                          ignored at inference time. `tfvalidate` contains the
+                          validation data.
+        :type tfvalidate: tf.data.Dataset
         :param use_tune: Whether `ray[tune]` is used in training or not. This
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
@@ -275,6 +283,7 @@ class NN(Model):
             tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(tfdataset,
+                 validation_data=tfvalidate,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,

@@ -43,10 +43,15 @@ def main(args, use_tune=False):
                                       tooutputs=nn.tooutputs,
                                       toinputs=nn.toinputs,
                                       batch_size=args.params.batch_size)
+        tfvalidate = dataset.tfdataset(phase="validate",
+                                       tooutputs=nn.tooutputs,
+                                       toinputs=nn.toinputs,
+                                       batch_size=args.params.batch_size)
 
         # Train model.
         if args.training in [1, 2]:
-            nn.launch_training(tfdataset, use_tune)
+            nn.launch_training(tfdataset, tfvalidate=tfvalidate,
+                               use_tune=use_tune)
 
         # Test model.
         if args.training == 3:
