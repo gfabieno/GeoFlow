@@ -636,8 +636,7 @@ def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
     """
     nmo = np.zeros_like(cmp)
     for j, x in enumerate(offsets):
-        t = [reflection_time(t0, x, velocities[i])
-             for i, t0 in enumerate(times)]
+        t = reflection_time(times, x, velocities)
         interpolator = CubicSpline(times, cmp[:, j], extrapolate=False)
         amps = np.nan_to_num(interpolator(t), copy=False)
         nmo[:, j] = amps
