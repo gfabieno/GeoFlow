@@ -7,4 +7,4 @@ Datasets
 workdir*
 out*
 *.out
-*.out
+*.egg-info
