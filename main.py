@@ -20,10 +20,9 @@ def main(args, use_tune=False):
         args.params.epochs = 2
         args.params.steps_per_epoch = 1
 
-    if args.plot:
-        dataset.acquire.plot_acquisition_geometry()
-
     if args.training in [0, 2]:
+        if args.plot:
+            dataset.acquire.plot_acquisition_geometry()
         dataset.generate_dataset(gpus=args.gpus)
 
     if args.plot:

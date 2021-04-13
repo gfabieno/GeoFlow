@@ -357,10 +357,9 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
     vrms = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     rescaled_vrms = vrms*(vmax-vmin) + vmin
     traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=tf.float32)
-    traveltimes *= dt * resampling
     diff = rescaled_vrms[:, tdelay-1:]**2 * traveltimes[None, :, None]
     diff = diff[:, 1:] - diff[:, :-1]
-    vint = tf.sqrt(diff / (dt*resampling))
+    vint = tf.sqrt(diff)
     vint = tf.concat([rescaled_vrms[:, :tdelay], vint], axis=1)
     vint = (vint-vmin) / (vmax-vmin)
 
@@ -636,8 +635,7 @@ def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
     """
     nmo = np.zeros_like(cmp)
     for j, x in enumerate(offsets):
-        t = [reflection_time(t0, x, velocities[i])
-             for i, t0 in enumerate(times)]
+        t = reflection_time(times, x, velocities)
         interpolator = CubicSpline(times, cmp[:, j], extrapolate=False)
         amps = np.nan_to_num(interpolator(t), copy=False)
         nmo[:, j] = amps
