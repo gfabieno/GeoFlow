@@ -138,6 +138,7 @@ class RCNN2D(NN):
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
+                                      use_bias=False,
                                       name="vrms")
 
         self.rnn['vint'] = build_rnn(units=200,
@@ -162,6 +163,7 @@ class RCNN2D(NN):
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
+                                      use_bias=False,
                                       name="vint")
 
         vint_shape = input_shape[1:-1] + (1,)
