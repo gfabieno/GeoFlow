@@ -194,7 +194,6 @@ class RCNN2D(NN):
         if params.use_cnn:
             data_stream = self.cnn['vint'](data_stream)
 
-        data_stream = self.rnn['vint'](data_stream)
         outputs['vint'] = self.decoder['vint'](data_stream)
         outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
