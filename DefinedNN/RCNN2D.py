@@ -108,14 +108,15 @@ class RCNN2D(NN):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
+        shape_before_pooling = np.array(self.rcnn.output_shape)
+        shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
+
         self.decoder['ref'] = Conv2D(1, params.decode_ref_kernel,
                                      padding='same',
                                      activation='sigmoid',
-                                     input_shape=self.rcnn.output_shape,
+                                     input_shape=shape_after_pooling,
                                      batch_size=batch_size, name="ref")
 
-        shape_before_pooling = np.array(self.rcnn.output_shape)
-        shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
         self.rnn['vrms'] = build_rnn(units=200,
                                      input_shape=shape_after_pooling,
                                      batch_size=batch_size,
