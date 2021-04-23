@@ -108,6 +108,16 @@ class RCNN2D(NN):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
+        self.rcnn_pooling = build_rcnn(reps=6,
+                                       kernel=(1, 2, 1),
+                                       qty_filters=params.rcnn_filters,
+                                       dilation_rate=(1, 1, 1),
+                                       strides=(1, 2, 1),
+                                       padding='valid',
+                                       input_shape=self.rcnn.output_shape,
+                                       batch_size=batch_size,
+                                       name='rcnn_pooling')
+
         shape_before_pooling = np.array(self.rcnn.output_shape)
         shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
 
@@ -180,6 +190,7 @@ class RCNN2D(NN):
 
         data_stream = self.encoder(inputs["shotgather"])
         data_stream = self.rcnn(data_stream)
+        data_stream = self.rcnn_pooling(data_stream)
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
@@ -332,7 +343,8 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
 
 
 def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
-               batch_size, input_dtype=tf.float32, name="rcnn"):
+               batch_size, strides=(1, 1, 1), padding='same',
+               input_dtype=tf.float32, name="rcnn"):
     """
     Build a RCNN (recurrent convolution neural network).
 
@@ -352,7 +364,7 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
 
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
-                     padding='same')
+                     strides=strides, padding=padding)
     activation = ReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
