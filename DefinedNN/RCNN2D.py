@@ -188,14 +188,13 @@ class RCNN2D(NN):
         data_stream = self.rnn['vrms'](data_stream)
         if params.use_cnn:
             data_stream = self.cnn['vrms'](data_stream)
-
         outputs['vrms'] = self.decoder['vrms'](data_stream)
 
         data_stream = self.rnn['vint'](data_stream)
         if params.use_cnn:
             data_stream = self.cnn['vint'](data_stream)
-
         outputs['vint'] = self.decoder['vint'](data_stream)
+
         outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
         return {out: outputs[out] for out in self.tooutputs}
