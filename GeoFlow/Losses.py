@@ -64,13 +64,16 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
 
         # Minimize gradient (blocky inversion).
         if beta > 0:
-            abs_diff = tf.abs(output[:, 1:, :] - output[:, :-1, :])
+            abs_diff = tf.abs(output[:, 1:, :]-output[:, :-1, :])
+            abs_diff *= weight[:, :-1, :]
             loss = tf.reduce_mean(abs_diff, axis=[1, 2])
             if output.get_shape()[-1] != 1:
                 abs_diff = tf.abs(output[:, :, 1:] - output[:, :, :-1])
+                abs_diff *= weight[:, :, :-1] * weight[:, :, 1:]
                 loss += tf.reduce_mean(abs_diff, axis=[1, 2])
             if normalize:
-                loss /= tf.norm(output, ord=1) / 0.02
+                loss /= tf.reduce_mean(output*weight, axis=[1, 2])
+                loss *= .02
             losses.append(beta * loss)
 
         return tf.reduce_sum(losses, axis=0)
