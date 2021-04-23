@@ -57,6 +57,9 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
             dout = output[:, 1:, :] - output[:, :-1, :]
             loss = tf.reduce_mean(weight[:, :-1, :] * (dlabel-dout)**2,
                                   axis=[1, 2])
+            if normalize:
+                loss /= tf.reduce_mean(weight[:, :-1, :] * dlabel**2,
+                                       axis=[1, 2])
             losses.append(alpha * loss)
 
         # Minimize gradient (blocky inversion).
@@ -66,7 +69,8 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
             if output.get_shape()[-1] != 1:
                 abs_diff = tf.abs(output[:, :, 1:] - output[:, :, :-1])
                 loss += tf.reduce_mean(abs_diff, axis=[1, 2])
-                loss /= 2
+            if normalize:
+                loss /= tf.norm(output, ord=1) / 0.02
             losses.append(beta * loss)
 
         return tf.reduce_sum(losses, axis=0)
