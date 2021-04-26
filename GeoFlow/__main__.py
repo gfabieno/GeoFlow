@@ -67,8 +67,9 @@ def parse_args():
 
     args, unknown_args = parser.parse_known_args()
     assert not (args.train and args.test)
-    args.nn = getattr(DefinedNN, args.nn, args.nn)
-    args.params = getattr(DefinedNN, args.nn, args.params)
+    nn_module = getattr(DefinedNN, args.nn)
+    args.nn = getattr(nn_module, args.nn)
+    args.params = getattr(nn_module, args.params)
     args.params = args.params(is_training=args.train)
     args.dataset = getattr(DefinedDataset, args.dataset)()
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
