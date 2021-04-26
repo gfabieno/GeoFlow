@@ -23,18 +23,10 @@ from ray import tune
 from tensorflow.config import list_physical_devices
 
 from .Archive import ArchiveRepository
-from GeoFlow.NN import NN
-from GeoFlow.GeoDataset import GeoDataset
 
 
 def chain(main: Callable,
-          nn: NN,
-          params: Namespace,
-          dataset: GeoDataset,
-          logdir: str = "./logs",
-          gpus: list = None,
-          debug: bool = False,
-          eager: bool = False,
+          args: Namespace,
           use_tune: bool = False,
           **config):
     """
@@ -42,20 +34,13 @@ def chain(main: Callable,
 
     :param main: A callable that oversees training and testing (i.e.
                  `..main.main`)
-    :param nn: Name of the architecture from `RCNN2D` to use.
-    :param params: Name of hyperparameters from `RCNN2D` to use.
-    :param dataset: Name of dataset from `DefinedDataset` to use.
-    :param logdir: Directory in which to store the checkpoints.
-    :param gpus: List of GPUs to use.
-    :param debug: Generate a small dataset of 5 examples.
-    :param eager: Run the Keras model eagerly, for debugging.
-    :param use_tune: Whether to use `ray[tune]` or not.
+    :param args: Parsed arguments.
     :param config: Key-value pairs of argument names and values. `chain` will
                    fetch a different value at each iteration from values that
                    are tuples.
 
     Sample usage:
-        from main import main
+        from GeoFlow.__main__ import main
         params = Hyperparameters()
         params.loss_scales = ({'ref': .5, 'vrms': .5,
                                'vint': .0, 'vdepth': .0},
@@ -72,7 +57,10 @@ def chain(main: Callable,
     Output:
         A 3-step training with different losses.
     """
-    params = deepcopy(params)
+    args.train = True
+    args.infer = False
+    args.plot = False
+    params = deepcopy(args.params)
     for param_name, param_value in config.items():
         setattr(params, param_name, param_value)
 
@@ -97,32 +85,15 @@ def chain(main: Callable,
         if use_tune:
             with tune.checkpoint_dir(step=1) as checkpoint_dir:
                 logdir, _ = split(checkpoint_dir)
-        args = Namespace(nn=nn, params=current_params,
-                         dataset=dataset, logdir=logdir, training=1, gpus=gpus,
-                         plot=False, debug=debug, eager=eager)
+        args.params = current_params
         main(args, use_tune)
 
 
-def optimize(nn: NN,
-             params: Namespace,
-             dataset: GeoDataset,
-             logdir: str = "./logs",
-             gpus: list = None,
-             debug: bool = False,
-             eager: bool = False,
-             **config):
+def optimize(args: Namespace):
     """
-    Call `chain` for all combinations of `config`.
+    Call `chain` for all combinations of `args.params`.
 
-    :param nn: Name of the architecture from `RCNN2D` to use.
-    :param params: Name of hyperparameters from `RCNN2D` to use.
-    :param dataset: Name of dataset from `DefinedDataset` to use.
-    :param logdir: Directory in which to store the checkpoints.
-    :param gpus: List of GPUs to use.
-    :param debug: Generate a small dataset of 5 examples.
-    :param eager: Run the Keras model eagerly, for debugging.
-    :param config: Key-value pairs of argument names and values that will be
-                   iterated upon.
+    :param args: Parsed arguments.
 
     Sample usage:
         optimize(nn=RCNN2D.RCNN2D,
@@ -132,25 +103,23 @@ def optimize(nn: NN,
     Output:
         Two calls to `chain` with different learning rates.
     """
-    with ArchiveRepository(logdir) as archive:
+    with ArchiveRepository(args.logdir) as archive:
         with archive.import_main() as main:
             logdir = archive.model
 
-            grid_search_config = deepcopy(config)
-            for key, value in config.items():
+            grid_search_params = {}
+            for key, value in args.params.items():
                 if isinstance(value, list):
                     value = tune.grid_search(value)
-                grid_search_config[key] = value
-            if gpus is None:
+                grid_search_params[key] = value
+            if args.gpus is None:
                 ngpu = len(list_physical_devices('GPU'))
-            elif isinstance(gpus, list):
+            elif isinstance(args.gpus, list):
                 ngpu = len(list)
             else:
-                ngpu = gpus
-            tune.run(lambda config: chain(main, nn, params, dataset,
-                                          logdir, gpus, debug, eager,
-                                          use_tune=True, **config),
+                ngpu = args.gpus
+            tune.run(lambda config: chain(main, args, use_tune=True, **config),
                      num_samples=1,
                      local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
-                     config=grid_search_config)
+                     config=grid_search_params)
