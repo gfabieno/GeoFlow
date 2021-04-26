@@ -108,7 +108,7 @@ def optimize(args: Namespace, **config):
     """
     with ArchiveRepository(args.logdir) as archive:
         with archive.import_main() as main:
-            logdir = archive.model
+            args.logdir = archive.model
 
             grid_search_config = deepcopy(config)
             for key, value in config.items():
@@ -123,6 +123,6 @@ def optimize(args: Namespace, **config):
                 ngpu = args.gpus
             tune.run(lambda config: chain(main, args, use_tune=True, **config),
                      num_samples=1,
-                     local_dir=logdir,
+                     local_dir=args.logdir,
                      resources_per_trial={"gpu": ngpu},
                      config=grid_search_config)
