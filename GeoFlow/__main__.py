@@ -6,7 +6,10 @@ Launch dataset generation, training or testing.
 import argparse
 
 
-def main(args, use_tune=False):
+def main(args=None, use_tune=False):
+    if args is None:
+        args = parse_args()
+
     dataset = args.dataset
     if isinstance(args.gpus, int):
         args.gpus = list(range(args.gpus))
@@ -59,6 +62,26 @@ def main(args, use_tune=False):
                                 pred_dir=pred_dir)
 
 
+def parse_args():
+    from GeoFlow import DefinedDataset, DefinedNN
+
+    args, unknown_args = parser.parse_known_args()
+    args.nn = getattr(DefinedNN, args.nn, args.nn)
+    is_training = args.training in [1, 2]
+    args.params = getattr(DefinedNN, args.nn, args.params)
+    args.params = args.params(is_training=is_training)
+    args.dataset = getattr(DefinedDataset, args.dataset)()
+    for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
+        arg = arg.strip('-')
+        if arg in args.params.__dict__.keys():
+            setattr(args.params, arg, eval(value))
+        else:
+            raise ValueError(f"Argument `{arg}` not recognized. Could not "
+                             f"match it with an existing hyperparameter.")
+
+    return args
+
+
 def int_or_list(arg):
     if arg is None:
         return None
@@ -67,74 +90,56 @@ def int_or_list(arg):
     return arg
 
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--nn",
+                    type=str,
+                    default="RCNN2D",
+                    help="Name of the neural net from `RCNN2D` to use.")
+parser.add_argument("--params",
+                    type=str,
+                    default="Hyperparameters",
+                    help="Name of hyperparameters from `RCNN2D` to use.")
+parser.add_argument("--dataset",
+                    type=str,
+                    default="Dataset1Dsmall",
+                    help="Name of dataset from `DefinedDataset` to use.")
+parser.add_argument("--logdir",
+                    type=str,
+                    default="./logs",
+                    help="Directory in which to store the checkpoints.")
+parser.add_argument("--generate",
+                    action='store_true',
+                    help="Launch dataset generation.")
+parser.add_argument("--train",
+                    action='store_true',
+                    help="Launch training.")
+parser.add_argument("--test",
+                    action='store_true',
+                    help="Launch testing.")
+parser.add_argument("--gpus",
+                    type=int_or_list,
+                    default=None,
+                    help="Either the quantity of GPUs or a list of GPU "
+                         "IDs to use in data creation, training and "
+                         "inference. Use a string representation for "
+                         "lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. "
+                         "By default, use all available GPUs.")
+parser.add_argument("--savedir",
+                    type=str,
+                    default=None,
+                    help="The name of the subdirectory within the dataset "
+                         "test directory to save predictions in. Defaults "
+                         "to the name of the network class.")
+parser.add_argument("--plot",
+                    action='store_true',
+                    help="Validate data by plotting.")
+parser.add_argument("--debug",
+                    action='store_true',
+                    help="Generate a small dataset of 5 examples.")
+parser.add_argument("--eager",
+                    action='store_true',
+                    help="Run the Keras model eagerly, for debugging.")
+
+
 if __name__ == "__main__":
-    from importlib import import_module
-
-    # Initialize argument parser
-    parser = argparse.ArgumentParser()
-
-    # Add arguments to parse for training
-    parser.add_argument("--nn",
-                        type=str,
-                        default="RCNN2D",
-                        help="Name of the neural net from `RCNN2D` to use.")
-    parser.add_argument("--params",
-                        type=str,
-                        default="Hyperparameters",
-                        help="Name of hyperparameters from `RCNN2D` to use.")
-    parser.add_argument("--dataset",
-                        type=str,
-                        default="Dataset1Dsmall",
-                        help="Name of dataset from `DefinedDataset` to use.")
-    parser.add_argument("--logdir",
-                        type=str,
-                        default="./logs",
-                        help="Directory in which to store the checkpoints.")
-    parser.add_argument("--generate",
-                        action='store_true',
-                        help="Launch dataset generation.")
-    parser.add_argument("--train",
-                        action='store_true',
-                        help="Launch training.")
-    parser.add_argument("--test",
-                        action='store_true',
-                        help="Launch testing.")
-    parser.add_argument("--gpus",
-                        type=int_or_list,
-                        default=None,
-                        help="Either the quantity of GPUs or a list of GPU "
-                             "IDs to use in data creation, training and "
-                             "inference. Use a string representation for "
-                             "lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. "
-                             "By default, use all available GPUs.")
-    parser.add_argument("--savedir",
-                        type=str,
-                        default=None,
-                        help="The name of the subdirectory within the dataset "
-                             "test directory to save predictions in. Defaults "
-                             "to the name of the network class.")
-    parser.add_argument("--plot",
-                        action='store_true',
-                        help="Validate data by plotting.")
-    parser.add_argument("--debug",
-                        action='store_true',
-                        help="Generate a small dataset of 5 examples.")
-    parser.add_argument("--eager",
-                        action='store_true',
-                        help="Run the Keras model eagerly, for debugging.")
-
-    args, unknown_args = parser.parse_known_args()
-    nn_module = import_module("DefinedNN." + args.nn)
-    args.nn = getattr(nn_module, args.nn)
-    is_training = args.training in [1, 2]
-    args.params = getattr(nn_module, args.params)(is_training=is_training)
-    dataset_module = import_module("DefinedDataset." + args.dataset)
-    args.dataset = getattr(dataset_module, args.dataset)()
-    for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
-        arg = arg.strip('-')
-        if arg in args.params.__dict__.keys():
-            setattr(args.params, arg, eval(value))
-        else:
-            raise ValueError(f"Argument `{arg}` not recognized. Could not "
-                             f"match it with an existing hyperparameter.")
-    main(args)
+    main()
