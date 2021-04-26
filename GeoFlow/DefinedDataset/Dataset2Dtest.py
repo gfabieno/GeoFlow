@@ -8,8 +8,6 @@ from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
 
 
 class Dataset2Dtest(GeoDataset):
-    name = "Dataset2Dtest"
-
     def set_dataset(self):
         self.trainsize = 10
         self.validatesize = 0

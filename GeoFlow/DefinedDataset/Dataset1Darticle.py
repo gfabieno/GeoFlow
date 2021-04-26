@@ -7,9 +7,6 @@ from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
 
 
 class Dataset1Darticle(GeoDataset):
-
-    name = "Dataset1Darticle"
-
     def set_dataset(self):
         model = MarineModel()
         model.layer_dh_min = 5
@@ -52,7 +49,6 @@ class Dataset1Darticle(GeoDataset):
         return model, acquire, inputs, outputs
 
     def __init__(self, noise=0):
-
         if noise == 1:
             self.name = self.name + "_noise"
         super().__init__()
@@ -65,6 +61,5 @@ class Dataset1Darticle(GeoDataset):
 
 
 if __name__ == "__main__":
-
     dataset = Dataset1Darticle()
     dataset.model.animated_dataset()

@@ -5,8 +5,6 @@ from GeoFlow.GraphIO import make_output_from_shotgather
 
 
 class Dataset1Dautoencode(Dataset1Dsmall):
-    name = "Dataset1Dautoencode"
-
     def set_dataset(self):
         model, acquire, inputs, _ = super().set_dataset()
 

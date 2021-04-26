@@ -11,9 +11,6 @@ from ModelGenerator import (Property, Lithology, Deformation, Sequence,
 
 
 class PermafrostModel(EarthModel):
-    def __init__(self):
-        super().__init__()
-
     def build_stratigraphy(self):
         lithologies = {}
 
@@ -151,7 +148,6 @@ class PermafrostModel(EarthModel):
         return strati, properties
 
     def generate_model(self, seed=None):
-
         props2d, layerids, layers = super().generate_model(seed=seed)
         tempvpvs = props2d["vpvs"]
         tempvp = props2d["vp"]
@@ -211,8 +207,6 @@ class AcquisitionPermafrost(Acquisition):
 
 
 class DatasetPermafrost(GeoDataset):
-    name = "DatasetPermafrost"
-
     def __init__(self, noise=0):
         if noise == 1:
             self.name = self.name + "_noise"
