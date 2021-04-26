@@ -1,5 +1,5 @@
 from GeoFlow.__main__ import parse_args
-from .AutomatedTraining import optimize
+from GeoFlow.AutomatedTraining import optimize
 
 args = parse_args()
 
