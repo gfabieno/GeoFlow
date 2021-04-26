@@ -22,10 +22,7 @@ from typing import Callable
 from ray import tune
 from tensorflow.config import list_physical_devices
 
-try:
-    from .Archive import ArchiveRepository
-except ImportError:
-    from Archive import ArchiveRepository
+from .Archive import ArchiveRepository
 from GeoFlow.NN import NN
 from GeoFlow.GeoDataset import GeoDataset
 
@@ -157,22 +154,3 @@ def optimize(nn: NN,
                      local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
                      config=grid_search_config)
-
-
-if __name__ == "__main__":
-    from GeoFlow.__main__ import parse_args
-
-    args = parse_args()
-
-    if args.debug:
-        args.params["epochs"] = 1
-        args.params["steps_per_epoch"] = 5
-
-    optimize(nn=args.nn,
-             params=args.params,
-             dataset=args.dataset,
-             logdir=args.logdir,
-             gpus=args.gpus,
-             debug=args.debug,
-             eager=args.eager,
-             **args.params)

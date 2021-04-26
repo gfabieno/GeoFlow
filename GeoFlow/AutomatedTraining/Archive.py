@@ -156,7 +156,7 @@ class _ImportMain:
     """Dynamically import the current `main`."""
 
     def __enter__(self):
-        self.main = import_module("main").main
+        self.main = import_module("GeoFlow.__main__").main
         return proxy(self.main)
 
     def __exit__(self, exc_type, exc_value, tb):
