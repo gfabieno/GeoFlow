@@ -7,4 +7,4 @@ if args.debug:
     args.params["epochs"] = 1
     args.params["steps_per_epoch"] = 5
 
-optimize(args, **args.params)
+optimize(args)
