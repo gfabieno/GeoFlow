@@ -89,7 +89,7 @@ def chain(main: Callable,
 
 def optimize(args: Namespace, **config):
     """
-    Call `chain` for all combinations of `args.params`.
+    Call `chain` for all combinations of `config`.
 
     :param args: Parsed arguments.
     :param config: Key-value pairs of argument names and values that will be
@@ -100,8 +100,7 @@ def optimize(args: Namespace, **config):
         from GeoFlow.AutomatedTraining import optimize
 
         args = parse_args()
-        args.params.lr = [.0008, .0002]
-        optimize(args)
+        optimize(args, lr=[.0008, .0002])
 
     Output:
         Two calls to `chain` with different learning rates.
