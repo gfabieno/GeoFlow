@@ -3,13 +3,13 @@
 Launch hyperoptimization and chain training stages.
 
 This module allows chaining multiple calls to a `main` script such as
-`..main.main` through `chain` and lauching `chain` with different combinations
+`..main.main` through `chain` and launching `chain` with different combinations
 of hyperparameters through `optimize`. To use different combinations of
-architecture hyperparameters (`GeoFlow.RCNN2D.Hyperparameters`) in launching
-a main script, the alterations to the base hyperparameters must be fed to
-`optimize` as key-value pairs of hyperparameter names and lists possible
+architecture hyperparameters (`GeoFlow.DefinedNN.RCNN2D.Hyperparameters`) in
+launching a main script, the alterations to the base hyperparameters must be
+fed to `optimize` as key-value pairs of hyperparameter names and lists possible
 values. `optimize` processes all combinations of items from arguments that are
-lists. This module leverages `automated_training.archive` to make sure
+lists. This module leverages `AutomatedTraining.Archive` to make sure
 modifications in the repository during training do not impact an ongoing
 training. `optimize` automatically fetches the archived main script.
 """
@@ -37,23 +37,21 @@ def chain(main: Callable,
     :param args: Parsed arguments.
     :param config: Key-value pairs of argument names and values. `chain` will
                    fetch a different value at each iteration from values that
-                   are tuples.
+                   are tuples in `config` and `args.params`.
 
     Sample usage:
-        from GeoFlow.__main__ import main
-        params = Hyperparameters()
-        params.loss_scales = ({'ref': .5, 'vrms': .5,
-                               'vint': .0, 'vdepth': .0},
-                              {'ref': .0, 'vrms': .7,
-                               'vint': .3, 'vdepth': .0},
-                              {'ref': .0, 'vrms': .0,
-                               'vint': 1., 'vdepth': .0})
-        chain(main,
-              nn=RCNN2D,
-              params=params,
-              dataset=Dataset1Dsmall(),
-              logdir="logs",
-              gpus=[0, 1])
+        from GeoFlow.__main__ import main, parse_args
+        from GeoFlow.AutomatedTraining import chain
+
+        args = parse_args()
+        args.params.loss_scales = ({'ref': .5, 'vrms': .5,
+                                    'vint': .0, 'vdepth': .0},
+                                   {'ref': .0, 'vrms': .7,
+                                    'vint': .3, 'vdepth': .0},
+                                   {'ref': .0, 'vrms': .0,
+                                    'vint': 1., 'vdepth': .0})
+        chain(main, args)
+
     Output:
         A 3-step training with different losses.
     """
@@ -96,10 +94,13 @@ def optimize(args: Namespace):
     :param args: Parsed arguments.
 
     Sample usage:
-        optimize(nn=RCNN2D.RCNN2D,
-                 params=Hyperparameters(),
-                 dataset=Dataset1Dsmall(),
-                 lr=[.0008, .0002])
+        from GeoFlow.__main__ import parse_args
+        from GeoFlow.AutomatedTraining import optimize
+
+        args = parse_args()
+        args.params.lr = [.0008, .0002]
+        optimize(args)
+
     Output:
         Two calls to `chain` with different learning rates.
     """
