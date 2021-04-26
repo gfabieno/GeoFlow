@@ -161,5 +161,5 @@ class _ImportMain:
 
     def __exit__(self, exc_type, exc_value, tb):
         """Delete all references appropriately"""
-        del sys.modules["main"]
+        del sys.modules["__main__"]
         del self.main
