@@ -133,8 +133,6 @@ if __name__ == "__main__":
         if arg in args.params.__dict__.keys():
             setattr(args.params, arg, eval(value))
         else:
-            raise ValueError(
-                f"Argument `{arg}` not recognized. Could not match it to an "
-                f"existing hyperparameter."
-            )
+            raise ValueError(f"Argument `{arg}` not recognized. Could not "
+                             f"match it with an existing hyperparameter.")
     main(args)
