@@ -20,16 +20,14 @@ def main(args, use_tune=False):
         args.params.epochs = 2
         args.params.steps_per_epoch = 1
 
-    if args.training in [0, 2]:
+    if args.generate:
         if args.plot:
             dataset.acquire.plot_acquisition_geometry()
         dataset.generate_dataset(gpus=args.gpus)
+        if args.plot:
+            dataset.animate()
 
-    if args.plot:
-        dataset.animate()
-
-    if args.training != 0:
-        phase = "train" if args.training in [1, 2] else "test"
+    if args.train or args.test:
         inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
         input_shapes = {name: input.shape for name, input in inputs.items()}
         nn = args.nn(dataset=dataset,
@@ -38,22 +36,22 @@ def main(args, use_tune=False):
                      checkpoint_dir=args.logdir,
                      devices=args.gpus,
                      run_eagerly=args.eager)
-        tfdataset = dataset.tfdataset(phase=phase,
-                                      tooutputs=nn.tooutputs,
-                                      toinputs=nn.toinputs,
-                                      batch_size=args.params.batch_size)
-        tfvalidate = dataset.tfdataset(phase="validate",
-                                       tooutputs=nn.tooutputs,
-                                       toinputs=nn.toinputs,
-                                       batch_size=args.params.batch_size)
-
-        # Train model.
-        if args.training in [1, 2]:
+        if args.train:
+            tfdataset = dataset.tfdataset(phase="train",
+                                          tooutputs=nn.tooutputs,
+                                          toinputs=nn.toinputs,
+                                          batch_size=args.params.batch_size)
+            tfvalidate = dataset.tfdataset(phase="validate",
+                                           tooutputs=nn.tooutputs,
+                                           toinputs=nn.toinputs,
+                                           batch_size=args.params.batch_size)
             nn.launch_training(tfdataset, tfvalidate=tfvalidate,
                                use_tune=use_tune)
-
-        # Test model.
-        if args.training == 3:
+        if args.test:
+            tfdataset = dataset.tfdataset(phase="test",
+                                          tooutputs=nn.tooutputs,
+                                          toinputs=nn.toinputs,
+                                          batch_size=args.params.batch_size)
             nn.launch_testing(tfdataset, args.savedir)
             if args.plot:
                 pred_dir = args.savedir or type(nn).__name__
@@ -92,11 +90,15 @@ if __name__ == "__main__":
                         type=str,
                         default="./logs",
                         help="Directory in which to store the checkpoints.")
-    parser.add_argument("--training",
-                        type=int,
-                        default=0,
-                        help="0: create dataset only; 1: training only; "
-                             "2: training+dataset; 3: testing.")
+    parser.add_argument("--generate",
+                        action='store_true',
+                        help="Launch dataset generation.")
+    parser.add_argument("--train",
+                        action='store_true',
+                        help="Launch training.")
+    parser.add_argument("--test",
+                        action='store_true',
+                        help="Launch testing.")
     parser.add_argument("--gpus",
                         type=int_or_list,
                         default=None,
