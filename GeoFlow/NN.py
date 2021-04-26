@@ -58,6 +58,12 @@ class Hyperparameters(Namespace):
     def __repr__(self):
         return str(self)
 
+    def __getitem__(self, key):
+        return getattr(self, key)
+
+    def keys(self):
+        return self.__dict__.keys()
+
 
 class NN(Model):
     """
