@@ -66,10 +66,10 @@ def parse_args():
     from GeoFlow import DefinedDataset, DefinedNN
 
     args, unknown_args = parser.parse_known_args()
+    assert not (args.train and args.test)
     args.nn = getattr(DefinedNN, args.nn, args.nn)
-    is_training = args.training in [1, 2]
     args.params = getattr(DefinedNN, args.nn, args.params)
-    args.params = args.params(is_training=is_training)
+    args.params = args.params(is_training=args.train)
     args.dataset = getattr(DefinedDataset, args.dataset)()
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
         arg = arg.strip('-')
