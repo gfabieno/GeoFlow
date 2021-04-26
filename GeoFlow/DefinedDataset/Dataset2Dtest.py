@@ -65,6 +65,8 @@ class Dataset2Dtest(GeoDataset):
 
 
 class Dataset2DtestNoise(Dataset2Dtest):
+    name = "Dataset2Dtest"
+
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
         for input in inputs.values():
