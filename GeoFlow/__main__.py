@@ -78,7 +78,6 @@ def parse_args():
         else:
             raise ValueError(f"Argument `{arg}` not recognized. Could not "
                              f"match it with an existing hyperparameter.")
-
     return args
 
 
