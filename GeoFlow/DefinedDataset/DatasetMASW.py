@@ -211,6 +211,15 @@ class AquisitionMASW(Acquisition):
 class DatasetMASW(GeoDataset):
     name = "Dataset_masw"
 
+    def __init__(self, noise=False):
+        super().__init__()
+        if noise:
+            for input in self.inputs.values():
+                input.random_static = True
+                input.random_static_max = 1
+                input.random_noise = True
+                input.random_noise_max = 0.02
+
     def set_dataset(self):
         self.trainsize = 700
         self.validatesize = 150
@@ -260,17 +269,6 @@ class DatasetMASW(GeoDataset):
         for name in outputs:
             outputs[name].train_on_shots = True
 
-        return model, acquire, inputs, outputs
-
-
-class DatasetMASWNoise(DatasetMASW):
-    def set_dataset(self):
-        model, acquire, inputs, outputs = super().set_dataset()
-        for input in inputs.values():
-            input.random_static = True
-            input.random_static_max = 1
-            input.random_noise = True
-            input.random_noise_max = 0.02
         return model, acquire, inputs, outputs
 
 

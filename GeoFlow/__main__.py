@@ -71,7 +71,7 @@ def parse_args():
     args.nn = getattr(nn_module, args.nn)
     args.params = getattr(nn_module, args.params)
     args.params = args.params(is_training=args.train)
-    args.dataset = getattr(DefinedDataset, args.dataset)()
+    args.dataset = getattr(DefinedDataset, args.dataset)(args.noise)
     for arg, value in zip(unknown_args[::2], unknown_args[1::2]):
         arg = arg.strip('-')
         if arg in args.params.__dict__.keys():
@@ -130,6 +130,9 @@ parser.add_argument("--savedir",
                     help="The name of the subdirectory within the dataset "
                          "test directory to save predictions in. Defaults "
                          "to the name of the network class.")
+parser.add_argument("--noise",
+                    action='store_true',
+                    help="Add statics, noise and random gain to input data.")
 parser.add_argument("--plot",
                     action='store_true',
                     help="Validate data by plotting.")
