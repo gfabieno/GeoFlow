@@ -87,11 +87,13 @@ def chain(main: Callable,
         main(args, use_tune)
 
 
-def optimize(args: Namespace):
+def optimize(args: Namespace, **config):
     """
     Call `chain` for all combinations of `args.params`.
 
     :param args: Parsed arguments.
+    :param config: Key-value pairs of argument names and values that will be
+                   iterated upon.
 
     Sample usage:
         from GeoFlow.__main__ import parse_args
@@ -108,11 +110,11 @@ def optimize(args: Namespace):
         with archive.import_main() as main:
             logdir = archive.model
 
-            grid_search_params = {}
-            for key, value in args.params.items():
+            grid_search_config = deepcopy(config)
+            for key, value in config.items():
                 if isinstance(value, list):
                     value = tune.grid_search(value)
-                grid_search_params[key] = value
+                grid_search_config[key] = value
             if args.gpus is None:
                 ngpu = len(list_physical_devices('GPU'))
             elif isinstance(args.gpus, list):
@@ -123,4 +125,4 @@ def optimize(args: Namespace):
                      num_samples=1,
                      local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
-                     config=grid_search_params)
+                     config=grid_search_config)
