@@ -16,8 +16,7 @@ training. `optimize` automatically fetches the archived main script.
 
 from os.path import split
 from copy import deepcopy
-from argparse import Namespace, ArgumentParser
-from importlib import import_module
+from argparse import Namespace
 from typing import Callable
 
 from ray import tune
@@ -160,59 +159,14 @@ def optimize(nn: NN,
                      config=grid_search_config)
 
 
-def int_or_list(arg):
-    if arg is None:
-        return None
-    arg = eval(arg)
-    assert isinstance(arg, (int, list))
-    return arg
-
-
 if __name__ == "__main__":
-    parser = ArgumentParser()
-    parser.add_argument("--nn",
-                        type=str,
-                        default="RCNN2D",
-                        help="Name of the architecture from `RCNN2D` to use.")
-    parser.add_argument("--params",
-                        type=str,
-                        default="Hyperparameters",
-                        help="Name of hyperparameters from `RCNN2D` to use.")
-    parser.add_argument("--dataset",
-                        type=str,
-                        default="Dataset1Dsmall",
-                        help="Name of dataset from `DefinedDataset` to use.")
-    parser.add_argument("--logdir",
-                        type=str,
-                        default="./logs",
-                        help="Directory in which to store the checkpoints.")
-    parser.add_argument("--gpus",
-                        type=int_or_list,
-                        default=None,
-                        help="Either the quantity of GPUs or a list of GPU "
-                             "IDs to use in data creation, training and "
-                             "inference. Use a string representation for "
-                             "lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. "
-                             "By default, use all available GPUs.")
-    parser.add_argument("--debug",
-                        action='store_true',
-                        help="Generate a small dataset of 5 examples.")
-    parser.add_argument("--eager",
-                        action='store_true',
-                        help="Run the Keras model eagerly, for debugging.")
-    args, config = parser.parse_known_args()
-    config = {name[2:]: eval(value) for name, value
-              in zip(config[::2], config[1::2])}
-    nn_module = import_module("DefinedNN." + args.nn)
-    dataset_module = import_module("DefinedDataset." + args.dataset)
-    args.nn = getattr(nn_module, args.nn)
-    args.params = getattr(nn_module, args.params)(is_training=True)
-    dataset_module = import_module("DefinedDataset." + args.dataset)
-    args.dataset = getattr(dataset_module, args.dataset)()
+    from GeoFlow.__main__ import parse_args
+
+    args = parse_args()
 
     if args.debug:
-        config["epochs"] = 1
-        config["steps_per_epoch"] = 5
+        args.params["epochs"] = 1
+        args.params["steps_per_epoch"] = 5
 
     optimize(nn=args.nn,
              params=args.params,
@@ -221,4 +175,4 @@ if __name__ == "__main__":
              gpus=args.gpus,
              debug=args.debug,
              eager=args.eager,
-             **config)
+             **args.params)
