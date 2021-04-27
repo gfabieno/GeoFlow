@@ -84,6 +84,7 @@ def chain(main: Callable,
             with tune.checkpoint_dir(step=1) as checkpoint_dir:
                 logdir, _ = split(checkpoint_dir)
         args.params = current_params
+        args.logdir = logdir
         main(args, use_tune)
 
 
