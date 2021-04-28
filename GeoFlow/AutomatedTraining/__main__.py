@@ -9,7 +9,7 @@ args, config = parser.parse_known_args()
 config = {name[2:]: eval(value)
           for name, value in zip(config[::2], config[1::2])}
 args.nn = getattr(DefinedNN, args.nn)
-args.params = getattr(DefinedNN, args.params)(is_training=args.train)
+args.params = getattr(DefinedNN, args.params)(is_training=True)
 args.dataset = getattr(DefinedDataset, args.dataset)(args.noise)
 
 if args.debug:
