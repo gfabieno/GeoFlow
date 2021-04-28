@@ -67,6 +67,10 @@ class Acquisition:
         # Whether to fill the surface with geophones or to use inline spread.
         # Either `'full'` or `'inline'`.
         self.configuration = 'full'
+        #Number of attenuation mechanism (L=0 elastic)
+        self.L = 0
+        #Frequencies of the attenuation mechanism
+        self.FL = np.array(15)
 
     def set_rec_src(self):
         """
@@ -224,6 +228,8 @@ class SeismicGenerator(SeisCL):
         self.seisout = acquire.rectype  # Output pressure
         self.freesurf = int(acquire.fs)  # Free surface
         self.abs_type = acquire.abs_type # Absorbing boundary type
+        self.L = acquire.L #Number of attenuation mechanism (L=0 elastic)
+        self.FL = acquire.FL #Frequencies of the attenuation mechanism
 
         # Assign the GPU to SeisCL.
         nouse = np.arange(0, 16)
