@@ -76,15 +76,15 @@ def chain(main: Callable,
     else:
         qty_segments = 1
 
+    if use_tune:
+        with tune.checkpoint_dir(step=1) as checkpoint_dir:
+            logdir, _ = split(checkpoint_dir)
+        args.logdir = logdir
     for segment in range(qty_segments):
         current_params = deepcopy(params)
         for param_name, param_value in to_chain.items():
             setattr(current_params, param_name, param_value[segment])
-        if use_tune:
-            with tune.checkpoint_dir(step=1) as checkpoint_dir:
-                logdir, _ = split(checkpoint_dir)
         args.params = current_params
-        args.logdir = logdir
         main(args, use_tune)
 
 
@@ -108,7 +108,7 @@ def optimize(args: Namespace, **config):
     """
     with ArchiveRepository(args.logdir) as archive:
         with archive.import_main() as main:
-            args.logdir = archive.model
+            logdir = archive.model
 
             grid_search_config = deepcopy(config)
             for key, value in config.items():
@@ -123,6 +123,6 @@ def optimize(args: Namespace, **config):
                 ngpu = args.gpus
             tune.run(lambda config: chain(main, args, use_tune=True, **config),
                      num_samples=1,
-                     local_dir=args.logdir,
+                     local_dir=logdir,
                      resources_per_trial={"gpu": ngpu},
                      config=grid_search_config)
