@@ -102,7 +102,7 @@ class ArchiveRepository:
         run(["tar", "-C", code_dir, "-zxf", archive_name])
         remove(archive_name)
 
-        symlink(realpath("Datasets"), join(code_dir, "Datasets"),
+        symlink(realpath("datasets"), join(code_dir, "datasets"),
                 target_is_directory=True)
 
     def chdir(self):
