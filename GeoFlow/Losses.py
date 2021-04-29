@@ -72,7 +72,7 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
                 abs_diff *= weight[:, :, :-1] * weight[:, :, 1:]
                 loss += tf.reduce_mean(abs_diff, axis=[1, 2])
             if normalize:
-                loss /= tf.reduce_mean(output*weight, axis=[1, 2])
+                loss /= tf.reduce_mean(tf.abs(output)*weight, axis=[1, 2])
                 loss *= .02
             losses.append(beta * loss)
 
