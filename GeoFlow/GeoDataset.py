@@ -31,7 +31,6 @@ class GeoDataset:
     Define a specific dataset by inheriting from this class and changing the
     model parameters.
     """
-    name = "BaseDataset"
     basepath = os.path.abspath("Datasets")
 
     # Seed of the 1st model generated. Seeds for subsequent models are
@@ -61,6 +60,17 @@ class GeoDataset:
         self.files = {"train": [], "validate": [], "test": []}
         self.shuffled = None
         self._shapes = None
+
+    @property
+    def name(self):
+        if hasattr(self, "__name"):
+            return self.__name
+        else:
+            return type(self).__name__
+
+    @name.setter
+    def name(self, name):
+        self.__name = name
 
     def set_dataset(self):
         """

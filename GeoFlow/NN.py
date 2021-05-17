@@ -116,6 +116,17 @@ class NN(Model):
             self.initialize(input_shapes)
             self.current_epoch = self.restore(self.params.restore_from)
 
+    @property
+    def name(self):
+        if hasattr(self, "__name"):
+            return self.__name
+        else:
+            return type(self).__name__
+
+    @name.setter
+    def name(self, name):
+        self.__name = name
+
     def build_inputs(self, inputs_shape: dict):
         """
         Build input layers.
@@ -319,7 +330,7 @@ class NN(Model):
         if savedir is None:
             # Save the predictions to a subfolder that has the name of the
             # network.
-            savedir = type(self).__name__
+            savedir = self.name
         savedir = join(self.dataset.datatest, savedir)
         if not isdir(savedir):
             mkdir(savedir)

@@ -4,8 +4,6 @@ from GeoFlow.GeoDataset import GeoDataset
 
 
 class Dataset1Dsmall(GeoDataset):
-    name = "Dataset1Dsmall"
-
     def set_dataset(self):
         model, acquire, inputs, outputs = super().set_dataset()
         for name in inputs:

@@ -7,8 +7,14 @@ from GeoFlow.GraphIO import (Reftime, Vrms, Vint, Vdepth, ShotGather)
 
 
 class Dataset1Darticle(GeoDataset):
-
-    name = "Dataset1Darticle"
+    def __init__(self, noise=False):
+        super().__init__()
+        if noise:
+            for input in self.inputs.values():
+                input.random_static = True
+                input.random_static_max = 1
+                input.random_noise = True
+                input.random_noise_max = 0.02
 
     def set_dataset(self):
         model = MarineModel()
@@ -51,20 +57,7 @@ class Dataset1Darticle(GeoDataset):
             outputs[name].identify_direct = False
         return model, acquire, inputs, outputs
 
-    def __init__(self, noise=0):
-
-        if noise == 1:
-            self.name = self.name + "_noise"
-        super().__init__()
-        if noise == 1:
-            for name in self.inputs:
-                self.inputs[name].random_static = True
-                self.inputs[name].random_static_max = 1
-                self.inputs[name].random_noise = True
-                self.inputs[name].random_noise_max = 0.02
-
 
 if __name__ == "__main__":
-
     dataset = Dataset1Darticle()
     dataset.model.animated_dataset()
