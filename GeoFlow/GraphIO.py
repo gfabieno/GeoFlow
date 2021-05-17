@@ -583,6 +583,7 @@ class ShotGather(GraphInput):
         data /= trace_rms + eps
         panel_max = np.amax(data, axis=(0, 1), keepdims=True)
         data /= panel_max + eps
+        data *= 1000
 
         return data
 
