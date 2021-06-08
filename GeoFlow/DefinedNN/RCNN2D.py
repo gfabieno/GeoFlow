@@ -230,7 +230,7 @@ class RCNN2D(NN):
             raise NotImplementedError
 
         loaded_model = tf.keras.models.load_model(filepath, compile=False)
-        current_layer_names = [l.name for l in self.layers]
+        current_layer_names = [layer.name for layer in self.layers]
         for loaded_layer in loaded_model.layers:
             name = loaded_layer.name
             if name not in current_layer_names:
@@ -239,6 +239,8 @@ class RCNN2D(NN):
             current_layer = self.get_layer(name)
             current_weights = current_layer.get_weights()
             loaded_weights = loaded_layer.get_weights()
+            if len(current_weights) != len(loaded_weights):
+                loaded_weights = insert_layers(loaded_weights, current_weights)
             current_weights = broadcast_weights(loaded_weights,
                                                 current_weights)
             current_layer.set_weights(current_weights)
@@ -315,6 +317,65 @@ def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray,
             loaded = np.swapaxes(current, 0, mismatch_idx)
         current_weights[i] = loaded
     return current_weights
+
+
+def insert_layers(loaded_weights: np.ndarray, current_weights: np.ndarray,
+                  rescale_current: float = .1):
+    """
+    Insert layers from `current_weights` that are missing in `loaded_weights`.
+
+    Insert the missing weights, set the weights on the diagonal and at the
+    middle of the new dimension to `1` and set other weights with the newly
+    initialized weights, rescaled by `rescale_current`. This is equivalent to
+    initializing weights in the lower dimensional setting, plus a noise
+    contribution of the newly initialized weights `current_weights`
+    off-diagonal.
+
+    This is mostly used for the purpose of adding layers to `RCNN2D.encoder`.
+    Therefore, convolutional layers are assumed and the last two dimensions of
+    each weight array (filter dimensions) are supposed equal.
+
+    :param loaded_weights: The weights of the recovered checkpoint.
+    :type loaded_weights: np.ndarray
+    :param current_weights: The current weights of the model, which will be
+                            partly overridden.
+    :type current_weights: np.ndarray
+    :param rescale_current: A scaling factor applied on the newly initialized
+                            weights `current_weights`.
+    :type rescale_current: float
+    """
+    current_kernels = current_weights[::2]
+    current_biases = current_weights[1::2]
+    loaded_kernels = iter(loaded_weights[::2])
+    loaded_biases = iter(loaded_weights[1::2])
+
+    loaded_weights = []
+    is_loaded_consumed = True
+    for current, current_bias in zip(current_kernels, current_biases):
+        is_loaded_exhausted = False
+        try:
+            if is_loaded_consumed:
+                loaded = next(loaded_kernels)
+                loaded_bias = next(loaded_biases)
+            is_loaded_consumed = False
+        except StopIteration:
+            is_loaded_exhausted = True
+        if is_loaded_exhausted or current.shape != loaded.shape:
+            current *= rescale_current
+            new_dim_idx = np.nonzero(np.array(current.shape) > 1)[0][0]
+            length = current.shape[new_dim_idx]
+            assert length % 2 == 1, ("The size of the new dimension must "
+                                     "be odd.")
+            current = np.swapaxes(current, new_dim_idx, 0)
+            diagonal = np.identity(current.shape[-1], dtype=bool)
+            current[length//2, ..., diagonal] = 1
+            current = np.swapaxes(current, 0, new_dim_idx)
+        else:
+            current = loaded
+            current_bias = loaded_bias
+            is_loaded_consumed = True
+        loaded_weights += [current, current_bias]
+    return loaded_weights
 
 
 def build_encoder(kernels, qties_filters, dilation_rates, input_shape,

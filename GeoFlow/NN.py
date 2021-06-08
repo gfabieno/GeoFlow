@@ -12,6 +12,7 @@ import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input
 from tensorflow.keras.callbacks import TensorBoard, ModelCheckpoint
+from tensorflow.config import list_physical_devices
 from ray.tune.integration.keras import TuneReportCheckpointCallback
 
 from GeoFlow.GeoDataset import GeoDataset
@@ -101,7 +102,9 @@ class NN(Model):
         :type run_eagerly: bool
         """
         if devices:
-            devices = [f'/gpu:{i}' for i in devices]
+            all_gpus = list_physical_devices('GPU')
+            devices = [gpu for gpu in all_gpus
+                       if int(gpu.name.split(':')[-1]) in devices]
         strategy = tf.distribute.MirroredStrategy(devices)
         with strategy.scope():
             super().__init__()
