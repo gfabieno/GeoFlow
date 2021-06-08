@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
-                                     ReLU)
+                                     ReLU, Dropout)
 from tensorflow.keras.backend import max as reduce_max, reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -108,15 +108,15 @@ class RCNN2D(NN):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
-        self.rcnn_pooling = build_rcnn(reps=6,
-                                       kernel=(1, 2, 1),
-                                       qty_filters=params.rcnn_filters,
-                                       dilation_rate=(1, 1, 1),
-                                       strides=(1, 2, 1),
-                                       padding='valid',
-                                       input_shape=self.rcnn.output_shape,
-                                       batch_size=batch_size,
-                                       name='rcnn_pooling')
+        self.rvcnn = build_rcnn(reps=6,
+                                kernel=(1, 2, 1),
+                                qty_filters=params.rcnn_filters,
+                                dilation_rate=(1, 1, 1),
+                                strides=(1, 2, 1),
+                                padding='valid',
+                                input_shape=self.rcnn.output_shape,
+                                batch_size=batch_size,
+                                name="rvcnn")
 
         shape_before_pooling = np.array(self.rcnn.output_shape)
         shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
@@ -190,9 +190,8 @@ class RCNN2D(NN):
 
         data_stream = self.encoder(inputs["shotgather"])
         data_stream = self.rcnn(data_stream)
-        data_stream = self.rcnn_pooling(data_stream)
-        with tf.name_scope("global_pooling"):
-            data_stream = reduce_max(data_stream, axis=2, keepdims=False)
+        data_stream = self.rvcnn(data_stream)
+        data_stream = data_stream[:, :, 0]
 
         outputs['ref'] = self.decoder['ref'](data_stream)
 
@@ -233,6 +232,8 @@ class RCNN2D(NN):
         current_layer_names = [layer.name for layer in self.layers]
         for loaded_layer in loaded_model.layers:
             name = loaded_layer.name
+            if name == "rcnn_pooling":  # Allow backwards compatibility.
+                name = "rvcnn"
             if name not in current_layer_names:
                 print(f"Loading layer {name} skipped.")
                 continue
@@ -403,6 +404,7 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
         encoder.add(ReLU())
+        encoder.add(Dropout(.5))
     return encoder
 
 
