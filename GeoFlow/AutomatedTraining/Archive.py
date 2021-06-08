@@ -102,7 +102,7 @@ class ArchiveRepository:
         run(["tar", "-C", code_dir, "-zxf", archive_name])
         remove(archive_name)
 
-        symlink(realpath("Datasets"), join(code_dir, "Datasets"),
+        symlink(realpath("datasets"), join(code_dir, "datasets"),
                 target_is_directory=True)
 
     def chdir(self):
@@ -156,10 +156,10 @@ class _ImportMain:
     """Dynamically import the current `main`."""
 
     def __enter__(self):
-        self.main = import_module("main").main
+        self.main = import_module("GeoFlow.__main__").main
         return proxy(self.main)
 
     def __exit__(self, exc_type, exc_value, tb):
         """Delete all references appropriately"""
-        del sys.modules["main"]
+        del sys.modules["__main__"]
         del self.main

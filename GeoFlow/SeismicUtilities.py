@@ -6,7 +6,6 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input
-from tensorflow.keras.backend import sum as reduce_sum, cumsum, arange
 from scipy.signal import convolve2d
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
@@ -356,15 +355,48 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
 
     vrms = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     rescaled_vrms = vrms*(vmax-vmin) + vmin
-    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=tf.float32)
-    traveltimes *= dt * resampling
+    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=input_dtype)
     diff = rescaled_vrms[:, tdelay-1:]**2 * traveltimes[None, :, None]
     diff = diff[:, 1:] - diff[:, :-1]
-    vint = tf.sqrt(diff / (dt*resampling))
+    vint = tf.sqrt(diff)
     vint = tf.concat([rescaled_vrms[:, :tdelay], vint], axis=1)
     vint = (vint-vmin) / (vmax-vmin)
 
     vrms_to_vint_converter = Model(inputs=vrms, outputs=vint, name=name)
+    return vrms_to_vint_converter
+
+
+def build_vint_to_vrms_converter(dataset, input_shape, batch_size,
+                                 input_dtype=tf.float32,
+                                 name="vint_to_vrms_converter"):
+    """
+    Build model for computing RMS velocity from interval velocity in Keras.
+
+    :param dataset: Constants `vmin`, `vmax`, `dt`, `resampling` and `tdelay`
+                    of the dataset are used.
+    :param input_size: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
+    vmax = dataset.model.vp_max
+    vmin = dataset.model.vp_min
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
+    tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
+
+    vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
+    actual_vint = vint*(vmax-vmin) + vmin
+    actual_vint = actual_vint[:, tdelay:]
+    time = tf.range(1, actual_vint.shape[1]+1, dtype=input_dtype)
+    vrms = tf.sqrt(tf.cumsum(actual_vint**2, axis=1) / time[None, :, None])
+    vrms = tf.concat([actual_vint[:, :tdelay], vrms], axis=1)
+    vrms = (vrms-vmin) / (vmax-vmin)
+
+    vrms_to_vint_converter = Model(inputs=vint, outputs=vrms, name=name)
     return vrms_to_vint_converter
 
 
@@ -401,11 +433,11 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     depth_intervals = actual_vint * dt * resampling / (dh*2)
     paddings = [[0, 0], [1, 0], [0, 0], [0, 0]]
     depth_intervals = tf.pad(depth_intervals, paddings, "CONSTANT")
-    depths = cumsum(depth_intervals, axis=1)
-    depth_delay = reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
-                             keepdims=True)
+    depths = tf.cumsum(depth_intervals, axis=1)
+    depth_delay = tf.reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
+                                keepdims=True)
     depths -= depth_delay
-    target_depths = arange(max_depth, dtype=tf.float32)
+    target_depths = tf.arange(max_depth, dtype=tf.float32)
     vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
 
     time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)
@@ -636,8 +668,7 @@ def nmo_correction(cmp, times, offsets, velocities, stretch_mute=None):
     """
     nmo = np.zeros_like(cmp)
     for j, x in enumerate(offsets):
-        t = [reflection_time(t0, x, velocities[i])
-             for i, t0 in enumerate(times)]
+        t = reflection_time(times, x, velocities)
         interpolator = CubicSpline(times, cmp[:, j], extrapolate=False)
         amps = np.nan_to_num(interpolator(t), copy=False)
         nmo[:, j] = amps
@@ -677,7 +708,7 @@ def semblance(nmo_corrected, window=10):
     return num / den
 
 
-def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
+def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01, c_log=False, f_log=False):
     """
     Compute the dispersion curve of `data`.
 
@@ -696,6 +727,8 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     """
     freq = np.fft.fftfreq(np.size(data, 0), dt)
     c = np.linspace(minc, maxc, 201)[:-1]
+    if c_log:
+        c = np.logspace(minc, maxc, 201)[:-1]
     c = c[1:]
     data_fft = np.fft.fft(data, axis=0)
     data_fft /= np.abs(data_fft) + epsilon*np.abs(data_fft).max()
@@ -704,6 +737,7 @@ def dispersion_curve(data, gx, dt, sx, minc=1000, maxc=5000, epsilon=0.01):
     x = np.abs(gx-sx)
     x -= np.min(x)
     x = np.reshape(x, [1, -1])
+
     for i in range(len(c)):
         delta = 2 * np.pi * freq * x / c[i]
         a2[:, i] = np.sum(np.exp(1j*delta) * data_fft, axis=1)

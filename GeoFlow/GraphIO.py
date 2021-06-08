@@ -44,8 +44,8 @@ class GraphOutput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights=None, axs=[None], cmap='inferno',
-             vmin=None, vmax=None, clip=1, ims=[None]):
+    def plot(self, data, weights=None, axs=None, cmap='inferno',
+             vmin=None, vmax=None, clip=1, ims=None):
         """
         Plot the output.
 
@@ -62,6 +62,10 @@ class GraphOutput:
 
         :return: Return values of each `ax.imshow`.
         """
+        if axs is None:
+            axs = [None]
+        if ims is None:
+            ims = [None]
         if vmin is None:
             vmin = self.model.vp_min
         if vmax is None:
@@ -135,8 +139,8 @@ class Reftime(GraphOutput):
         self.identify_direct = False
         self.train_on_shots = False
 
-    def plot(self, data, weights=None, axs=[None], cmap='Greys',
-             vmin=0, vmax=1, clip=1, ims=[None]):
+    def plot(self, data, weights=None, axs=None, cmap='Greys',
+             vmin=0, vmax=1, clip=1, ims=None):
         if self.meta_name in ['Output', 'Predictions']:
             vmin, vmax = -.2, 1
         else:
@@ -336,8 +340,8 @@ class Vsdepth(Vrms):
         vmin, vmax = self.model.properties["vs"]
         return label*(vmax-vmin) + vmin
 
-    def plot(self, data, weights=None, axs=[None], cmap='inferno',
-             vmin=None, vmax=None, clip=1, ims=[None]):
+    def plot(self, data, weights=None, axs=None, cmap='inferno',
+             vmin=None, vmax=None, clip=1, ims=None):
         if vmin is None:
             vmin = self.model.properties["vs"][0]
         if vmax is None:
@@ -366,8 +370,8 @@ class GraphInput:
         self.acquire = acquire
         self.model = model
 
-    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
-             vmax=None, clip=0.1, ims=[None]):
+    def plot(self, data, weights=None, axs=None, cmap='Greys', vmin=None,
+             vmax=None, clip=0.1, ims=None):
         """
         Plot this input using default values.
 
@@ -384,6 +388,10 @@ class GraphInput:
 
         :return: Return values of each `ax.imshow`.
         """
+        if axs is None:
+            axs = [None]
+        if ims is None:
+            ims = [None]
         if vmax is None:
             vmax = np.amax(data) * clip
         if vmin is None:
@@ -476,8 +484,12 @@ class ShotGather(GraphInput):
     def naxes(self):
         return 1 if self.is_1d else 2
 
-    def plot(self, data, weights, axs, cmap='Greys', vmin=None,
+    def plot(self, data, weights=None, axs=None, cmap='Greys', vmin=None,
              vmax=None, clip=0.05, ims=None):
+        if axs is None:
+            axs = [None]
+        if ims is None:
+            ims = [None]
         if self.is_1d:
             return super().plot(data, weights, axs, cmap, vmin, vmax, clip,
                                 ims)
@@ -571,6 +583,7 @@ class ShotGather(GraphInput):
         data /= trace_rms + eps
         panel_max = np.amax(data, axis=(0, 1), keepdims=True)
         data /= panel_max + eps
+        data *= 1000
 
         return data
 
@@ -605,11 +618,12 @@ class Dispersion(GraphInput):
     name = "dispersion"
 
     def __init__(self, acquire: Acquisition, model: EarthModel, cmax, cmin,
-                 fmin, fmax):
+                 fmin, fmax, c_log=False, f_log=False):
         self.acquire = acquire
         self.model = model
         self.cmax, self.cmin = cmax, cmin
         self.fmax, self.fmin = fmax, fmin
+        self.c_log, self.f_log = c_log, f_log
 
     def generate(self, data):
         src_pos, rec_pos = self.acquire.set_rec_src()

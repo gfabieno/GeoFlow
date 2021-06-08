@@ -31,7 +31,6 @@ class GeoDataset:
     Define a specific dataset by inheriting from this class and changing the
     model parameters.
     """
-    name = "BaseDataset"
     basepath = os.path.abspath("Datasets")
 
     # Seed of the 1st model generated. Seeds for subsequent models are
@@ -61,6 +60,17 @@ class GeoDataset:
         self.files = {"train": [], "validate": [], "test": []}
         self.shuffled = None
         self._shapes = None
+
+    @property
+    def name(self):
+        if hasattr(self, "__name"):
+            return self.__name
+        else:
+            return type(self).__name__
+
+    @name.setter
+    def name(self, name):
+        self.__name = name
 
     def set_dataset(self):
         """
@@ -163,7 +173,7 @@ class GeoDataset:
                 self.shuffled = shuffle
             filename = self.files[phase].pop()
 
-        inputs, labels, weights = self.generator.read(filename)
+        inputs, labels, weights = self.generator.read(filename, toinputs, tooutputs)
         inputspre = {key: self.inputs[key].preprocess(inputs[key], labels)
                      for key in toinputs}
         labelspre = {}
@@ -273,8 +283,7 @@ class GeoDataset:
                 output.meta_name = "Weights"
             rows_meta.append(weights_meta)
         if plot_preds:
-            preds = self.generator.read_predictions(filename, pred_dir)
-            preds = {name: preds[name] for name in tooutputs}
+            preds = self.generator.read_predictions(filename, pred_dir, tooutputs)
             rows.append(preds)
             preds_meta = deepcopy(outputs_meta)
             for output in preds_meta.values():
@@ -398,9 +407,11 @@ class GeoDataset:
         phases = {"train": self.datatrain,
                   "validate": self.datavalidate,
                   "test": self.datatest}
+
+        if phase == "validate" and self.validatesize == 0: return None
+
         pathstr = os.path.join(phases[phase], 'example_*')
         tfdataset = tf.data.Dataset.list_files(pathstr, shuffle=shuffle)
-
         data, labels, weights, _ = self.get_example(toinputs=toinputs,
                                                     tooutputs=tooutputs)
         data_shape = tuple(data[el].shape for el in toinputs)

@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
-                                     LeakyReLU)
+                                     ReLU)
 from tensorflow.keras.backend import max as reduce_max, reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -20,16 +20,11 @@ class Hyperparameters(Hyperparameters):
         """
         Build the default hyperparameters for `RCNN2D`.
         """
-        # Checkpoint directory from which to restore the model. Defaults to the
-        # last checkpoint in `args.logdir`.
         self.restore_from = None
-
-        # Quantity of epochs, with `self.steps` iterations per epoch.
         self.epochs = 5
-        # Quantity of training iterations per epoch.
         self.steps_per_epoch = 100
-        # Quantity of examples per batch.
         self.batch_size = 50
+        self.seed = None
 
         # The learning rate.
         self.learning_rate = 8E-4
@@ -113,14 +108,25 @@ class RCNN2D(NN):
         if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
             self.rcnn.trainable = False
 
-        self.decoder['ref'] = Conv2D(1, params.decode_ref_kernel,
-                                     padding='same',
-                                     activation='sigmoid',
-                                     input_shape=self.rcnn.output_shape,
-                                     batch_size=batch_size, name="ref")
+        self.rcnn_pooling = build_rcnn(reps=6,
+                                       kernel=(1, 2, 1),
+                                       qty_filters=params.rcnn_filters,
+                                       dilation_rate=(1, 1, 1),
+                                       strides=(1, 2, 1),
+                                       padding='valid',
+                                       input_shape=self.rcnn.output_shape,
+                                       batch_size=batch_size,
+                                       name='rcnn_pooling')
 
         shape_before_pooling = np.array(self.rcnn.output_shape)
         shape_after_pooling = tuple(shape_before_pooling[[0, 1, 3, 4]])
+
+        self.decoder['ref'] = Conv2D(1, params.decode_ref_kernel,
+                                     padding='same',
+                                     activation='sigmoid',
+                                     input_shape=shape_after_pooling,
+                                     batch_size=batch_size, name="ref")
+
         self.rnn['vrms'] = build_rnn(units=200,
                                      input_shape=shape_after_pooling,
                                      batch_size=batch_size,
@@ -141,9 +147,9 @@ class RCNN2D(NN):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
-                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
+                                      use_bias=False,
                                       name="vrms")
 
         self.rnn['vint'] = build_rnn(units=200,
@@ -166,9 +172,9 @@ class RCNN2D(NN):
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
-                                      activation='sigmoid',
                                       input_shape=input_shape,
                                       batch_size=batch_size,
+                                      use_bias=False,
                                       name="vint")
 
         vint_shape = input_shape[1:-1] + (1,)
@@ -184,6 +190,7 @@ class RCNN2D(NN):
 
         data_stream = self.encoder(inputs["shotgather"])
         data_stream = self.rcnn(data_stream)
+        data_stream = self.rcnn_pooling(data_stream)
         with tf.name_scope("global_pooling"):
             data_stream = reduce_max(data_stream, axis=2, keepdims=False)
 
@@ -192,15 +199,13 @@ class RCNN2D(NN):
         data_stream = self.rnn['vrms'](data_stream)
         if params.use_cnn:
             data_stream = self.cnn['vrms'](data_stream)
-
         outputs['vrms'] = self.decoder['vrms'](data_stream)
 
         data_stream = self.rnn['vint'](data_stream)
         if params.use_cnn:
             data_stream = self.cnn['vint'](data_stream)
-
-        data_stream = self.rnn['vint'](data_stream)
         outputs['vint'] = self.decoder['vint'](data_stream)
+
         outputs['vdepth'] = self.time_to_depth(outputs['vint'])
 
         return {out: outputs[out] for out in self.tooutputs}
@@ -258,7 +263,10 @@ class RCNN2D(NN):
             if lbl == 'ref':
                 losses[lbl] = ref_loss()
             else:
-                losses[lbl] = v_compound_loss()
+                if lbl == 'vrms':
+                    losses[lbl] = v_compound_loss(beta=.0, normalize=True)
+                else:
+                    losses[lbl] = v_compound_loss(normalize=True)
             losses_weights[lbl] = self.params.loss_scales[lbl]
 
         return losses, losses_weights
@@ -394,12 +402,13 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
                                                   dilation_rates):
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
-        encoder.add(LeakyReLU())
+        encoder.add(ReLU())
     return encoder
 
 
 def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
-               batch_size, input_dtype=tf.float32, name="rcnn"):
+               batch_size, strides=(1, 1, 1), padding='same',
+               input_dtype=tf.float32, name="rcnn"):
     """
     Build a RCNN (recurrent convolution neural network).
 
@@ -419,8 +428,8 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
 
     data_stream = input
     conv_3d = Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
-                     padding='same')
-    activation = LeakyReLU()
+                     strides=strides, padding=padding)
+    activation = ReLU()
     for _ in range(reps):
         data_stream = conv_3d(data_stream)
         data_stream = activation(data_stream)

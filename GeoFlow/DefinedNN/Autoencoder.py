@@ -16,6 +16,7 @@ class Hyperparameters(Hyperparameters):
         self.epochs = 5
         self.steps_per_epoch = 100
         self.batch_size = 10
+        self.seed = None
 
         # The learning rate.
         self.learning_rate = 8E-4

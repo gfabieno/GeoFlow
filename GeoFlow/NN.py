@@ -43,6 +43,7 @@ class Hyperparameters(Namespace):
         - `epochs`: Quantity of epochs, with `self.steps` iterations per epoch.
         - `step_per_epoch`: Quantity of training iterations per epoch.
         - `batch_size`: Quantity of examples per batch.
+        - `seed`: Seed set at the start of training.
 
         :param is_training: Whether the model is initialized for training or
                             not. This allows building a different network at
@@ -110,12 +111,24 @@ class NN(Model):
             self.params = params
             self.dataset = dataset
             self.checkpoint_dir = checkpoint_dir
+            tf.random.set_seed(self.params.seed)
             inputs = self.build_inputs(input_shapes)
             self._set_inputs(inputs)
             self.build_network(inputs)
             self.setup(run_eagerly)
             self.initialize(input_shapes)
             self.current_epoch = self.restore(self.params.restore_from)
+
+    @property
+    def name(self):
+        if hasattr(self, "__name"):
+            return self.__name
+        else:
+            return type(self).__name__
+
+    @name.setter
+    def name(self, name):
+        self.__name = name
 
     def build_inputs(self, inputs_shape: dict):
         """
@@ -247,15 +260,23 @@ class NN(Model):
             loaded_weights = loaded_layer.get_weights()
             current_layer.set_weights(loaded_weights)
 
-    def launch_training(self, tfdataset, use_tune: bool = False):
+    def launch_training(self, tfdataset, tfvalidate=None,
+                        use_tune: bool = False):
         """
         Fit the model to the dataset.
 
         :param tfdataset: A TensorFlow `Dataset` object created from
                           `GeoFlow.GeoDataset.tfdataset`. `tfdataset` must
                           output pairs of data and labels, but labels are
-                          ignored at inference time.
+                          ignored at inference time. `tfdataset` contains the
+                          training data.
         :type tfdataset: tf.data.Dataset
+        :param tfvalidate: A TensorFlow `Dataset` object created from
+                          `GeoFlow.GeoDataset.tfdataset`. `tfvalidate` must
+                          output pairs of data and labels, but labels are
+                          ignored at inference time. `tfvalidate` contains the
+                          validation data.
+        :type tfvalidate: tf.data.Dataset
         :param use_tune: Whether `ray[tune]` is used in training or not. This
                          modifies the way callbacks and checkpoints are logged.
         :param use_tune: bool
@@ -276,6 +297,7 @@ class NN(Model):
             tune_report._checkpoint._cp_count = self.current_epoch + 1
             callbacks = [tune_report]
         self.fit(tfdataset,
+                 validation_data=tfvalidate,
                  epochs=epochs,
                  callbacks=callbacks,
                  initial_epoch=self.current_epoch,
@@ -311,7 +333,7 @@ class NN(Model):
         if savedir is None:
             # Save the predictions to a subfolder that has the name of the
             # network.
-            savedir = type(self).__name__
+            savedir = self.name
         savedir = join(self.dataset.datatest, savedir)
         if not isdir(savedir):
             mkdir(savedir)

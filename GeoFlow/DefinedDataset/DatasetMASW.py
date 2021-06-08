@@ -211,16 +211,14 @@ class AquisitionMASW(Acquisition):
 class DatasetMASW(GeoDataset):
     name = "Dataset_masw"
 
-    def __init__(self, noise=0):
-        if noise == 1:
-            self.name = self.name + "_noise"
+    def __init__(self, noise=False):
         super().__init__()
-        if noise == 1:
-            for name in self.inputs:
-                self.inputs[name].random_static = True
-                self.inputs[name].random_static_max = 1
-                self.inputs[name].random_noise = True
-                self.inputs[name].random_noise_max = 0.02
+        if noise:
+            for input in self.inputs.values():
+                input.random_static = True
+                input.random_static_max = 1
+                input.random_noise = True
+                input.random_noise_max = 0.02
 
     def set_dataset(self):
         self.trainsize = 700
