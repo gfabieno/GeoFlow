@@ -439,7 +439,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     depth_delay = tf.reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
                                 keepdims=True)
     depths -= depth_delay
-    target_depths = tf.arange(max_depth, dtype=tf.float32)
+    target_depths = tf.range(max_depth, dtype=tf.float32)
     vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
 
     time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)
