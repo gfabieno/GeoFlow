@@ -7,7 +7,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
-                                     ReLU)
+                                     ReLU, Dropout)
 from tensorflow.keras.backend import max as reduce_max, reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -342,6 +342,7 @@ def build_encoder(kernels, qties_filters, dilation_rates, input_shape,
         encoder.add(Conv3D(qty_filters, kernel, dilation_rate=dilation_rate,
                            padding='same'))
         encoder.add(ReLU())
+        encoder.add(Dropout(.5))
     return encoder
 
 
