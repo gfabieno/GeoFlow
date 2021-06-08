@@ -367,6 +367,36 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
     return vrms_to_vint_converter
 
 
+def build_vint_to_vrms_converter(dataset, input_shape, batch_size,
+                                 input_dtype=tf.float32,
+                                 name="vint_to_vrms_converter"):
+    """
+    Build model for computing RMS velocity from interval velocity in Keras.
+
+    :param dataset: Constants `dt`, `resampling` and `tdelay` of the dataset
+                    are used.
+    :param input_size: The shape of the expected input.
+    :param batch_size: Quantity of examples in a batch.
+    :param input_dtype: Data type of the input.
+    :param name: Name of the produced Keras model.
+
+    :return: A Keras model.
+    """
+    dt = dataset.acquire.dt
+    resampling = dataset.acquire.resampling
+    tdelay = dataset.acquire.tdelay
+    tdelay = round(tdelay / (dt*resampling))  # Convert to unitless time steps.
+
+    vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
+    vint = vint[:, tdelay-1:]
+    time = tf.range(1, vint.shape[1]+1)
+    vrms = tf.sqrt(tf.cumsum(vint**2, axis=1) / time[None, :, None])
+    vrms = tf.concat([vint[:, :tdelay], vrms], axis=1)
+
+    vrms_to_vint_converter = Model(inputs=vint, outputs=vrms, name=name)
+    return vrms_to_vint_converter
+
+
 def build_time_to_depth_converter(dataset, input_shape, batch_size,
                                   input_dtype=tf.float32,
                                   name="time_to_depth_converter"):
