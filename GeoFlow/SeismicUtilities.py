@@ -389,7 +389,7 @@ def build_vint_to_vrms_converter(dataset, input_shape, batch_size,
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     vint = vint[:, tdelay-1:]
-    time = tf.range(1, vint.shape[1]+1)
+    time = tf.range(1, vint.shape[1]+1, dtype=tf.float32)
     vrms = tf.sqrt(tf.cumsum(vint**2, axis=1) / time[None, :, None])
     vrms = tf.concat([vint[:, :tdelay], vrms], axis=1)
 
