@@ -190,9 +190,8 @@ class RCNN2D(NN):
 
         data_stream = self.encoder(inputs["shotgather"])
         data_stream = self.rcnn(data_stream)
-        with tf.name_scope("global_pooling"):
-            data_stream = reduce_max(data_stream, axis=2, keepdims=False)
         data_stream = self.rvcnn(data_stream)
+        data_stream = data_stream[:, :, 0]
 
         outputs['ref'] = self.decoder['ref'](data_stream)
 
