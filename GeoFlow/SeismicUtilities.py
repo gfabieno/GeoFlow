@@ -356,7 +356,7 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
 
     vrms = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     rescaled_vrms = vrms*(vmax-vmin) + vmin
-    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=tf.float32)
+    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=input_dtype)
     diff = rescaled_vrms[:, tdelay-1:]**2 * traveltimes[None, :, None]
     diff = diff[:, 1:] - diff[:, :-1]
     vint = tf.sqrt(diff)
@@ -389,7 +389,7 @@ def build_vint_to_vrms_converter(dataset, input_shape, batch_size,
 
     vint = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     vint = vint[:, tdelay-1:]
-    time = tf.range(1, vint.shape[1]+1, dtype=tf.float32)
+    time = tf.range(1, vint.shape[1]+1, dtype=input_dtype)
     vrms = tf.sqrt(tf.cumsum(vint**2, axis=1) / time[None, :, None])
     vrms = tf.concat([vint[:, :tdelay], vrms], axis=1)
 
