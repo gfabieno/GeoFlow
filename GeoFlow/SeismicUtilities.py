@@ -355,8 +355,9 @@ def build_vrms_to_vint_converter(dataset, input_shape, batch_size,
 
     vrms = Input(shape=input_shape, batch_size=batch_size, dtype=input_dtype)
     rescaled_vrms = vrms*(vmax-vmin) + vmin
-    traveltimes = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=input_dtype)
-    diff = rescaled_vrms[:, tdelay-1:]**2 * traveltimes[None, :, None]
+    time = tf.range(rescaled_vrms.shape[1]+1-tdelay, dtype=input_dtype)
+    time = time[None, :, None, None]
+    diff = rescaled_vrms[:, tdelay-1:]**2 * time
     diff = diff[:, 1:] - diff[:, :-1]
     vint = tf.sqrt(diff)
     vint = tf.concat([rescaled_vrms[:, :tdelay], vint], axis=1)
@@ -392,7 +393,8 @@ def build_vint_to_vrms_converter(dataset, input_shape, batch_size,
     actual_vint = vint*(vmax-vmin) + vmin
     actual_vint = actual_vint[:, tdelay:]
     time = tf.range(1, actual_vint.shape[1]+1, dtype=input_dtype)
-    vrms = tf.sqrt(tf.cumsum(actual_vint**2, axis=1) / time[None, :, None])
+    time = time[None, :, None, None]
+    vrms = tf.sqrt(tf.cumsum(actual_vint**2, axis=1) / time)
     vrms = tf.concat([actual_vint[:, :tdelay], vrms], axis=1)
     vrms = (vrms-vmin) / (vmax-vmin)
 
@@ -437,7 +439,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
     depth_delay = tf.reduce_sum(depth_intervals[:, :tdelay+1], axis=1,
                                 keepdims=True)
     depths -= depth_delay
-    target_depths = tf.arange(max_depth, dtype=tf.float32)
+    target_depths = tf.range(max_depth, dtype=tf.float32)
     vdepth = interp_nearest(x=target_depths, x_ref=depths, y_ref=vint, axis=1)
 
     time_to_depth_converter = Model(inputs=vint, outputs=vdepth, name=name)

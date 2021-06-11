@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
                                      ReLU, Dropout)
-from tensorflow.keras.backend import max as reduce_max, reshape
+from tensorflow.keras.backend import reshape
 
 from GeoFlow.NN import Hyperparameters, NN
 from GeoFlow.Losses import ref_loss, v_compound_loss
