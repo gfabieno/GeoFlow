@@ -14,13 +14,14 @@ modifications in the repository during training do not impact an ongoing
 training. `optimize` automatically fetches the archived main script.
 """
 
+from os import environ
 from os.path import split
 from copy import deepcopy
 from argparse import Namespace
 from typing import Callable
 
 from ray import tune
-from tensorflow.config import list_physical_devices
+from tensorflow.config import list_physical_devices, set_visible_devices
 
 from .Archive import ArchiveRepository
 
@@ -116,13 +117,14 @@ def optimize(args: Namespace, **config):
                     value = tune.grid_search(value)
                 grid_search_config[key] = value
             if args.gpus is None:
-                ngpu = len(list_physical_devices('GPU'))
-            elif isinstance(args.gpus, list):
-                ngpu = len(list)
-            else:
-                ngpu = args.gpus
+                args.gpus = len(list_physical_devices('GPU'))
+            if isinstance(args.gpus, int):
+                args.gpus = list(range(args.gpus))
+            args.gpus = [str(gpu) for gpu in args.gpus]
+            environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+            environ['CUDA_VISIBLE_DEVICES'] = ','.join(args.gpus)
             tune.run(lambda config: chain(main, args, use_tune=True, **config),
                      num_samples=1,
                      local_dir=logdir,
-                     resources_per_trial={"gpu": ngpu},
+                     resources_per_trial={"gpu": len(args.gpus)},
                      config=grid_search_config)
