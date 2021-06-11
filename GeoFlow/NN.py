@@ -367,6 +367,8 @@ def find_latest_checkpoint(logdir: str):
     """
     expr = re.compile(r"checkpoint_[0-9]*")
     checkpoints = []
+    if not exists(logdir):
+        return None
     for file in listdir(logdir):
         has_checkpoint_format = expr.match(file)
         is_checkpoint = isfile(file)
