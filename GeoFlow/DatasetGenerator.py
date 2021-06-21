@@ -26,7 +26,7 @@ class DatasetGenerator:
     def __init__(self, model: EarthModel, acquire: Acquisition,
                  outputs: Dict[str, GraphOutput],
                  inputs: Dict[str, GraphInput],
-                 gpu: int = 0):
+                 gpu: int = 0, workdir: str = None):
         """
         Generate a dataset as implied by the arguments.
 
@@ -43,8 +43,10 @@ class DatasetGenerator:
         self.outputs = outputs
         self.inputs = inputs
         self.acquire = acquire
+        if workdir is None:
+            workdir = f"workdir{gpu}"
         self.seismic = SeismicGenerator(acquire, model, gpu=gpu,
-                                        workdir="workdir%d" % gpu)
+                                        workdir=workdir)
 
     def new_example(self, seed):
         """
@@ -158,7 +160,8 @@ class DatasetGenerator:
                          savepath: str,
                          nexamples: int,
                          seed0: int = None,
-                         gpus: list = None):
+                         gpus: list = None,
+                         workdirs: list = None):
         """
         Create a dataset on multiple GPUs.
 
@@ -174,17 +177,20 @@ class DatasetGenerator:
         if gpus is None:
             gpus = [device.name for device in list_physical_devices('GPU')]
             gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
+        if workdirs is None:
+            workdirs = [f"workdir{gpu}" for gpu in gpus]
 
         exampleids = Queue()
         for el in np.arange(seed0, seed0 + nexamples):
             exampleids.put(el)
         generators = []
-        for i in gpus:
+        for i, workdir in zip(gpus, workdirs):
             sg = self.__class__(model=self.model,
                                 acquire=self.acquire,
                                 inputs=self.inputs,
                                 outputs=self.outputs,
-                                gpu=i)
+                                gpu=i,
+                                workdir=workdir)
             thisgen = DatasetProcess(savepath, sg, exampleids)
             thisgen.start()
             generators.append(thisgen)
