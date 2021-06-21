@@ -172,8 +172,10 @@ class DatasetGenerator:
         :param gpus: List of GPU IDs for data creation. Defaults to all GPUs.
 
         """
-        if not os.path.isdir(savepath):
+        try:
             os.makedirs(savepath)
+        except FileExistsError:
+            pass
         if gpus is None:
             gpus = [device.name for device in list_physical_devices('GPU')]
             gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
