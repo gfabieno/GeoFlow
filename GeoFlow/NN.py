@@ -103,7 +103,7 @@ class NN(Model):
         """
         if devices:
             all_gpus = list_physical_devices('GPU')
-            devices = [gpu for gpu in all_gpus
+            devices = [':'.join(gpu.name.split(':')[-2:]) for gpu in all_gpus
                        if int(gpu.name.split(':')[-1]) in devices]
         strategy = tf.distribute.MirroredStrategy(devices)
         with strategy.scope():
