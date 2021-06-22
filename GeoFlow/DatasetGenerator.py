@@ -247,4 +247,9 @@ class DatasetProcess(Process):
                                                   labels, weights,
                                                   filename=filename)
                 except Timeout:
-                    pass
+                    continue
+                except (IndexError, ValueError) as error:
+                    print(f"WARNING: {error}")
+                    os.remove(filepath + '.lock')
+                else:
+                    os.remove(filepath + '.lock')
