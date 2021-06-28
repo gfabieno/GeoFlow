@@ -11,6 +11,7 @@ from typing import Dict
 
 import numpy as np
 import h5py as h5
+from filelock import FileLock, Timeout
 from tensorflow.config import list_physical_devices
 
 from GeoFlow.EarthModel import EarthModel
@@ -26,7 +27,7 @@ class DatasetGenerator:
     def __init__(self, model: EarthModel, acquire: Acquisition,
                  outputs: Dict[str, GraphOutput],
                  inputs: Dict[str, GraphInput],
-                 gpu: int = 0):
+                 gpu: int = 0, workdir: str = None):
         """
         Generate a dataset as implied by the arguments.
 
@@ -43,8 +44,10 @@ class DatasetGenerator:
         self.outputs = outputs
         self.inputs = inputs
         self.acquire = acquire
+        if workdir is None:
+            workdir = f"workdir{gpu}"
         self.seismic = SeismicGenerator(acquire, model, gpu=gpu,
-                                        workdir="workdir%d" % gpu)
+                                        workdir=workdir)
 
     def new_example(self, seed):
         """
@@ -158,7 +161,8 @@ class DatasetGenerator:
                          savepath: str,
                          nexamples: int,
                          seed0: int = None,
-                         gpus: list = None):
+                         gpus: list = None,
+                         workdirs: list = None):
         """
         Create a dataset on multiple GPUs.
 
@@ -169,22 +173,27 @@ class DatasetGenerator:
         :param gpus: List of GPU IDs for data creation. Defaults to all GPUs.
 
         """
-        if not os.path.isdir(savepath):
+        try:
             os.makedirs(savepath)
+        except FileExistsError:
+            pass
         if gpus is None:
             gpus = [device.name for device in list_physical_devices('GPU')]
             gpus = [int(gpu.split(':')[-1]) for gpu in gpus]
+        if workdirs is None:
+            workdirs = [f"workdir{gpu}" for gpu in gpus]
 
         exampleids = Queue()
         for el in np.arange(seed0, seed0 + nexamples):
             exampleids.put(el)
         generators = []
-        for i in gpus:
+        for i, workdir in zip(gpus, workdirs):
             sg = self.__class__(model=self.model,
                                 acquire=self.acquire,
                                 inputs=self.inputs,
                                 outputs=self.outputs,
-                                gpu=i)
+                                gpu=i,
+                                workdir=workdir)
             thisgen = DatasetProcess(savepath, sg, exampleids)
             thisgen.start()
             generators.append(thisgen)
@@ -227,8 +236,20 @@ class DatasetProcess(Process):
                 break
             except queue.Empty:
                 break
-            filename = "example_%d" % seed
-            if not os.path.isfile(os.path.join(self.savepath, filename)):
-                data, labels, weights = self.data_generator.new_example(seed)
-                self.data_generator.write(seed, self.savepath, data, labels,
-                                          weights, filename=filename)
+            filename = f"example_{seed}"
+            filepath = os.path.join(self.savepath, filename)
+            if not os.path.isfile(filepath):
+                try:
+                    with FileLock(filepath + '.lock', timeout=0):
+                        example = self.data_generator.new_example(seed)
+                        data, labels, weights = example
+                        self.data_generator.write(seed, self.savepath, data,
+                                                  labels, weights,
+                                                  filename=filename)
+                except Timeout:
+                    continue
+                except (IndexError, ValueError) as error:
+                    print(f"WARNING: {error}")
+                    os.remove(filepath + '.lock')
+                else:
+                    os.remove(filepath + '.lock')

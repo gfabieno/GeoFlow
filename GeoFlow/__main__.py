@@ -26,7 +26,7 @@ def main(args=None, use_tune=False):
     if args.generate:
         if args.plot:
             dataset.acquire.plot_acquisition_geometry()
-        dataset.generate_dataset(gpus=args.gpus)
+        dataset.generate_dataset(gpus=args.gpus, workdirs=args.workdirs)
         if args.plot:
             dataset.animate()
 
@@ -124,6 +124,11 @@ parser.add_argument("--gpus",
                          "inference. Use a string representation for "
                          "lists of GPU IDs, e.g. `'[0, 1]'` or `[0,1]`. "
                          "By default, use all available GPUs.")
+parser.add_argument("--workdirs",
+                    type=eval,
+                    default=None,
+                    help="List of working directory names associated to "
+                         "each GPU.")
 parser.add_argument("--savedir",
                     type=str,
                     default=None,
