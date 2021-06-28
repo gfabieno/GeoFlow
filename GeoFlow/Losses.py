@@ -5,6 +5,7 @@ Define custom losses.
 
 import tensorflow as tf
 from tensorflow.keras.losses import binary_crossentropy
+from tensorflow.keras.backend import epsilon as eps
 
 
 def ref_loss():
@@ -48,7 +49,7 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
         if fact1 > 0:
             loss = tf.reduce_mean(weight * (label-output)**2, axis=[1, 2])
             if normalize:
-                loss /= tf.reduce_mean(weight * label**2, axis=[1, 2])
+                loss /= tf.reduce_mean(weight * label**2, axis=[1, 2]) + eps()
             losses.append(fact1 * loss)
 
         # Compute mean squared error of the vertical derivative.
@@ -59,7 +60,7 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
                                   axis=[1, 2])
             if normalize:
                 loss /= tf.reduce_mean(weight[:, :-1, :] * dlabel**2,
-                                       axis=[1, 2])
+                                       axis=[1, 2]) + eps()
             losses.append(alpha * loss)
 
         # Minimize gradient (blocky inversion).
@@ -72,7 +73,8 @@ def v_compound_loss(alpha=0.2, beta=0.1, normalize=False):
                 abs_diff *= weight[:, :, :-1] * weight[:, :, 1:]
                 loss += tf.reduce_mean(abs_diff, axis=[1, 2])
             if normalize:
-                loss /= tf.reduce_mean(tf.abs(output)*weight, axis=[1, 2])
+                loss /= tf.reduce_mean(tf.abs(output)*weight,
+                                       axis=[1, 2]) + eps()
                 loss *= .02
             losses.append(beta * loss)
 
