@@ -265,7 +265,9 @@ class RCNN2D(NN):
                 losses[lbl] = ref_loss()
             else:
                 if lbl == 'vrms':
-                    losses[lbl] = v_compound_loss(beta=.0, normalize=True)
+                    losses[lbl] = v_compound_loss(
+                        alpha=.0, beta=.0, normalize=True,
+                    )
                 else:
                     losses[lbl] = v_compound_loss(normalize=True)
             losses_weights[lbl] = self.params.loss_scales[lbl]
