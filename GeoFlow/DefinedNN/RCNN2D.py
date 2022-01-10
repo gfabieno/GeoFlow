@@ -299,7 +299,8 @@ def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray,
                                               loaded_weights)):
         if current.shape != loaded.shape:
             assert_broadcastable(current, loaded,
-                                 "Weights are not compatible.")
+                                 f"Weights are not compatible. Input shapes "
+                                 f"were {current.shape} and {loaded.shape}")
             mismatches = np.not_equal(current.shape,
                                       loaded.shape)
             mismatch_idx = np.nonzero(mismatches)[0]
@@ -479,5 +480,8 @@ def assert_broadcastable(arr1: np.ndarray, arr2: np.ndarray,
         np.broadcast(arr1, arr2)
     except ValueError:
         if message is None:
-            message = "Arrays are not compatible for broadcasting."
+            message = (
+                f"Arrays are not compatible for broadcasting. Input arrays "
+                f"have shapes {arr1.shape} and {arr2.shape}."
+            )
         raise AssertionError(message)
