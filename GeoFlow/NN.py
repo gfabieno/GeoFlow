@@ -350,7 +350,10 @@ class NN(Model):
                 evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
-                example = example.numpy().decode("utf-8")
+                try:
+                    example = example.numpy().decode("utf-8")
+                except AttributeError:
+                    example = example[0]
                 exampleid = int(example.split("_")[-1])
                 example_evaluated = {lbl: out[i]
                                      for lbl, out in evaluated.items()}
