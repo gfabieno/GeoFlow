@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input
+from tensorflow.keras.backend import ndim
 from scipy.signal import convolve2d
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
@@ -759,12 +760,12 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
     new_dims = iter([axis, 0])
     # Create a list where `axis` and `0` are interchanged.
     permutation = [dim if dim not in [axis, 0] else next(new_dims)
-                   for dim in range(tf.rank(x_ref))]
+                   for dim in range(ndim(x_ref))]
     x_ref = tf.transpose(x_ref, permutation)
     y_ref = tf.transpose(y_ref, permutation)
 
     x_ref = tf.expand_dims(x_ref, axis=0)
-    while tf.rank(x) != tf.rank(x_ref):
+    while ndim(x) != ndim(x_ref):
         x = tf.expand_dims(x, axis=-1)
     distances = tf.abs(x_ref-x)
     nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
