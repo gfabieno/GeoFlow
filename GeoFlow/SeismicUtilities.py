@@ -449,7 +449,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
 def vint2vrms(vint, t):
     dt = t[1:]-t[:-1]
     vrms = np.zeros_like(vint)
-    vrms[:-1] = np.cumsum(dt * vint[:-1]**2)
+    vrms[:-1] = np.cumsum(dt * vint[:-1]**2, axis=0)
     vrms[:-1] = np.sqrt(vrms[:-1] / (t[1:]-t[0]))
     vrms[-1] = vrms[-2]
     return vrms
