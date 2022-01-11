@@ -378,9 +378,14 @@ def find_latest_checkpoint(logdir: str):
         is_model = exists(join(logdir, file, "saved_model.pb"))
         if has_checkpoint_format and (is_checkpoint or is_model):
             checkpoints.append(file.split("_")[-1].split(".")[0])
-    checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
-        restore_from = str(max(checkpoints))
+        has_leading_zeros = checkpoints[0][0] == '0'
+        if has_leading_zeros:
+            checkpoints = sorted(checkpoints)
+            restore_from = checkpoints[-1]
+        else:
+            checkpoints = [int(f) for f in checkpoints]
+            restore_from = str(max(checkpoints))
         restore_from = join(logdir, f"checkpoint_{restore_from}")
     else:
         restore_from = None
