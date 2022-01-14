@@ -77,11 +77,12 @@ class GraphOutput:
             data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
             is_1d = data.shape[1] == 1
-            y = np.arange(len(data), 0, -1)
+            y = np.arange(len(data))
             if im is None:
                 if is_1d:
                     ims[i], = ax.plot(data.flatten(), y)
                     ax.set_xlim(vmin, vmax)
+                    ax.set_ylim(len(y)-1, 0)
                 else:
                     ims[i] = ax.imshow(data,
                                        interpolation='bilinear',
