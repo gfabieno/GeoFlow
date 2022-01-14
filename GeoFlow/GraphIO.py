@@ -76,19 +76,28 @@ class GraphOutput:
             weights = weights.astype(bool)
             data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
+            is_1d = data.shape[1] == 1
+            y = np.arange(len(data), 0, -1)
             if im is None:
-                ims[i] = ax.imshow(data,
-                                   interpolation='bilinear',
-                                   cmap=cmap,
-                                   vmin=vmin, vmax=vmax,
-                                   aspect='auto')
+                if is_1d:
+                    ims[i], = ax.plot(data.flatten(), y)
+                    ax.set_xlim(vmin, vmax)
+                else:
+                    ims[i] = ax.imshow(data,
+                                       interpolation='bilinear',
+                                       cmap=cmap,
+                                       vmin=vmin, vmax=vmax,
+                                       aspect='auto')
+                    plt.colorbar(ims[i], ax=ax)
                 ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
                              fontweight='bold')
-                plt.colorbar(ims[i], ax=ax)
             else:
-                ax = im.axes
-                ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
-                im.set_array(data)
+                if is_1d:
+                    im.set_data(data, y)
+                else:
+                    ax = im.axes
+                    ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
+                    im.set_array(data)
 
         return ims
 
@@ -142,7 +151,9 @@ class Reftime(GraphOutput):
     def plot(self, data, weights=None, axs=None, cmap='Greys',
              vmin=0, vmax=1, clip=1, ims=None):
         if self.meta_name in ['Output', 'Predictions']:
-            vmin, vmax = -.2, 1
+            is_1d = data.reshape([data.shape[0], -1]).shape[1] == 1
+            if not is_1d:
+                vmin, vmax = -.2, 1
         else:
             cmap = cmap + '_r'
         return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
