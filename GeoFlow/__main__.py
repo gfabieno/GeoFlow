@@ -31,7 +31,11 @@ def main(args=None, use_tune=False):
             dataset.animate()
 
     if args.train or args.test:
-        inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
+        try:
+            inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
+        except FileNotFoundError:
+            inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs,
+                                                  phase='test')
         input_shapes = {name: input.shape for name, input in inputs.items()}
         nn = args.nn(dataset=dataset,
                      input_shapes=input_shapes,
