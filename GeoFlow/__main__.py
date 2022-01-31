@@ -25,6 +25,7 @@ def main(args=None, use_tune=False):
 
     if args.generate:
         if args.plot:
+            dataset.model.animated_dataset()
             dataset.acquire.plot_acquisition_geometry()
         dataset.generate_dataset(gpus=args.gpus, workdirs=args.workdirs)
         if args.plot:
