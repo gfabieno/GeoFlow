@@ -50,9 +50,8 @@ class EarthModel(ModelGenerator):
         self.amp_max = 25
         # Maximum nb of frequencies of boundary.
         self.max_deform_nfreq = 20
-        # Probability that a boundary shape will.
+        # Probability that a boundary shape will change between two layers.
         self.prob_deform_change = 0.3
-        # Change between two layers.
         # Add random noise two a layer (% or velocity).
         self.max_texture = 0
         # Range of the filter in x for texture creation.
