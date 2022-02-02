@@ -9,10 +9,11 @@ duplicated repository. Uncommitted changes are preserved.
 """
 
 import sys
+from time import sleep
 from importlib import import_module
 from os import makedirs, listdir, remove, symlink, walk, chdir, getcwd
 from os.path import join, realpath, exists, pardir
-from subprocess import run
+from subprocess import run, CalledProcessError
 from copy import deepcopy
 from weakref import proxy
 
@@ -69,15 +70,20 @@ class ArchiveRepository:
         current_commit = current_commit.replace(" ", "_")
         logs_dir = join(self.logs_directory, current_branch, current_commit)
         logs_dir = realpath(logs_dir)
-        if exists(logs_dir):
-            contents = listdir(logs_dir)
-            contents = [c for c in contents if c.isnumeric()]
-            current_prototype = len(contents)
-        else:
-            current_prototype = 0
-        current_prototype = str(current_prototype)
-        logs_dir = join(logs_dir, current_prototype)
-        makedirs(logs_dir)
+        current_prototype = None
+        while current_prototype is None:
+            try:
+                if exists(logs_dir):
+                    contents = listdir(logs_dir)
+                    contents = [c for c in contents if c.isnumeric()]
+                    current_prototype = len(contents)
+                else:
+                    current_prototype = 0
+                current_prototype = str(current_prototype)
+                makedirs(join(logs_dir, current_prototype))
+                logs_dir = join(logs_dir, current_prototype)
+            except FileExistsError:
+                current_prototype = None
 
         model_dir = join(logs_dir, "model")
         makedirs(model_dir)
@@ -92,8 +98,14 @@ class ArchiveRepository:
         """
         logs_dir, code_dir = self.logs, self.code
 
-        stash_name = run(["git", "stash", "create", "'Uncommitted changes'"],
-                         capture_output=True, check=True, text=True)
+        stash_name = None
+        while stash_name is None:
+            try:
+                stash_name = run(["git", "stash", "create",
+                                  "'Uncommitted changes'"],
+                                 capture_output=True, check=True, text=True)
+            except CalledProcessError:
+                sleep(5)
         stash_name = stash_name.stdout.strip("\n")
         archive_name = join(logs_dir, "code.tar.gz")
         # Create an archived copy of the repository.
