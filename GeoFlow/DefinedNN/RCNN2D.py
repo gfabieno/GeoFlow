@@ -38,8 +38,8 @@ class Hyperparameters(Hyperparameters):
         # Whether to add noise or not to the data.
         self.add_noise = False
 
-        # A label. Set layers up to the decoder of `freeze_to` to untrainable.
-        self.freeze_to = None
+        # A list of NN components.
+        self.freeze = []
 
         # Convolution kernels of the encoder head.
         self.encoder_kernels = [[15, 1, 1],
@@ -95,8 +95,6 @@ class RCNN2D(NN):
                                      qties_filters=params.encoder_filters,
                                      input_shape=inputs['shotgather'].shape,
                                      batch_size=batch_size)
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            self.encoder.trainable = False
 
         self.rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
@@ -105,8 +103,6 @@ class RCNN2D(NN):
                                input_shape=self.encoder.output_shape,
                                batch_size=batch_size,
                                name="time_rcnn")
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            self.rcnn.trainable = False
 
         self.rvcnn = build_rcnn(reps=6,
                                 kernel=(1, 2, 1),
@@ -131,8 +127,6 @@ class RCNN2D(NN):
                                      input_shape=shape_after_pooling,
                                      batch_size=batch_size,
                                      name="rnn_vrms")
-        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-            self.rnn['vrms'].trainable = False
 
         input_shape = self.rnn['vrms'].output_shape
         if params.use_cnn:
@@ -142,8 +136,6 @@ class RCNN2D(NN):
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="cnn_vrms")
-            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-                self.cnn['vrms'].trainable = False
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
@@ -156,8 +148,6 @@ class RCNN2D(NN):
                                      input_shape=input_shape,
                                      batch_size=batch_size,
                                      name="rnn_vint")
-        if params.freeze_to in ['vint', 'vdepth']:
-            self.rnn['vint'].trainable = False
 
         input_shape = self.rnn['vint'].output_shape
         if params.use_cnn:
@@ -167,8 +157,6 @@ class RCNN2D(NN):
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="cnn_vint")
-            if params.freeze_to in ['vint', 'vdepth']:
-                self.cnn['vint'].trainable = False
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
@@ -182,6 +170,10 @@ class RCNN2D(NN):
                                                            vint_shape,
                                                            batch_size,
                                                            name="vdepth")
+
+        for layer in params.freeze:
+            layer = eval('self.' + layer)
+            layer.trainable = False
 
     def call(self, inputs: dict):
         params = self.params
