@@ -3,6 +3,9 @@
 Build a neural network for predicting v_p in 2D and in depth.
 """
 
+from os import getcwd
+from os.path import join, split
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
@@ -220,7 +223,12 @@ class RCNN2D(NN):
         if skip_mismatch or not by_name:
             raise NotImplementedError
 
-        loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        try:
+            loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        except RuntimeError:
+            filepath = join(getcwd(), filepath, 'variables', 'variables')
+            Model.load_weights(self, filepath)
+            return
         current_layer_names = [layer.name for layer in self.layers]
         for loaded_layer in loaded_model.layers:
             name = loaded_layer.name
