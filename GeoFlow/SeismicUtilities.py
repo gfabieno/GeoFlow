@@ -769,6 +769,7 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
         x = tf.expand_dims(x, axis=-1)
     distances = tf.abs(x_ref-x)
     nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
+    nearest_neighbor = tf.clip_by_value(nearest_neighbor, 0, y_ref.shape[0]-1)
 
     grid = tf.meshgrid(*[tf.range(dim) for dim in nearest_neighbor.shape],
                        indexing="ij")
