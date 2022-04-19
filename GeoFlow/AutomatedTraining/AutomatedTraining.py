@@ -14,14 +14,16 @@ modifications in the repository during training do not impact an ongoing
 training. `optimize` automatically fetches the archived main script.
 """
 
-from os import environ
-from os.path import split
+from os import environ, makedirs
+from os.path import split, join, exists
 from copy import deepcopy
 from argparse import Namespace
 from typing import Callable
+from distutils.dir_util import copy_tree
+from distutils.file_util import copy_file
 
 from ray import tune
-from tensorflow.config import list_physical_devices, set_visible_devices
+from tensorflow.config import list_physical_devices
 
 from .Archive import ArchiveRepository
 
@@ -123,8 +125,25 @@ def optimize(args: Namespace, **config):
             args.gpus = [str(gpu) for gpu in args.gpus]
             environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
             environ['CUDA_VISIBLE_DEVICES'] = ','.join(args.gpus)
-            tune.run(lambda config: chain(main, args, use_tune=True, **config),
-                     num_samples=1,
-                     local_dir=logdir,
-                     resources_per_trial={"gpu": len(args.gpus)},
-                     config=grid_search_config)
+            trials = tune.run(lambda config: chain(main, args, use_tune=True,
+                                                   **config),
+                              num_samples=1,
+                              local_dir=logdir,
+                              resources_per_trial={"gpu": len(args.gpus)},
+                              config=grid_search_config)
+
+    if args.destdir is not None:
+        copy_last_checkpoint(trials.get_last_checkpoint(), args.destdir)
+
+
+def copy_last_checkpoint(checkpoint_dir, destdir):
+    checkpoint_dir = str(checkpoint_dir).rstrip('/\\')
+    source_dir, checkpoint = split(checkpoint_dir)
+    print(source_dir, checkpoint)
+    if exists(destdir):
+        raise OSError("Clash in checkpoints. Destination directory "
+                      "already exists.")
+    makedirs(destdir)
+    copy_tree(checkpoint_dir, join(destdir, checkpoint))
+    copy_file(join(source_dir, 'progress.csv'),
+              join(destdir, 'progress.csv'))
