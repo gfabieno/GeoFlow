@@ -80,9 +80,7 @@ def chain(main: Callable,
         qty_segments = 1
 
     if use_tune:
-        with tune.checkpoint_dir(step=1) as checkpoint_dir:
-            logdir, _ = split(checkpoint_dir)
-        args.logdir = logdir
+        args.logdir = tune.get_trial_dir()
     for segment in range(qty_segments):
         current_params = deepcopy(params)
         for param_name, param_value in to_chain.items():
@@ -139,7 +137,6 @@ def optimize(args: Namespace, **config):
 def copy_last_checkpoint(checkpoint_dir, destdir):
     checkpoint_dir = str(checkpoint_dir).rstrip('/\\')
     source_dir, checkpoint = split(checkpoint_dir)
-    print(source_dir, checkpoint)
     if exists(destdir):
         raise OSError("Clash in checkpoints. Destination directory "
                       "already exists.")
