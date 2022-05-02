@@ -228,8 +228,11 @@ class Vrms(Reftime):
         refs = refs[::self.acquire.resampling, :]
         tweights = np.ones_like(vrms)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            tweights[i_t:, ii] = 0
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                tweights[i_t:, ii] = 0
+            except IndexError:
+                tweights[:, ii] = 0
 
         vrms, tweights = self.resample(vrms, tweights)
         return vrms, tweights
@@ -271,8 +274,11 @@ class Vint(Vrms):
         refs = refs[::self.acquire.resampling, :]
         tweights = np.ones_like(vint)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            tweights[i_t:, ii] = 0
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                tweights[i_t:, ii] = 0
+            except IndexError:
+                tweights[:, ii] = 0
 
         vint, tweights = self.resample(vint, tweights)
         return vint, tweights
@@ -306,11 +312,14 @@ class Vdepth(Vrms):
                                  axis=0) + self.acquire.tdelay
         dweights = dweights - 2 * np.sum(self.model.dh / vp[:z0, :], axis=0)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            threshold = i_t * self.acquire.dt * self.acquire.resampling
-            mask = dweights[:, ii] >= threshold
-            dweights[mask, ii] = 0
-            dweights[dweights[:, ii] != 0, ii] = 1
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                threshold = i_t * self.acquire.dt * self.acquire.resampling
+                mask = dweights[:, ii] >= threshold
+                dweights[mask, ii] = 0
+                dweights[dweights[:, ii] != 0, ii] = 1
+            except IndexError:
+                dweights[:, ii] = 0
 
         # Smooth the velocity model.
         if self.model_smooth_x != 0 or self.model_smooth_t != 0:
