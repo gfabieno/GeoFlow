@@ -13,6 +13,7 @@ REQUIREMENTS = ["numpy",
                 "h5py",
                 "ray[tune]",
                 "filelock",
+                "natsort",
                 GITHUB_REQUIREMENT.format(author="gfabieno",
                                           name="SeisCL",
                                           version="eef941d4e31b5fa0dc7823e491e"

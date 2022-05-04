@@ -17,6 +17,7 @@ import tensorflow as tf
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib import animation
+from natsort import natsorted as sorted
 
 from GeoFlow.DatasetGenerator import DatasetGenerator
 from GeoFlow.SeismicGenerator import Acquisition
@@ -118,6 +119,7 @@ class GeoDataset:
         for el in phases:
             try:
                 files = fnmatch.filter(os.listdir(phases[el]), 'example_*')
+                files = sorted(files)
                 self.files[el] = [os.path.join(phases[el], f) for f in files]
             except FileNotFoundError:
                 pass
