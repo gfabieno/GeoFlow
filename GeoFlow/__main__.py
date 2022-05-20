@@ -34,7 +34,7 @@ def main(args=None, use_tune=False):
     if args.train or args.test:
         try:
             inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs)
-        except FileNotFoundError:
+        except (FileNotFoundError, StopIteration):
             inputs, _, _, _ = dataset.get_example(toinputs=args.nn.toinputs,
                                                   phase='test')
         input_shapes = {name: input.shape for name, input in inputs.items()}
