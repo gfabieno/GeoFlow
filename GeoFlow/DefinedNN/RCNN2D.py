@@ -4,7 +4,7 @@ Build a neural network for predicting v_p in 2D and in depth.
 """
 
 from os import getcwd
-from os.path import join, split
+from os.path import join
 
 import numpy as np
 import tensorflow as tf
@@ -226,6 +226,10 @@ class RCNN2D(NN):
         try:
             loaded_model = tf.keras.models.load_model(filepath, compile=False)
         except RuntimeError:
+            print(
+                "WARNING: Could not use transfer learning on loaded model. "
+                "Loading weights as they are."
+            )
             filepath = join(getcwd(), filepath, 'variables', 'variables')
             Model.load_weights(self, filepath)
             return
@@ -263,13 +267,12 @@ class RCNN2D(NN):
         for lbl in self.tooutputs:
             if lbl == 'ref':
                 losses[lbl] = ref_loss()
+            elif lbl == 'vrms':
+                losses[lbl] = v_compound_loss(
+                    alpha=.0, beta=.0, normalize=True,
+                )
             else:
-                if lbl == 'vrms':
-                    losses[lbl] = v_compound_loss(
-                        alpha=.0, beta=.0, normalize=True,
-                    )
-                else:
-                    losses[lbl] = v_compound_loss(normalize=True)
+                losses[lbl] = v_compound_loss(normalize=True)
             losses_weights[lbl] = self.params.loss_scales[lbl]
 
         return losses, losses_weights
