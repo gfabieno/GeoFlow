@@ -156,7 +156,6 @@ def copy_last_checkpoint(params, logdir, destdir):
     end_epoch = start_epoch + epochs
 
     logdir = str(logdir).rstrip('/\\')
-    print(start_epoch, epochs, end_epoch)
     checkpoint = f"checkpoint_{end_epoch:06d}"
     if exists(destdir):
         raise OSError("Clash in checkpoints. Destination directory "
