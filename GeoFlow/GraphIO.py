@@ -336,7 +336,8 @@ class Vdepth(Vrms):
         # We can predict velocities under the source and receiver arrays only.
         sz = int(self.acquire.source_depth / self.model.dh)
         label = label[sz:, :]
-        weight = weight[sz:, :]
+        if weight is not None:
+            weight = weight[sz:, :]
 
         return label, weight
 
