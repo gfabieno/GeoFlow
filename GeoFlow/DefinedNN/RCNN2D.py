@@ -3,11 +3,14 @@
 Build a neural network for predicting v_p in 2D and in depth.
 """
 
+from os import getcwd
+from os.path import join
+
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
-                                     ReLU, Dropout)
+                                     ReLU, Dropout, Bidirectional)
 from tensorflow.keras.backend import reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -38,8 +41,8 @@ class Hyperparameters(Hyperparameters):
         # Whether to add noise or not to the data.
         self.add_noise = False
 
-        # A label. Set layers up to the decoder of `freeze_to` to untrainable.
-        self.freeze_to = None
+        # A list of NN components.
+        self.freeze = []
 
         # Convolution kernels of the encoder head.
         self.encoder_kernels = [[15, 1, 1],
@@ -95,8 +98,6 @@ class RCNN2D(NN):
                                      qties_filters=params.encoder_filters,
                                      input_shape=inputs['shotgather'].shape,
                                      batch_size=batch_size)
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            self.encoder.trainable = False
 
         self.rcnn = build_rcnn(reps=7,
                                kernel=params.rcnn_kernel,
@@ -105,8 +106,6 @@ class RCNN2D(NN):
                                input_shape=self.encoder.output_shape,
                                batch_size=batch_size,
                                name="time_rcnn")
-        if params.freeze_to in ['ref', 'vrms', 'vint', 'vdepth']:
-            self.rcnn.trainable = False
 
         self.rvcnn = build_rcnn(reps=6,
                                 kernel=(1, 2, 1),
@@ -131,8 +130,6 @@ class RCNN2D(NN):
                                      input_shape=shape_after_pooling,
                                      batch_size=batch_size,
                                      name="rnn_vrms")
-        if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-            self.rnn['vrms'].trainable = False
 
         input_shape = self.rnn['vrms'].output_shape
         if params.use_cnn:
@@ -142,8 +139,6 @@ class RCNN2D(NN):
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="cnn_vrms")
-            if params.freeze_to in ['vrms', 'vint', 'vdepth']:
-                self.cnn['vrms'].trainable = False
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vrms'] = Conv2D(1, params.decode_kernel, padding='same',
@@ -156,8 +151,6 @@ class RCNN2D(NN):
                                      input_shape=input_shape,
                                      batch_size=batch_size,
                                      name="rnn_vint")
-        if params.freeze_to in ['vint', 'vdepth']:
-            self.rnn['vint'].trainable = False
 
         input_shape = self.rnn['vint'].output_shape
         if params.use_cnn:
@@ -167,8 +160,6 @@ class RCNN2D(NN):
                                       input_shape=input_shape,
                                       batch_size=batch_size,
                                       name="cnn_vint")
-            if params.freeze_to in ['vint', 'vdepth']:
-                self.cnn['vint'].trainable = False
             input_shape = input_shape[:-1] + (params.cnn_filters,)
 
         self.decoder['vint'] = Conv2D(1, params.decode_kernel, padding='same',
@@ -182,6 +173,10 @@ class RCNN2D(NN):
                                                            vint_shape,
                                                            batch_size,
                                                            name="vdepth")
+
+        for layer in params.freeze:
+            layer = eval('self.' + layer)
+            layer.trainable = False
 
     def call(self, inputs: dict):
         params = self.params
@@ -228,7 +223,16 @@ class RCNN2D(NN):
         if skip_mismatch or not by_name:
             raise NotImplementedError
 
-        loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        try:
+            loaded_model = tf.keras.models.load_model(filepath, compile=False)
+        except RuntimeError:
+            print(
+                "WARNING: Could not use transfer learning on loaded model. "
+                "Loading weights as they are."
+            )
+            filepath = join(getcwd(), filepath, 'variables', 'variables')
+            Model.load_weights(self, filepath)
+            return
         current_layer_names = [layer.name for layer in self.layers]
         for loaded_layer in loaded_model.layers:
             name = loaded_layer.name
@@ -263,11 +267,12 @@ class RCNN2D(NN):
         for lbl in self.tooutputs:
             if lbl == 'ref':
                 losses[lbl] = ref_loss()
+            elif lbl == 'vrms':
+                losses[lbl] = v_compound_loss(
+                    alpha=.0, beta=.0, normalize=True,
+                )
             else:
-                if lbl == 'vrms':
-                    losses[lbl] = v_compound_loss(beta=.0, normalize=True)
-                else:
-                    losses[lbl] = v_compound_loss(normalize=True)
+                losses[lbl] = v_compound_loss(normalize=True)
             losses_weights[lbl] = self.params.loss_scales[lbl]
 
         return losses, losses_weights
@@ -297,7 +302,8 @@ def broadcast_weights(loaded_weights: np.ndarray, current_weights: np.ndarray,
                                               loaded_weights)):
         if current.shape != loaded.shape:
             assert_broadcastable(current, loaded,
-                                 "Weights are not compatible.")
+                                 f"Weights are not compatible. Input shapes "
+                                 f"were {current.shape} and {loaded.shape}")
             mismatches = np.not_equal(current.shape,
                                       loaded.shape)
             mismatch_idx = np.nonzero(mismatches)[0]
@@ -440,7 +446,7 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
 
 
 def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
-              name="rnn"):
+              bidirectional=False, name="rnn"):
     """
     Build a LSTM acting on dimension 1 (the time dimension).
 
@@ -459,6 +465,9 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     data_stream = reshape(data_stream,
                           [batches*shots, timesteps, filter_dim])
     lstm = LSTM(units, return_sequences=True)
+    if bidirectional:
+        lstm = Bidirectional(lstm)
+        units *= 2
     data_stream = lstm(data_stream)
     data_stream = reshape(data_stream,
                           [batches, shots, timesteps, units])
@@ -477,5 +486,8 @@ def assert_broadcastable(arr1: np.ndarray, arr2: np.ndarray,
         np.broadcast(arr1, arr2)
     except ValueError:
         if message is None:
-            message = "Arrays are not compatible for broadcasting."
+            message = (
+                f"Arrays are not compatible for broadcasting. Input arrays "
+                f"have shapes {arr1.shape} and {arr2.shape}."
+            )
         raise AssertionError(message)

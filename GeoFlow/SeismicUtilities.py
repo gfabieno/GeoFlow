@@ -6,6 +6,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.layers import Input
+from tensorflow.keras.backend import ndim
 from scipy.signal import convolve2d
 from scipy.interpolate import interp1d
 from scipy.ndimage.filters import gaussian_filter
@@ -449,7 +450,7 @@ def build_time_to_depth_converter(dataset, input_shape, batch_size,
 def vint2vrms(vint, t):
     dt = t[1:]-t[:-1]
     vrms = np.zeros_like(vint)
-    vrms[:-1] = np.cumsum(dt * vint[:-1]**2)
+    vrms[:-1] = np.cumsum(dt * vint[:-1]**2, axis=0)
     vrms[:-1] = np.sqrt(vrms[:-1] / (t[1:]-t[0]))
     vrms[-1] = vrms[-2]
     return vrms
@@ -759,15 +760,16 @@ def interp_nearest(x, x_ref, y_ref, axis=0):
     new_dims = iter([axis, 0])
     # Create a list where `axis` and `0` are interchanged.
     permutation = [dim if dim not in [axis, 0] else next(new_dims)
-                   for dim in range(tf.rank(x_ref))]
+                   for dim in range(ndim(x_ref))]
     x_ref = tf.transpose(x_ref, permutation)
     y_ref = tf.transpose(y_ref, permutation)
 
     x_ref = tf.expand_dims(x_ref, axis=0)
-    while tf.rank(x) != tf.rank(x_ref):
+    while ndim(x) != ndim(x_ref):
         x = tf.expand_dims(x, axis=-1)
     distances = tf.abs(x_ref-x)
     nearest_neighbor = tf.argmin(distances, axis=1, output_type=tf.int32)
+    nearest_neighbor = tf.clip_by_value(nearest_neighbor, 0, y_ref.shape[0]-1)
 
     grid = tf.meshgrid(*[tf.range(dim) for dim in nearest_neighbor.shape],
                        indexing="ij")

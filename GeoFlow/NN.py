@@ -261,7 +261,7 @@ class NN(Model):
             current_layer.set_weights(loaded_weights)
 
     def launch_training(self, tfdataset, tfvalidate=None,
-                        use_tune: bool = False):
+                        use_tune: bool = False, callbacks: tuple = ()):
         """
         Fit the model to the dataset.
 
@@ -290,12 +290,12 @@ class NN(Model):
                                                WEIGHTS_NAME),
                                           save_freq='epoch',
                                           save_weights_only=False)
-            callbacks = [tensorboard, checkpoints]
+            callbacks = [tensorboard, checkpoints, *callbacks]
         else:
             tune_report = TuneReportCheckpointCallback(filename='.',
                                                        frequency=1)
             tune_report._checkpoint._cp_count = self.current_epoch + 1
-            callbacks = [tune_report]
+            callbacks = [tune_report, *callbacks]
         self.fit(tfdataset,
                  validation_data=tfvalidate,
                  epochs=epochs,
@@ -350,7 +350,10 @@ class NN(Model):
                 evaluated[lbl] = out[..., 0]
 
             for i, example in enumerate(data["filename"]):
-                example = example.numpy().decode("utf-8")
+                try:
+                    example = example.numpy().decode("utf-8")
+                except AttributeError:
+                    example = example[0]
                 exampleid = int(example.split("_")[-1])
                 example_evaluated = {lbl: out[i]
                                      for lbl, out in evaluated.items()}
@@ -375,9 +378,14 @@ def find_latest_checkpoint(logdir: str):
         is_model = exists(join(logdir, file, "saved_model.pb"))
         if has_checkpoint_format and (is_checkpoint or is_model):
             checkpoints.append(file.split("_")[-1].split(".")[0])
-    checkpoints = [int(f) for f in checkpoints]
     if checkpoints:
-        restore_from = str(max(checkpoints))
+        has_leading_zeros = checkpoints[0][0] == '0'
+        if has_leading_zeros:
+            checkpoints = sorted(checkpoints)
+            restore_from = checkpoints[-1]
+        else:
+            checkpoints = [int(f) for f in checkpoints]
+            restore_from = str(max(checkpoints))
         restore_from = join(logdir, f"checkpoint_{restore_from}")
     else:
         restore_from = None

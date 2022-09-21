@@ -91,10 +91,10 @@ class Acquisition:
         elif self.configuration == 'inline':
             # Compute several sources
             start_idx = self.Npad + 1
-            if self.gmin and self.gmin < 0:
+            if self.gmin is not None and self.gmin < 0:
                 start_idx += -self.gmin
             end_idx = self.model.NX - self.Npad
-            if self.gmax and self.gmax > 0:
+            if self.gmax is not None and self.gmax > 0:
                 end_idx += -self.gmax
             sx = np.arange(start_idx, end_idx, self.ds) * self.model.dh
         elif self.configuration == 'full':
@@ -112,14 +112,14 @@ class Acquisition:
                             np.full_like(sx, self.sourcetype)], axis=0)
 
         # Add receivers
-        if self.gmin:
+        if self.gmin is not None:
             gmin = self.gmin
         else:
             if self.configuration == 'inline':
                 gmin = -(self.model.NX-2*self.Npad) // 2
             elif self.configuration == 'full':
                 gmin = self.Npad
-        if self.gmax:
+        if self.gmax is not None:
             gmax = self.gmax
         else:
             if self.configuration == 'inline':

@@ -50,9 +50,10 @@ class EarthModel(ModelGenerator):
         self.amp_max = 25
         # Maximum nb of frequencies of boundary.
         self.max_deform_nfreq = 20
-        # Probability that a boundary shape will.
+        # Probability that a boundary shape will change between two layers.
         self.prob_deform_change = 0.3
-        # Change between two layers.
+        # Whether or not deformation of consecutive layers are added together.
+        self.deform_cumulative = False
         # Add random noise two a layer (% or velocity).
         self.max_texture = 0
         # Range of the filter in x for texture creation.
@@ -111,7 +112,8 @@ class EarthModel(ModelGenerator):
                              min_deform_freq=self.min_deform_freq,
                              amp_max=self.amp_max,
                              max_deform_nfreq=self.max_deform_freq,
-                             prob_deform_change=self.prob_deform_change)
+                             prob_deform_change=self.prob_deform_change,
+                             cumulative=self.deform_cumulative)
         sequence = Sequence(lithologies=[lith], ordered=False, deform=deform)
         strati = Stratigraphy(sequences=[sequence])
         properties = strati.properties()

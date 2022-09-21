@@ -14,14 +14,17 @@ modifications in the repository during training do not impact an ongoing
 training. `optimize` automatically fetches the archived main script.
 """
 
-from os import environ
-from os.path import split
+from os import environ, makedirs
+from os.path import split, join, exists
+from glob import glob
 from copy import deepcopy
 from argparse import Namespace
 from typing import Callable
+from distutils.dir_util import copy_tree
+from distutils.file_util import copy_file
 
 from ray import tune
-from tensorflow.config import list_physical_devices, set_visible_devices
+from tensorflow.config import list_physical_devices
 
 from .Archive import ArchiveRepository
 
@@ -78,9 +81,7 @@ def chain(main: Callable,
         qty_segments = 1
 
     if use_tune:
-        with tune.checkpoint_dir(step=1) as checkpoint_dir:
-            logdir, _ = split(checkpoint_dir)
-        args.logdir = logdir
+        args.logdir = tune.get_trial_dir()
     for segment in range(qty_segments):
         current_params = deepcopy(params)
         for param_name, param_value in to_chain.items():
@@ -123,8 +124,54 @@ def optimize(args: Namespace, **config):
             args.gpus = [str(gpu) for gpu in args.gpus]
             environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
             environ['CUDA_VISIBLE_DEVICES'] = ','.join(args.gpus)
-            tune.run(lambda config: chain(main, args, use_tune=True, **config),
+            tune.run(lambda config: chain(main, args, use_tune=True,
+                                          **config),
                      num_samples=1,
                      local_dir=logdir,
                      resources_per_trial={"gpu": len(args.gpus)},
                      config=grid_search_config)
+
+    if args.destdir is not None:
+        params = deepcopy(args.params)
+        for param_name, param_value in config.items():
+            setattr(params, param_name, param_value)
+        logdir = glob(join(logdir, 'l*', 'l*'))[0]
+        copy_last_checkpoint(params, logdir, args.destdir)
+
+
+def copy_last_checkpoint(params, logdir, destdir):
+    qty_segments = 1
+    for _, param_value in params.__dict__.items():
+        if isinstance(param_value, tuple) and len(param_value) > qty_segments:
+            qty_segments = len(param_value)
+
+    if isinstance(params.epochs, tuple):
+        epochs = sum(params.epochs)
+    else:
+        epochs = params.epochs * qty_segments
+    restore_path = params.restore_from
+    if isinstance(restore_path, tuple):
+        restore_path = restore_path[0]
+    start_epoch = find_starting_epoch(restore_path)
+    end_epoch = start_epoch + epochs
+
+    logdir = str(logdir).rstrip('/\\')
+    checkpoint = f"checkpoint_{end_epoch:06d}"
+    if exists(destdir):
+        raise OSError("Clash in checkpoints. Destination directory "
+                      "already exists.")
+    makedirs(destdir)
+    copy_tree(join(logdir, checkpoint), join(destdir, checkpoint))
+    copy_file(join(logdir, 'progress.csv'),
+              join(destdir, 'progress.csv'))
+
+
+def find_starting_epoch(restore_path):
+    if restore_path is not None:
+        restore_path = restore_path.rstrip("/\\")
+        _, filename = split(restore_path)
+        current_epoch = filename.split("_")[-1].split(".")[0]
+        current_epoch = int(current_epoch)
+    else:
+        current_epoch = 0
+    return current_epoch

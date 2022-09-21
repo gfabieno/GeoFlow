@@ -13,6 +13,7 @@ import numpy as np
 import h5py as h5
 from filelock import FileLock, Timeout
 from tensorflow.config import list_physical_devices
+from SeisCL.SeisCL import SeisCLError
 
 from GeoFlow.EarthModel import EarthModel
 from GeoFlow.SeismicGenerator import SeismicGenerator, Acquisition
@@ -248,7 +249,7 @@ class DatasetProcess(Process):
                                                   filename=filename)
                 except Timeout:
                     continue
-                except (IndexError, ValueError) as error:
+                except (IndexError, ValueError, SeisCLError) as error:
                     print(f"WARNING: {error}")
                     os.remove(filepath + '.lock')
                 else:

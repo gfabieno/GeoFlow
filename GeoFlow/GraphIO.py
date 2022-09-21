@@ -76,19 +76,29 @@ class GraphOutput:
             weights = weights.astype(bool)
             data[~weights] = np.nan
         for i, (im, ax) in enumerate(zip(ims, axs)):
+            is_1d = data.shape[1] == 1
+            y = np.arange(len(data))
             if im is None:
-                ims[i] = ax.imshow(data,
-                                   interpolation='bilinear',
-                                   cmap=cmap,
-                                   vmin=vmin, vmax=vmax,
-                                   aspect='auto')
+                if is_1d:
+                    ims[i], = ax.plot(data.flatten(), y)
+                    ax.set_xlim(vmin, vmax)
+                    ax.set_ylim(len(y)-1, 0)
+                else:
+                    ims[i] = ax.imshow(data,
+                                       interpolation='bilinear',
+                                       cmap=cmap,
+                                       vmin=vmin, vmax=vmax,
+                                       aspect='auto')
+                    plt.colorbar(ims[i], ax=ax)
                 ax.set_title(f"{self.meta_name}: {self.name}", fontsize=16,
                              fontweight='bold')
-                plt.colorbar(ims[i], ax=ax)
             else:
-                ax = im.axes
-                ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
-                im.set_array(data)
+                if is_1d:
+                    im.set_data(data, y)
+                else:
+                    ax = im.axes
+                    ax.imshow(np.zeros_like(data), cmap='Greys', aspect='auto')
+                    im.set_array(data)
 
         return ims
 
@@ -142,7 +152,9 @@ class Reftime(GraphOutput):
     def plot(self, data, weights=None, axs=None, cmap='Greys',
              vmin=0, vmax=1, clip=1, ims=None):
         if self.meta_name in ['Output', 'Predictions']:
-            vmin, vmax = -.2, 1
+            is_1d = data.reshape([data.shape[0], -1]).shape[1] == 1
+            if not is_1d:
+                vmin, vmax = -.2, 1
         else:
             cmap = cmap + '_r'
         return super().plot(data, weights, axs, cmap, vmin, vmax, clip, ims)
@@ -216,8 +228,11 @@ class Vrms(Reftime):
         refs = refs[::self.acquire.resampling, :]
         tweights = np.ones_like(vrms)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            tweights[i_t:, ii] = 0
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                tweights[i_t:, ii] = 0
+            except IndexError:
+                tweights[:, ii] = 0
 
         vrms, tweights = self.resample(vrms, tweights)
         return vrms, tweights
@@ -259,8 +274,11 @@ class Vint(Vrms):
         refs = refs[::self.acquire.resampling, :]
         tweights = np.ones_like(vint)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            tweights[i_t:, ii] = 0
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                tweights[i_t:, ii] = 0
+            except IndexError:
+                tweights[:, ii] = 0
 
         vint, tweights = self.resample(vint, tweights)
         return vint, tweights
@@ -294,11 +312,14 @@ class Vdepth(Vrms):
                                  axis=0) + self.acquire.tdelay
         dweights = dweights - 2 * np.sum(self.model.dh / vp[:z0, :], axis=0)
         for ii in range(vp.shape[1]):
-            i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
-            threshold = i_t * self.acquire.dt * self.acquire.resampling
-            mask = dweights[:, ii] >= threshold
-            dweights[mask, ii] = 0
-            dweights[dweights[:, ii] != 0, ii] = 1
+            try:
+                i_t = np.argwhere(refs[:, ii] > 0.1).flatten()[-1]
+                threshold = i_t * self.acquire.dt * self.acquire.resampling
+                mask = dweights[:, ii] >= threshold
+                dweights[mask, ii] = 0
+                dweights[dweights[:, ii] != 0, ii] = 1
+            except IndexError:
+                dweights[:, ii] = 0
 
         # Smooth the velocity model.
         if self.model_smooth_x != 0 or self.model_smooth_t != 0:
@@ -315,7 +336,8 @@ class Vdepth(Vrms):
         # We can predict velocities under the source and receiver arrays only.
         sz = int(self.acquire.source_depth / self.model.dh)
         label = label[sz:, :]
-        weight = weight[sz:, :]
+        if weight is not None:
+            weight = weight[sz:, :]
 
         return label, weight
 
@@ -519,10 +541,8 @@ class ShotGather(GraphInput):
                 offsets = gx - sx
                 ind = np.lexsort((offsets, data_cmps))
                 data_cmps = data_cmps[ind]
-                dcmp = np.abs(data_cmps[1] - data_cmps[0]) / 2
                 valid_cmps, data_cmps = valid_cmps[None, :], data_cmps[:, None]
-                valid_idx = ((valid_cmps-dcmp < data_cmps)
-                             & (data_cmps < valid_cmps+dcmp)).any(axis=1)
+                valid_idx = np.isclose(data_cmps, valid_cmps).any(axis=1)
                 rec_pos = rec_pos[:, valid_idx]
             data = np.transpose(data, axes=[0, 2, 1, 3])
 
