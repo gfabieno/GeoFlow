@@ -10,7 +10,7 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model, Sequential, optimizers
 from tensorflow.keras.layers import (Conv3D, Conv2D, LSTM, Permute, Input,
-                                     ReLU, Dropout)
+                                     ReLU, Dropout, Bidirectional)
 from tensorflow.keras.backend import reshape
 
 from GeoFlow.NN import Hyperparameters, NN
@@ -446,7 +446,7 @@ def build_rcnn(reps, kernel, qty_filters, dilation_rate, input_shape,
 
 
 def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
-              name="rnn"):
+              bidirectional=False, name="rnn"):
     """
     Build a LSTM acting on dimension 1 (the time dimension).
 
@@ -465,6 +465,9 @@ def build_rnn(units, input_shape, batch_size, input_dtype=tf.float32,
     data_stream = reshape(data_stream,
                           [batches*shots, timesteps, filter_dim])
     lstm = LSTM(units, return_sequences=True)
+    if bidirectional:
+        lstm = Bidirectional(lstm)
+        units *= 2
     data_stream = lstm(data_stream)
     data_stream = reshape(data_stream,
                           [batches, shots, timesteps, units])
