@@ -20,7 +20,7 @@ REQUIREMENTS = ["numpy",
                                                   "0575ad1e1f423"),
                 GITHUB_REQUIREMENT.format(author="gfabieno",
                                           name="ModelGenerator",
-                                          version="v0.1.1")]
+                                          version="v1.0.0")]
 
 setup(name="GeoFlow",
       version="0.0.1",
